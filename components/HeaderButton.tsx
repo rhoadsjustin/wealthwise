@@ -1,33 +1,32 @@
 import { forwardRef } from 'react';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
-export const HeaderButton = forwardRef<typeof Pressable, { onPress?: () => void }>(
+export const HeaderButton = forwardRef<TouchableOpacity, { onPress?: () => void }>(
   ({ onPress }, ref) => {
     return (
-      <Pressable onPress={onPress}>
-        {({ pressed }) => (
-          <FontAwesome
-            name="info-circle"
-            size={25}
-            color="gray"
-            style={[
-              styles.headerRight,
-              {
-                opacity: pressed ? 0.5 : 1,
-              },
-            ]}
-          />
-        )}
-      </Pressable>
+      <TouchableOpacity
+        ref={ref}
+        onPress={onPress}
+        style={styles.button}
+        activeOpacity={0.7}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <Ionicons name="add" size={24} color="#0EA5E9" />
+        <Text>Add</Text>
+      </TouchableOpacity>
     );
   }
 );
 
 HeaderButton.displayName = 'HeaderButton';
 
-export const styles = StyleSheet.create({
-  headerRight: {
-    marginRight: 15,
+const styles = StyleSheet.create({
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+    padding: 4,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
   },
 });

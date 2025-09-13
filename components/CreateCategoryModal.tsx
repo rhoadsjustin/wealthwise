@@ -1,0 +1,342 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableOpacity,
+} from 'react-native';
+import { Button } from './Button';
+import { Input } from './Input';
+import { Label } from './Label';
+import { useForm } from 'react-hook-form';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '../context/useToast';
+import { useData } from '../context/DataContext';
+import { Ionicons } from '@expo/vector-icons';
+
+interface CategoryFormData {
+  name: string;
+  icon: string;
+  color: string;
+  budget: string;
+}
+
+interface CreateCategoryModalProps {
+  onClose: () => void;
+  onCategoryCreated?: (categoryId: number) => void;
+}
+
+const DEFAULT_ICONS = [
+  '🍽️',
+  '🛒',
+  '🚗',
+  '⛽',
+  '🎬',
+  '💡',
+  '🏥',
+  '🛍️',
+  '💅',
+  '📚',
+  '✈️',
+  '🏠',
+  '💻',
+  '🏋️',
+  '🛡️',
+  '📱',
+  '🎁',
+  '🐕',
+  '📋',
+  '☕',
+  '🎵',
+  '📞',
+  '🧴',
+  '👔',
+  '🎮',
+  '🚇',
+  '💊',
+  '🔧',
+  '📰',
+  '🎨',
+  '⚡',
+  '🏦',
+];
+
+const DEFAULT_COLORS = [
+  '#FF6B6B',
+  '#4ECDC4',
+  '#45B7D1',
+  '#FFA07A',
+  '#4CAF50',
+  '#FF9800',
+  '#E91E63',
+  '#9C27B0',
+  '#F44336',
+  '#3F51B5',
+  '#00BCD4',
+  '#8BC34A',
+  '#607D8B',
+  '#FF5722',
+  '#795548',
+  '#673AB7',
+  '#9E9E9E',
+  '#FFEB3B',
+];
+
+export default function CreateCategoryModal({
+  onClose,
+  onCategoryCreated,
+}: CreateCategoryModalProps) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { createCategory } = useData();
+  const [selectedIcon, setSelectedIcon] = useState(DEFAULT_ICONS[0]);
+  const [selectedColor, setSelectedColor] = useState(DEFAULT_COLORS[0]);
+
+  const {
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<CategoryFormData>({
+    defaultValues: {
+      name: '',
+      icon: DEFAULT_ICONS[0],
+      color: DEFAULT_COLORS[0],
+      budget: '',
+    },
+  });
+
+  React.useEffect(() => {
+    setValue('icon', selectedIcon);
+    setValue('color', selectedColor);
+  }, [selectedIcon, selectedColor, setValue]);
+
+  const createCategoryMutation = useMutation({
+    mutationFn: async (data: CategoryFormData) => {
+      const categoryData = {
+        name: data.name.trim(),
+        icon: data.icon,
+        color: data.color,
+        budget: data.budget || '0',
+      };
+
+      return await createCategory(categoryData);
+    },
+    onSuccess: (newCategory) => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+
+      toast({
+        title: 'Category Created',
+        description: `${newCategory.name} has been successfully created.`,
+      });
+
+      if (onCategoryCreated) {
+        onCategoryCreated(newCategory.id);
+      }
+
+      reset();
+      onClose();
+    },
+    onError: (error) => {
+      console.error('Category creation error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create category. Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const onSubmit = (data: CategoryFormData) => {
+    // Basic validation
+    if (!data.name?.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Category name is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (data.budget && (isNaN(parseFloat(data.budget)) || parseFloat(data.budget) < 0)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Budget must be a positive number',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    createCategoryMutation.mutate(data);
+  };
+
+  return (
+    <View className="bg-background-primary flex-1">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1">
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
+          {/* Header */}
+          <View className="border-border-default border-b px-6 pb-4 pt-6">
+            <View className="flex-row items-center justify-between">
+              <Button variant="ghost" size="sm" onPress={onClose} className="px-0">
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </Button>
+              <Text className="text-foreground-primary text-xl font-semibold">Create Category</Text>
+              <View className="w-10" />
+            </View>
+          </View>
+
+          {/* Form Content */}
+          <View className="flex-1 px-6 py-6">
+            <View className="space-y-6">
+              {/* Category Name */}
+              <View>
+                <Label className="text-foreground-primary mb-2 text-sm font-medium">
+                  Category Name
+                </Label>
+                <Input
+                  value={watch('name') || ''}
+                  onChangeText={(value) => setValue('name', value)}
+                  placeholder="Enter category name"
+                  variant="outline"
+                />
+                {errors.name && (
+                  <Text className="text-error-600 mt-1 text-xs">
+                    {errors.name.message as string}
+                  </Text>
+                )}
+              </View>
+
+              {/* Icon Selection */}
+              <View>
+                <Label className="text-foreground-primary mb-3 text-sm font-medium">
+                  Select Icon
+                </Label>
+                <View className="flex-row flex-wrap gap-3">
+                  {DEFAULT_ICONS.map((icon, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => setSelectedIcon(icon)}
+                      className={`h-12 w-12 items-center justify-center rounded-lg border-2 ${
+                        selectedIcon === icon
+                          ? 'border-primary-500 bg-primary-50'
+                          : 'border-border-default bg-background-secondary'
+                      }`}>
+                      <Text className="text-lg">{icon}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Color Selection */}
+              <View>
+                <Label className="text-foreground-primary mb-3 text-sm font-medium">
+                  Select Color
+                </Label>
+                <View className="flex-row flex-wrap gap-3">
+                  {DEFAULT_COLORS.map((color, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => setSelectedColor(color)}
+                      className={`h-12 w-12 items-center justify-center rounded-full border-4 ${
+                        selectedColor === color ? 'border-gray-400' : 'border-transparent'
+                      }`}
+                      style={{ backgroundColor: color }}>
+                      {selectedColor === color && (
+                        <Ionicons name="checkmark" size={20} color="white" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Budget Field */}
+              <View>
+                <Label className="text-foreground-primary mb-2 text-sm font-medium">
+                  Monthly Budget (Optional)
+                </Label>
+                <Input
+                  keyboardType="numeric"
+                  value={watch('budget') || ''}
+                  onChangeText={(value) => {
+                    // Only allow numbers and decimal point
+                    const cleaned = value.replace(/[^0-9.]/g, '');
+                    // Prevent multiple decimal points
+                    const parts = cleaned.split('.');
+                    const formatted =
+                      parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : cleaned;
+                    setValue('budget', formatted);
+                  }}
+                  placeholder="0.00"
+                  variant="outline"
+                />
+                {errors.budget && (
+                  <Text className="text-error-600 mt-1 text-xs">
+                    {errors.budget.message as string}
+                  </Text>
+                )}
+              </View>
+
+              {/* Preview */}
+              <View>
+                <Label className="text-foreground-primary mb-2 text-sm font-medium">Preview</Label>
+                <View className="border-border-default bg-background-secondary rounded-lg border p-4">
+                  <View className="flex-row items-center">
+                    <View
+                      className="mr-3 h-12 w-12 items-center justify-center rounded-lg"
+                      style={{ backgroundColor: selectedColor + '20' }}>
+                      <Text className="text-lg">{selectedIcon}</Text>
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-foreground-primary text-base font-medium">
+                        {watch('name') || 'Category Name'}
+                      </Text>
+                      {watch('budget') && (
+                        <Text className="text-foreground-secondary text-sm">
+                          Budget: ${watch('budget')}/month
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View className="border-border-default border-t px-6 py-4">
+            <View className="flex-row gap-3">
+              <Button
+                title="Cancel"
+                variant="outline"
+                onPress={onClose}
+                className="flex-1"
+                size="lg">
+                Cancel
+              </Button>
+              <Button
+                title="Create Category"
+                variant="default"
+                onPress={handleSubmit(onSubmit)}
+                disabled={createCategoryMutation.isPending}
+                loading={createCategoryMutation.isPending}
+                className="flex-1"
+                size="lg">
+                Create Category
+              </Button>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}
