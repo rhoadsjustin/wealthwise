@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { queryClient } from '@/lib/queryClient';
 import { setDataContext } from '@/lib/api';
 import { localStorage } from '@/lib/local-storage';
 
@@ -85,6 +84,7 @@ interface DataContextType {
   isLoading: boolean;
   isInitialized: boolean;
   currentUserId: number;
+  dataVersion: number;
 
   // Dashboard
   getDashboardSummary: () => Promise<DashboardSummary>;
@@ -100,7 +100,7 @@ interface DataContextType {
   updateCategory: (id: number, updates: Partial<Category>) => Promise<Category>;
   deleteCategory: (id: number) => Promise<{ success: boolean }>;
   updateCategoriesBudgets: (
-    budgetCategories: Array<{ name: string; budget: string }>
+    budgetCategories: { name: string; budget: string }[]
   ) => Promise<void>;
 
   // Transactions
@@ -137,7 +137,7 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 interface DataProviderProps {
   children: React.ReactNode;
   userId?: number;
-  initialBudgetCategories?: Array<{ name: string; budget: string }> | null;
+  initialBudgetCategories?: { name: string; budget: string }[] | null;
 }
 
 export function DataProvider({
@@ -148,6 +148,8 @@ export function DataProvider({
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [currentUserId] = useState(userId);
+  const [dataVersion, setDataVersion] = useState(0);
+  const bumpVersion = useCallback(() => setDataVersion((v) => v + 1), []);
 
   // Development mode flag - set to true to clear and reinitialize data every launch
   const DEVELOPMENT_MODE = false;
@@ -158,38 +160,10 @@ export function DataProvider({
       console.log('🔄 Initializing demo data...');
       const demoCategories: Omit<Category, 'id'>[] = [
         {
-          name: 'Food & Dining',
-          icon: '🍽️',
-          color: '#FF6B6B',
-          budget: '500',
-          userId: currentUserId,
-        },
-        {
-          name: 'Groceries',
-          icon: '🛒',
-          color: '#4CAF50',
-          budget: '400',
-          userId: currentUserId,
-        },
-        {
-          name: 'Transportation',
-          icon: '🚗',
-          color: '#4ECDC4',
-          budget: '300',
-          userId: currentUserId,
-        },
-        {
-          name: 'Gas & Fuel',
-          icon: '⛽',
-          color: '#FF9800',
-          budget: '200',
-          userId: currentUserId,
-        },
-        {
-          name: 'Entertainment',
-          icon: '🎬',
-          color: '#45B7D1',
-          budget: '200',
+          name: 'Housing',
+          icon: '🏠',
+          color: '#8BC34A',
+          budget: '1500',
           userId: currentUserId,
         },
         {
@@ -200,94 +174,24 @@ export function DataProvider({
           userId: currentUserId,
         },
         {
-          name: 'Healthcare',
-          icon: '🏥',
-          color: '#E91E63',
-          budget: '300',
-          userId: currentUserId,
-        },
-        {
-          name: 'Shopping',
-          icon: '🛍️',
-          color: '#9C27B0',
-          budget: '300',
-          userId: currentUserId,
-        },
-        {
-          name: 'Personal Care',
-          icon: '💅',
-          color: '#F44336',
-          budget: '150',
-          userId: currentUserId,
-        },
-        {
-          name: 'Education',
-          icon: '📚',
-          color: '#3F51B5',
-          budget: '200',
-          userId: currentUserId,
-        },
-        {
-          name: 'Travel',
-          icon: '✈️',
-          color: '#00BCD4',
-          budget: '500',
-          userId: currentUserId,
-        },
-        {
-          name: 'Home & Garden',
-          icon: '🏠',
-          color: '#8BC34A',
-          budget: '250',
-          userId: currentUserId,
-        },
-        {
-          name: 'Technology',
-          icon: '💻',
-          color: '#607D8B',
-          budget: '300',
-          userId: currentUserId,
-        },
-        {
-          name: 'Fitness & Sports',
-          icon: '🏋️',
-          color: '#FF5722',
-          budget: '100',
-          userId: currentUserId,
-        },
-        {
           name: 'Insurance',
           icon: '🛡️',
           color: '#795548',
-          budget: '400',
-          userId: currentUserId,
-        },
-        {
-          name: 'Subscriptions',
-          icon: '📱',
-          color: '#673AB7',
-          budget: '150',
-          userId: currentUserId,
-        },
-        {
-          name: 'Gifts & Donations',
-          icon: '🎁',
-          color: '#E91E63',
           budget: '200',
           userId: currentUserId,
         },
         {
-          name: 'Pet Care',
-          icon: '🐕',
-          color: '#FF9800',
-          budget: '150',
+          name: 'Cell Phone',
+          icon: '📱',
+          color: '#673AB7',
+          budget: '80',
           userId: currentUserId,
         },
         {
-          name: 'Other',
-          icon: '📋',
-          color: '#9E9E9E',
-          budget: '100',
+          name: 'Gas',
+          icon: '⛽',
+          color: '#FF9800',
+          budget: '200',
           userId: currentUserId,
         },
       ];
@@ -439,18 +343,16 @@ export function DataProvider({
             localStorage.clearStore('bankAccounts'),
           ]);
 
-          // Clear react-query cache
-          queryClient.clear();
+          // No query cache to clear (react-query removed)
 
-          // Create demo user
-          const demoUser: User = {
-            id: currentUserId,
+          // Create demo user (let DB assign ID)
+          const demoUserNoId: Omit<User, 'id'> = {
             username: 'demo_user',
             password: 'demo_password',
             email: 'demo@example.com',
             createdAt: new Date().toISOString(),
-          };
-          await localStorage.saveItem('user', demoUser);
+          } as any;
+          await localStorage.saveItem('user', demoUserNoId as any);
 
           // Always reinitialize demo data
           await initializeDemoData();
@@ -463,14 +365,13 @@ export function DataProvider({
           // Check if we have a user, if not create a demo user
           const existingUser = await localStorage.getItem('user', currentUserId);
           if (!existingUser) {
-            const demoUser: User = {
-              id: currentUserId,
+            const demoUserNoId: Omit<User, 'id'> = {
               username: 'demo_user',
               password: 'demo_password',
               email: 'demo@example.com',
               createdAt: new Date().toISOString(),
-            };
-            await localStorage.saveItem('user', demoUser);
+            } as any;
+            await localStorage.saveItem('user', demoUserNoId as any);
           }
 
           // Initialize with some demo data if no data exists
@@ -570,16 +471,29 @@ export function DataProvider({
   }, [currentUserId, calculateDashboardSummary]);
 
   const refreshDashboard = useCallback(async (): Promise<void> => {
-    queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+    // No-op since we no longer use a query cache
+    return Promise.resolve();
   }, []);
 
   // User methods
   const getUserProfile = useCallback(async (): Promise<User> => {
-    const user = await localStorage.getItem<User>('user', currentUserId);
-    if (!user) {
-      throw new Error('User not found');
-    }
-    return user;
+    // Attempt to get by configured ID
+    let user = await localStorage.getItem<User>('user', currentUserId);
+    if (user) return user;
+
+    // Fallback: return first user if present
+    const all = await localStorage.getAllItems<User>('user');
+    if (all.length > 0) return all[0] as User;
+
+    // As a last resort, create a demo user
+    const demoUserNoId: Omit<User, 'id'> = {
+      username: 'demo_user',
+      password: 'demo_password',
+      email: 'demo@example.com',
+      createdAt: new Date().toISOString(),
+    } as any;
+    const created = await localStorage.saveItem('user', demoUserNoId as any);
+    return created as User;
   }, [currentUserId]);
 
   const updateUserProfile = useCallback(
@@ -587,10 +501,10 @@ export function DataProvider({
       const existing = await getUserProfile();
       const updated = { ...existing, ...updates };
       await localStorage.saveItem('user', updated);
-      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+      bumpVersion();
       return updated;
     },
-    [getUserProfile]
+    [getUserProfile, bumpVersion]
   );
 
   // Category methods
@@ -608,18 +522,25 @@ export function DataProvider({
 
   const createCategory = useCallback(
     async (data: Omit<Category, 'id' | 'userId'>): Promise<Category> => {
+      // Prevent duplicate categories by name (case-insensitive) per user
+      const existingForUser = await localStorage.getItems<Category>('categories', currentUserId);
+      const normalizedName = data.name.trim().toLowerCase();
+      const dup = existingForUser.find((c) => c.name.trim().toLowerCase() === normalizedName);
+      if (dup) {
+        throw new Error('CATEGORY_ALREADY_EXISTS');
+      }
+
       const newCategory: Omit<Category, 'id'> = {
         ...data,
         userId: currentUserId,
       };
 
       const savedCategory = await localStorage.saveItem('categories', newCategory);
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      bumpVersion();
 
       return savedCategory;
     },
-    [currentUserId]
+    [currentUserId, bumpVersion]
   );
 
   const updateCategory = useCallback(
@@ -631,23 +552,21 @@ export function DataProvider({
 
       const updated = { ...existing, ...updates };
       await localStorage.saveItem('categories', updated);
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      bumpVersion();
 
       return updated;
     },
-    []
+    [bumpVersion]
   );
 
   const deleteCategory = useCallback(async (id: number): Promise<{ success: boolean }> => {
     await localStorage.deleteItem('categories', id);
-    queryClient.invalidateQueries({ queryKey: ['categories'] });
-    queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+    bumpVersion();
     return { success: true };
-  }, []);
+  }, [bumpVersion]);
 
   const updateCategoriesBudgets = useCallback(
-    async (budgetCategories: Array<{ name: string; budget: string }>): Promise<void> => {
+    async (budgetCategories: { name: string; budget: string }[]): Promise<void> => {
       const categories = await getCategories();
 
       for (const budgetCategory of budgetCategories) {
@@ -692,12 +611,11 @@ export function DataProvider({
       };
 
       const savedTransaction = await localStorage.saveItem('transactions', newTransaction);
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      bumpVersion();
 
       return savedTransaction;
     },
-    [currentUserId]
+    [currentUserId, bumpVersion]
   );
 
   const updateTransaction = useCallback(
@@ -709,20 +627,18 @@ export function DataProvider({
 
       const updated = { ...existing, ...data };
       await localStorage.saveItem('transactions', updated);
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      bumpVersion();
 
       return updated;
     },
-    []
+    [bumpVersion]
   );
 
   const deleteTransaction = useCallback(async (id: number): Promise<{ success: boolean }> => {
     await localStorage.deleteItem('transactions', id);
-    queryClient.invalidateQueries({ queryKey: ['transactions'] });
-    queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+    bumpVersion();
     return { success: true };
-  }, []);
+  }, [bumpVersion]);
 
   // Insight methods
   const getInsights = useCallback(async (): Promise<Insight[]> => {
@@ -808,11 +724,10 @@ export function DataProvider({
     for (const insight of insights) {
       await localStorage.saveItem('insights', insight);
     }
-
-    queryClient.invalidateQueries({ queryKey: ['insights'] });
+    bumpVersion();
 
     return { insights };
-  }, [currentUserId, getTransactions, getCategories]);
+  }, [currentUserId, getTransactions, getCategories, bumpVersion]);
 
   // Bank Account methods
   const getBankAccounts = useCallback(async (): Promise<BankAccount[]> => {
@@ -829,11 +744,11 @@ export function DataProvider({
       };
 
       await localStorage.saveItem('bankAccounts', newBankAccount);
-      queryClient.invalidateQueries({ queryKey: ['bank-accounts'] });
+      bumpVersion();
 
       return newBankAccount;
     },
-    [currentUserId]
+    [currentUserId, bumpVersion]
   );
 
   const updateBankAccount = useCallback(
@@ -845,22 +760,23 @@ export function DataProvider({
 
       const updated = { ...existing, ...updates };
       await localStorage.saveItem('bankAccounts', updated);
-      queryClient.invalidateQueries({ queryKey: ['bank-accounts'] });
+      bumpVersion();
 
       return updated;
     },
-    []
+    [bumpVersion]
   );
 
   const deleteBankAccount = useCallback(async (id: number): Promise<{ success: boolean }> => {
     await localStorage.deleteItem('bankAccounts', id);
-    queryClient.invalidateQueries({ queryKey: ['bank-accounts'] });
+    bumpVersion();
     return { success: true };
-  }, []);
+  }, [bumpVersion]);
 
   // Utility methods
   const refreshAllData = useCallback(async (): Promise<void> => {
-    queryClient.invalidateQueries();
+    // No-op without query cache; components can call getters to refresh
+    return Promise.resolve();
   }, []);
 
   const clearAllData = useCallback(async (): Promise<void> => {
@@ -870,11 +786,8 @@ export function DataProvider({
       localStorage.clearStore('insights'),
       localStorage.clearStore('bankAccounts'),
     ]);
-    queryClient.clear();
-
-    // Note: clearAllData functionality temporarily simplified for development
+    // Note: clearAllData functionality simplified for development
     console.log('Data cleared');
-    queryClient.invalidateQueries();
   }, []);
 
   // Set up the API compatibility layer
@@ -930,6 +843,7 @@ export function DataProvider({
     isLoading,
     isInitialized,
     currentUserId,
+    dataVersion,
 
     // Dashboard
     getDashboardSummary,

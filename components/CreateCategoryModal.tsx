@@ -11,10 +11,10 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { Label } from './Label';
 import { useForm } from 'react-hook-form';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '../context/useToast';
 import { useData } from '../context/DataContext';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface CategoryFormData {
   name: string;
@@ -28,39 +28,24 @@ interface CreateCategoryModalProps {
   onCategoryCreated?: (categoryId: number) => void;
 }
 
+// Curated icon set for a cleaner first-run experience
 const DEFAULT_ICONS = [
-  '🍽️',
+  '🏠', // Housing
+  '💡', // Utilities
+  '🛡️', // Insurance
+  '📱', // Cell Phone
+  '⛽', // Gas
   '🛒',
+  '🍽️',
   '🚗',
-  '⛽',
   '🎬',
-  '💡',
   '🏥',
   '🛍️',
-  '💅',
-  '📚',
-  '✈️',
-  '🏠',
   '💻',
   '🏋️',
-  '🛡️',
-  '📱',
-  '🎁',
-  '🐕',
-  '📋',
   '☕',
   '🎵',
-  '📞',
-  '🧴',
-  '👔',
-  '🎮',
-  '🚇',
-  '💊',
-  '🔧',
-  '📰',
-  '🎨',
-  '⚡',
-  '🏦',
+  '🎁',
 ];
 
 const DEFAULT_COLORS = [
@@ -88,9 +73,10 @@ export default function CreateCategoryModal({
   onClose,
   onCategoryCreated,
 }: CreateCategoryModalProps) {
-  const queryClient = useQueryClient();
+  const { bottom } = useSafeAreaInsets();
   const { toast } = useToast();
   const { createCategory } = useData();
+  const [submitting, setSubmitting] = useState(false);
   const [selectedIcon, setSelectedIcon] = useState(DEFAULT_ICONS[0]);
   const [selectedColor, setSelectedColor] = useState(DEFAULT_COLORS[0]);
 
@@ -114,42 +100,32 @@ export default function CreateCategoryModal({
     setValue('color', selectedColor);
   }, [selectedIcon, selectedColor, setValue]);
 
-  const createCategoryMutation = useMutation({
-    mutationFn: async (data: CategoryFormData) => {
+  const submitCreate = async (data: CategoryFormData) => {
+    try {
+      setSubmitting(true);
       const categoryData = {
         name: data.name.trim(),
         icon: data.icon,
         color: data.color,
         budget: data.budget || '0',
-      };
-
-      return await createCategory(categoryData);
-    },
-    onSuccess: (newCategory) => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
-
-      toast({
-        title: 'Category Created',
-        description: `${newCategory.name} has been successfully created.`,
-      });
-
-      if (onCategoryCreated) {
-        onCategoryCreated(newCategory.id);
-      }
-
+      } as any;
+      const newCategory = await createCategory(categoryData);
+      toast({ title: 'Category Created', description: `${newCategory.name} has been successfully created.` });
+      onCategoryCreated?.(newCategory.id);
       reset();
       onClose();
-    },
-    onError: (error) => {
+    } catch (error: any) {
       console.error('Category creation error:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to create category. Please try again.',
-        variant: 'destructive',
-      });
-    },
-  });
+      const message = String(error?.message || '').toUpperCase();
+      if (message.includes('CATEGORY_ALREADY_EXISTS')) {
+        toast({ title: 'Duplicate Category', description: 'A category with this name already exists.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Error', description: 'Failed to create category. Please try again.', variant: 'destructive' });
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const onSubmit = (data: CategoryFormData) => {
     // Basic validation
@@ -171,21 +147,20 @@ export default function CreateCategoryModal({
       return;
     }
 
-    createCategoryMutation.mutate(data);
+    submitCreate(data);
   };
 
   return (
     <View className="bg-background-primary flex-1">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1">
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
+        {/* Scrollable content */}
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: bottom + 200 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
           {/* Header */}
-          <View className="border-border-default border-b px-6 pb-4 pt-6">
+          <View className="border-border-default border-b px-6 pb-4 pt-6 bg-background-primary">
             <View className="flex-row items-center justify-between">
               <Button variant="ghost" size="sm" onPress={onClose} className="px-0">
                 <Ionicons name="close" size={24} color="#6B7280" />
@@ -218,17 +193,18 @@ export default function CreateCategoryModal({
 
               {/* Icon Selection */}
               <View>
-                <Label className="text-foreground-primary mb-3 text-sm font-medium">
+                <Label className="text-foreground-primary mb-2 text-sm font-medium">
                   Select Icon
                 </Label>
-                <View className="flex-row flex-wrap gap-3">
+                <View className="flex-row flex-wrap gap-2">
                   {DEFAULT_ICONS.map((icon, index) => (
                     <TouchableOpacity
                       key={index}
                       onPress={() => setSelectedIcon(icon)}
-                      className={`h-12 w-12 items-center justify-center rounded-lg border-2 ${
+                      activeOpacity={0.8}
+                      className={`h-11 w-11 items-center justify-center rounded-xl border ${
                         selectedIcon === icon
-                          ? 'border-primary-500 bg-primary-50'
+                          ? 'border-primary-400 bg-primary-50'
                           : 'border-border-default bg-background-secondary'
                       }`}>
                       <Text className="text-lg">{icon}</Text>
@@ -239,21 +215,20 @@ export default function CreateCategoryModal({
 
               {/* Color Selection */}
               <View>
-                <Label className="text-foreground-primary mb-3 text-sm font-medium">
+                <Label className="text-foreground-primary mb-2 text-sm font-medium">
                   Select Color
                 </Label>
-                <View className="flex-row flex-wrap gap-3">
+                <View className="flex-row flex-wrap gap-2">
                   {DEFAULT_COLORS.map((color, index) => (
                     <TouchableOpacity
                       key={index}
                       onPress={() => setSelectedColor(color)}
-                      className={`h-12 w-12 items-center justify-center rounded-full border-4 ${
-                        selectedColor === color ? 'border-gray-400' : 'border-transparent'
+                      activeOpacity={0.8}
+                      className={`h-9 w-9 items-center justify-center rounded-full border-2 ${
+                        selectedColor === color ? 'border-gray-300' : 'border-transparent'
                       }`}
                       style={{ backgroundColor: color }}>
-                      {selectedColor === color && (
-                        <Ionicons name="checkmark" size={20} color="white" />
-                      )}
+                      {selectedColor === color && <Ionicons name="checkmark" size={16} color="white" />}
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -312,30 +287,31 @@ export default function CreateCategoryModal({
             </View>
           </View>
 
-          {/* Action Buttons */}
-          <View className="border-border-default border-t px-6 py-4">
-            <View className="flex-row gap-3">
-              <Button
-                title="Cancel"
-                variant="outline"
-                onPress={onClose}
-                className="flex-1"
-                size="lg">
-                Cancel
-              </Button>
-              <Button
-                title="Create Category"
-                variant="default"
-                onPress={handleSubmit(onSubmit)}
-                disabled={createCategoryMutation.isPending}
-                loading={createCategoryMutation.isPending}
-                className="flex-1"
-                size="lg">
-                Create Category
-              </Button>
-            </View>
-          </View>
         </ScrollView>
+
+        {/* Sticky Footer */}
+        <View
+          className="bg-background-primary border-border-default border-t px-6 py-4"
+          style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
+          <View className="flex-row items-center gap-3">
+            <Button
+              title="Cancel"
+              variant="outline"
+              onPress={onClose}
+              className="flex-1"
+              size="lg"
+            />
+            <Button
+              title="Create Category"
+              variant="default"
+              onPress={handleSubmit(onSubmit)}
+              disabled={submitting}
+              loading={submitting}
+              className="flex-1"
+              size="lg"
+            />
+          </View>
+        </View>
       </KeyboardAvoidingView>
     </View>
   );

@@ -10,16 +10,16 @@ export default function GamifyTab() {
   const { summary, transactions, summaryLoading, user, categories } = useAppData();
   const { vectorStore } = useVectorStore();
   const [aiInsights, setAiInsights] = useState<
-    Array<{
+    {
       type: 'motivation' | 'tip' | 'warning' | 'celebration';
       title: string;
       content: string;
       color: string;
       icon: string;
-    }>
+    }[]
   >([]);
   const [personalizedChallenges, setPersonalizedChallenges] = useState<
-    Array<{
+    {
       id: string;
       name: string;
       description: string;
@@ -28,7 +28,7 @@ export default function GamifyTab() {
       reward: string;
       color: string;
       aiGenerated: boolean;
-    }>
+    }[]
   >([]);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [streakData, setStreakData] = useState({

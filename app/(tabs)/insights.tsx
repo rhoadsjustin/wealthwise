@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,15 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useVectorStore } from '../../context/RAGContext';
 import { useAppData } from '../_layout';
 import { Ionicons } from '@expo/vector-icons';
+import FAB from '@/components/FAB';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import type {
   Transaction,
   Category,
@@ -19,16 +24,19 @@ import type {
 } from '../../context/DataContext';
 
 function InsightsTab() {
+  const router = useRouter();
   const { vectorStore } = useVectorStore();
   const { summary, insights, user, transactions, categories, summaryLoading, insightsLoading } =
     useAppData();
+  const insets = useSafeAreaInsets();
 
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState<
-    Array<{ role: 'user' | 'assistant' | 'system'; content: string }>
+    { role: 'user' | 'assistant' | 'system'; content: string }[]
   >([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const messagesScrollRef = useRef<ScrollView | null>(null);
 
   // Initialize conversation and load data into vector store
   useEffect(() => {
@@ -324,9 +332,11 @@ function InsightsTab() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Financial Insights</Text>
-
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 82 : 0}
+      style={{ flex: 1 }}>
+      <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 12) + 72 }]}>
       {/* Smart Insights Section */}
       <View style={styles.insightsContainer}>
         <Text style={styles.sectionTitle}>Smart Insights</Text>
@@ -386,7 +396,12 @@ function InsightsTab() {
       <View style={styles.chatContainer}>
         <Text style={styles.sectionTitle}>Ask About Your Finances</Text>
 
-        <ScrollView style={styles.messagesContainer} contentContainerStyle={styles.messagesContent}>
+        <ScrollView
+          ref={(r) => (messagesScrollRef.current = r)}
+          style={styles.messagesContainer}
+          contentContainerStyle={styles.messagesContent}
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() => messagesScrollRef.current?.scrollToEnd({ animated: true })}>
           {messages
             .filter((m) => m.role !== 'system')
             .map((message, index) => (
@@ -413,24 +428,31 @@ function InsightsTab() {
           )}
         </ScrollView>
 
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Ask about your finances..."
-            multiline
-            maxLength={200}
-          />
-          <TouchableOpacity
-            style={[styles.sendButton, !query.trim() && styles.disabledButton]}
-            onPress={handleSubmitQuery}
-            disabled={!query.trim() || isLoading}>
-            <Ionicons name="send" size={20} color="white" />
-          </TouchableOpacity>
-        </View>
+        <SafeAreaView edges={["bottom"]}>
+          <View style={[styles.inputContainer, { marginBottom: Math.max(insets.bottom, 8) }]}>
+            <TextInput
+              style={styles.input}
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Ask about your finances..."
+              multiline
+              maxLength={200}
+              returnKeyType="send"
+              onSubmitEditing={handleSubmitQuery}
+            />
+            <TouchableOpacity
+              style={[styles.sendButton, !query.trim() && styles.disabledButton]}
+              onPress={handleSubmitQuery}
+              disabled={!query.trim() || isLoading}>
+              <Ionicons name="send" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </View>
-    </View>
+      {/* Close outer container view before floating FAB */}
+      </View>
+      <FAB onPress={() => router.push('/add-transaction')} />
+    </KeyboardAvoidingView>
   );
 }
 
@@ -439,12 +461,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     backgroundColor: '#F5F7FA',
-  },
-  header: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#333',
   },
   loadingContainer: {
     flex: 1,
@@ -501,7 +517,7 @@ const styles = StyleSheet.create({
   },
   messagesContainer: {
     flex: 1,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   messagesContent: {
     paddingBottom: 10,

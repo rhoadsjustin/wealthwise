@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import { Button } from './Button';
 import { Input } from './Input';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '../context/useToast';
 import { useData, Category } from '../context/DataContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,72 +15,32 @@ interface EditCategoryData {
 }
 
 export default function CategoriesManager() {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { getCategories, updateCategory, deleteCategory, getTransactions } = useData();
+  const { getCategories, updateCategory, deleteCategory, getTransactions, isInitialized, dataVersion } = useData();
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editData, setEditData] = useState<EditCategoryData>({ name: '', budget: '' });
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const {
-    data: categories = [],
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ['categories'],
-    queryFn: getCategories,
-  });
+  const load = async () => {
+    setIsLoading(true);
+    try {
+      const [cats, txs] = await Promise.all([getCategories(), getTransactions()]);
+      setCategories(cats);
+      setTransactions(txs);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const { data: transactions = [] } = useQuery({
-    queryKey: ['transactions'],
-    queryFn: getTransactions,
-  });
-
-  const updateCategoryMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: number; updates: Partial<Category> }) => {
-      return await updateCategory(id, updates);
-    },
-    onSuccess: (updatedCategory) => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
-      toast({
-        title: 'Category Updated',
-        description: `${updatedCategory.name} has been updated successfully.`,
-      });
-      setEditingCategory(null);
-    },
-    onError: (error) => {
-      console.error('Category update error:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update category. Please try again.',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const deleteCategoryMutation = useMutation({
-    mutationFn: async (id: number) => {
-      return await deleteCategory(id);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
-      toast({
-        title: 'Category Deleted',
-        description: 'The category has been deleted successfully.',
-      });
-    },
-    onError: (error) => {
-      console.error('Category deletion error:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete category. Please try again.',
-        variant: 'destructive',
-      });
-    },
-  });
+  useEffect(() => {
+    if (!isInitialized) return;
+    load();
+    // re-run when underlying data changes (adds/edits/deletes)
+  }, [isInitialized, dataVersion]);
 
   const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
@@ -115,13 +74,21 @@ export default function CategoriesManager() {
       return;
     }
 
-    updateCategoryMutation.mutate({
-      id: editingCategory.id,
-      updates: {
-        name: editData.name.trim(),
-        budget: editData.budget || '0',
-      },
-    });
+    setIsSaving(true);
+    updateCategory(editingCategory.id, {
+      name: editData.name.trim(),
+      budget: editData.budget || '0',
+    })
+      .then((updated) => {
+        toast({ title: 'Category Updated', description: `${updated.name} has been updated successfully.` });
+        setEditingCategory(null);
+        load();
+      })
+      .catch((error) => {
+        console.error('Category update error:', error);
+        toast({ title: 'Error', description: 'Failed to update category. Please try again.', variant: 'destructive' });
+      })
+      .finally(() => setIsSaving(false));
   };
 
   const handleDeleteCategory = (category: Category) => {
@@ -136,7 +103,19 @@ export default function CategoriesManager() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => deleteCategoryMutation.mutate(category.id),
+          onPress: () => {
+            setIsSaving(true);
+            deleteCategory(category.id)
+              .then(() => {
+                toast({ title: 'Category Deleted', description: 'The category has been deleted successfully.' });
+                load();
+              })
+              .catch((error) => {
+                console.error('Category deletion error:', error);
+                toast({ title: 'Error', description: 'Failed to delete category. Please try again.', variant: 'destructive' });
+              })
+              .finally(() => setIsSaving(false));
+          },
         },
       ]
     );
@@ -152,19 +131,7 @@ export default function CategoriesManager() {
     );
   }
 
-  if (error) {
-    return (
-      <View className="flex-1 items-center justify-center p-6">
-        <Ionicons name="alert-circle" size={48} color="#EF4444" />
-        <Text className="text-foreground-primary mt-4 text-center text-lg font-semibold">
-          Failed to load categories
-        </Text>
-        <Button onPress={() => refetch()} className="mt-4">
-          <Text>Try Again</Text>
-        </Button>
-      </View>
-    );
-  }
+  // Basic error UI omitted since DataContext handles local data; retries are simple reloads
 
   return (
     <View className="bg-background-primary flex-1">
@@ -278,11 +245,7 @@ export default function CategoriesManager() {
               <Button variant="outline" onPress={() => setEditingCategory(null)} className="flex-1">
                 <Text>Cancel</Text>
               </Button>
-              <Button
-                onPress={handleSaveEdit}
-                disabled={updateCategoryMutation.isPending}
-                loading={updateCategoryMutation.isPending}
-                className="flex-1">
+              <Button onPress={handleSaveEdit} disabled={isSaving} loading={isSaving} className="flex-1">
                 <Text>Save Changes</Text>
               </Button>
             </View>

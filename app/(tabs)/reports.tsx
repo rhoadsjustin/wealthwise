@@ -1,10 +1,13 @@
 import { View, Text, ScrollView } from 'react-native';
+import FAB from '@/components/FAB';
+import { useRouter } from 'expo-router';
 import { useAppData } from '../_layout';
 import { Card, CardContent } from '../../components/Card';
 import { Skeleton } from '../../components/Skeleton';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 export default function ReportsTab() {
+  const router = useRouter();
   const { summary, transactions, summaryLoading, user } = useAppData();
 
   if (summaryLoading || !summary) {
@@ -49,6 +52,7 @@ export default function ReportsTab() {
     .map(([month, amount]) => ({ month, amount: amount as number }));
 
   return (
+    <View className="flex-1">
     <ScrollView className="content-padding">
       {/* Summary Cards */}
       <View className="overview-grid mb-6">
@@ -264,5 +268,7 @@ export default function ReportsTab() {
         </CardContent>
       </Card>
     </ScrollView>
+    <FAB onPress={() => router.push('/add-transaction')} />
+    </View>
   );
 }

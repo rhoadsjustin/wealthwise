@@ -1,14 +1,16 @@
 import React, { useEffect } from 'react';
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Modal } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Modal, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from './Button';
 import { Input } from './Input';
 import { Label } from './Label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './Select';
-import { RadioGroup, RadioGroupItem } from './RadioGroup';
+// Drop custom Select for categories; use a simple scrollable list
+// RadioGroup removed in favor of a segmented toggle
 import { useForm } from 'react-hook-form';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+// Removed react-query; use DataContext directly
 import { useToast } from '../context/useToast';
 import { useData } from '../context/DataContext';
+import { useAppData } from '@/app/_layout';
 import { Ionicons } from '@expo/vector-icons';
 import CreateCategoryModal from './CreateCategoryModal';
 import { selection, success as hapticSuccess } from '../lib/haptics';
@@ -26,9 +28,10 @@ interface AddTransactionModalProps {
 }
 
 export default function AddTransactionModal({ onClose }: AddTransactionModalProps) {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { createTransaction, getCategories } = useData();
+  const { refreshAppData } = useAppData();
+  const [submitting, setSubmitting] = React.useState(false);
   const [categories, setCategories] = React.useState<any[]>([]);
   const [showCreateCategory, setShowCreateCategory] = React.useState(false);
 
@@ -77,9 +80,9 @@ export default function AddTransactionModal({ onClose }: AddTransactionModalProp
     });
   }, [reset]);
 
-  const createTransactionMutation = useMutation({
-    mutationFn: async (data: TransactionFormData) => {
-      // Prepare the transaction data, ensuring categoryId is null for income
+  const submitCreate = async (data: TransactionFormData) => {
+    try {
+      setSubmitting(true);
       const transactionData = {
         description: data.description.trim(),
         amount: data.amount,
@@ -87,31 +90,20 @@ export default function AddTransactionModal({ onClose }: AddTransactionModalProp
         categoryId: data.type === 'income' ? null : data.categoryId || null,
         date: data.date || new Date().toISOString(),
       };
-
-      return await createTransaction(transactionData);
-    },
-    onSuccess: () => {
+      await createTransaction(transactionData);
+      // Ensure dashboard reflects the addition immediately
+      await refreshAppData();
       hapticSuccess();
-      // Invalidate query cache
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
-
-      toast({
-        title: 'Transaction Added',
-        description: 'Your transaction has been successfully added.',
-      });
+      toast({ title: 'Transaction Added', description: 'Your transaction has been successfully added.' });
       reset();
       onClose();
-    },
-    onError: (error) => {
+    } catch (error) {
       console.error('Transaction creation error:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to add transaction. Please try again.',
-        variant: 'destructive',
-      });
-    },
-  });
+      toast({ title: 'Error', description: 'Failed to add transaction. Please try again.', variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const onSubmit = (data: TransactionFormData) => {
     // Basic validation
@@ -142,7 +134,7 @@ export default function AddTransactionModal({ onClose }: AddTransactionModalProp
       date: new Date().toISOString(),
     };
 
-    createTransactionMutation.mutate(submitData);
+    submitCreate(submitData);
   };
 
   return (
@@ -150,13 +142,64 @@ export default function AddTransactionModal({ onClose }: AddTransactionModalProp
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1">
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ paddingBottom: 120 }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled">
+        {/* Header (safe-area aware). Mark non-collapsable for formSheet+ScrollView layout rule */}
+        <SafeAreaView edges={['top']} className="bg-app-surface" collapsable={false}>
+          <View className="border-border-default px-6 pt-2 pb-4 border-b">
+            <View className="items-center">
+              <View className="bg-border-default mb-3 h-1.5 w-12 rounded-full" accessibilityElementsHidden />
+              <Text className="text-foreground-primary text-lg font-semibold">Add Transaction</Text>
+            </View>
+          </View>
+        </SafeAreaView>
+
+        {/* Content + sticky action container to keep screen within 2 direct children */}
+        <View style={{ flex: 1, position: 'relative' }}>
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ paddingBottom: 220 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled">
           {/* Form Content */}
           <View className="flex-1 px-6 py-6">
+            {/* Type Segmented Toggle (moved below header to avoid overlap) */}
+            <View className="mb-4 flex-row rounded-xl bg-background-secondary p-1">
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Set transaction type to expense"
+                activeOpacity={0.8}
+                onPress={() => {
+                  if (transactionType !== 'expense') selection();
+                  setValue('type', 'expense');
+                }}
+                className={`flex-1 items-center rounded-lg px-4 py-2 ${
+                  transactionType === 'expense' ? 'bg-primary-500' : 'bg-transparent'
+                }`}>
+                <Text
+                  className={`text-sm font-medium ${
+                    transactionType === 'expense' ? 'text-foreground-inverse' : 'text-foreground-primary'
+                  }`}>
+                  Expense
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Set transaction type to income"
+                activeOpacity={0.8}
+                onPress={() => {
+                  if (transactionType !== 'income') selection();
+                  setValue('type', 'income');
+                }}
+                className={`flex-1 items-center rounded-lg px-4 py-2 ${
+                  transactionType === 'income' ? 'bg-success-500' : 'bg-transparent'
+                }`}>
+                <Text
+                  className={`text-sm font-medium ${
+                    transactionType === 'income' ? 'text-foreground-inverse' : 'text-foreground-primary'
+                  }`}>
+                  Income
+                </Text>
+              </TouchableOpacity>
+            </View>
             <View className="space-y-6">
               {/* Description Field */}
               <View>
@@ -202,25 +245,7 @@ export default function AddTransactionModal({ onClose }: AddTransactionModalProp
                 )}
               </View>
 
-              {/* Transaction Type */}
-              <View>
-                <Label className="text-foreground-primary mb-3 text-sm font-medium">
-                  Transaction Type
-                </Label>
-                <RadioGroup
-                  value={transactionType}
-                  onValueChange={(value) => setValue('type', value as 'income' | 'expense')}
-                  className="flex-row gap-6">
-                  <View className="flex-row items-center gap-2">
-                    <RadioGroupItem value="expense" id="expense" />
-                    <Label className="text-foreground-primary text-sm font-medium">Expense</Label>
-                  </View>
-                  <View className="flex-row items-center gap-2">
-                    <RadioGroupItem value="income" id="income" />
-                    <Label className="text-foreground-primary text-sm font-medium">Income</Label>
-                  </View>
-                </RadioGroup>
-              </View>
+              {/* Transaction Type section replaced by segmented toggle in header */}
 
               {/* Category Selection - Only for expenses */}
               {transactionType === 'expense' && (
@@ -236,37 +261,47 @@ export default function AddTransactionModal({ onClose }: AddTransactionModalProp
                       <Text className="text-primary-600 ml-1 text-xs font-medium">Create New</Text>
                     </Button>
                   </View>
-                  <Select
-                    value={watch('categoryId')?.toString()}
-                    onValueChange={(value) => setValue('categoryId', parseInt(value))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category (optional)">
-                        {watch('categoryId') &&
-                          categories.find((c) => c.id === watch('categoryId')) && (
-                            <View className="flex-row items-center">
-                              <View
-                                className="mr-3 h-8 w-8 items-center justify-center rounded-lg"
-                                style={{
-                                  backgroundColor:
-                                    categories.find((c) => c.id === watch('categoryId'))?.color +
-                                    '20',
-                                }}>
-                                <Text className="text-sm">
-                                  {categories.find((c) => c.id === watch('categoryId'))?.icon ||
-                                    '📊'}
-                                </Text>
-                              </View>
-                              <Text className="text-foreground-primary font-medium">
-                                {categories.find((c) => c.id === watch('categoryId'))?.name}
-                              </Text>
-                            </View>
-                          )}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id.toString()}>
-                          <View className="flex-row items-center py-1">
+
+                  {/* Selected preview */}
+                  {watch('categoryId') ? (
+                    <View className="mb-2 flex-row items-center rounded-lg border border-app-border bg-app-surface p-2">
+                      <View
+                        className="mr-3 h-8 w-8 items-center justify-center rounded-lg"
+                        style={{
+                          backgroundColor:
+                            categories.find((c) => c.id === watch('categoryId'))?.color + '20',
+                        }}>
+                        <Text className="text-sm">
+                          {categories.find((c) => c.id === watch('categoryId'))?.icon || '📊'}
+                        </Text>
+                      </View>
+                      <Text className="flex-1 text-foreground-primary font-medium">
+                        {categories.find((c) => c.id === watch('categoryId'))?.name}
+                      </Text>
+                      <TouchableOpacity onPress={() => setValue('categoryId', null)}>
+                        <Text className="text-xs font-medium text-blue-600">Clear</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <Text className="mb-2 text-xs text-app-text-muted">Optional</Text>
+                  )}
+
+                  {/* Scrollable category list */}
+                  <View className="rounded-lg border border-app-border bg-app-surface">
+                    <ScrollView
+                      style={{ maxHeight: 280 }}
+                      keyboardShouldPersistTaps="handled"
+                      nestedScrollEnabled>
+                      {categories.map((category) => {
+                        const isSelected = watch('categoryId') === category.id;
+                        return (
+                          <TouchableOpacity
+                            key={category.id}
+                            onPress={() => setValue('categoryId', category.id)}
+                            activeOpacity={0.7}
+                            className={`flex-row items-center px-3 py-3 ${
+                              isSelected ? 'bg-blue-50' : 'bg-transparent'
+                            }`}>
                             <View
                               className="mr-3 h-8 w-8 items-center justify-center rounded-lg"
                               style={{ backgroundColor: category.color + '20' }}>
@@ -280,43 +315,45 @@ export default function AddTransactionModal({ onClose }: AddTransactionModalProp
                                 Budget: ${parseFloat(category.budget).toFixed(2)}/month
                               </Text>
                             </View>
-                          </View>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                            {isSelected && (
+                              <Ionicons name="checkmark" size={16} color="#2563EB" />
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                      {categories.length === 0 && (
+                        <View className="items-center px-3 py-6">
+                          <Text className="text-sm text-app-text-secondary">
+                            No categories yet — create one
+                          </Text>
+                        </View>
+                      )}
+                    </ScrollView>
+                  </View>
                 </View>
               )}
             </View>
           </View>
+          </ScrollView>
 
-        </ScrollView>
-
-        {/* Sticky Action Bar */}
-        <View className="border-border-default border-t px-6 py-4 bg-app-surface">
-          <View className="flex-row gap-3">
+          {/* Sticky Action Bar */}
+          <SafeAreaView
+            edges={['bottom']}
+            style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}
+            className="bg-app-surface">
+            <View className="border-border-default border-t px-6 py-4">
               <Button
-                title="Cancel"
-                variant="outline"
-                onPress={() => {
-                  selection();
-                  onClose();
-                }}
-                className="flex-1"
+                title="Save"
+                variant="default"
+                onPress={handleSubmit(onSubmit)}
+                disabled={submitting}
+                loading={submitting}
+                className="w-full"
                 size="lg">
-                <Text>Cancel</Text>
+                <Text>Save</Text>
               </Button>
-            <Button
-              title="Add Transaction"
-              variant="default"
-              onPress={handleSubmit(onSubmit)}
-              disabled={createTransactionMutation.isPending}
-              loading={createTransactionMutation.isPending}
-              className="flex-1"
-              size="lg">
-              <Text>Add Transaction</Text>
-            </Button>
-          </View>
+            </View>
+          </SafeAreaView>
         </View>
       </KeyboardAvoidingView>
 

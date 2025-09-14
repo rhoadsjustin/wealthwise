@@ -4,7 +4,7 @@ import { Platform, Vibration } from 'react-native';
 // is not installed in the environment (e.g., web or dev without the pkg).
 let Haptics: any = null;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+   
   Haptics = require('expo-haptics');
 } catch {}
 

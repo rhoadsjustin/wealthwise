@@ -1,31 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, Dimensions, Platform, KeyboardAvoidingView } from 'react-native';
+import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutLeft } from 'react-native-reanimated';
 import { Card, CardContent } from './Card';
 import { Button } from './Button';
 import { Input } from './Input';
-import { Label } from './Label';
 import { Progress } from './Progress';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { showToast } from './Toast';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import CategoryListItem from './CategoryListItem';
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 
 interface OnboardingFlowProps {
   onComplete: (userData: {
     username: string;
     hasBiometrics: boolean;
-    budgetCategories?: CategoryBudget[];
   }) => void;
-}
-
-interface CategoryBudget {
-  name: string;
-  icon: string;
-  color: string;
-  budget: string;
 }
 
 interface FeatureSlide {
@@ -71,16 +62,7 @@ const features: FeatureSlide[] = [
   },
 ];
 
-const defaultCategories: CategoryBudget[] = [
-  { name: 'Food & Dining', icon: '🍽️', color: '#FF6B6B', budget: '500' },
-  { name: 'Groceries', icon: '🛒', color: '#4CAF50', budget: '400' },
-  { name: 'Transportation', icon: '🚗', color: '#4ECDC4', budget: '300' },
-  { name: 'Gas & Fuel', icon: '⛽', color: '#FF9800', budget: '200' },
-  { name: 'Entertainment', icon: '🎬', color: '#45B7D1', budget: '200' },
-  { name: 'Utilities', icon: '💡', color: '#FFA07A', budget: '250' },
-  { name: 'Healthcare', icon: '🏥', color: '#E91E63', budget: '300' },
-  { name: 'Shopping', icon: '🛍️', color: '#9C27B0', budget: '300' },
-];
+// Budget setup moved to standalone flow
 
 export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [currentStep, setCurrentStep] = useState(0);
@@ -88,10 +70,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [biometricsSupported, setBiometricsSupported] = useState(false);
   const [biometricsEnabled, setBiometricsEnabled] = useState(false);
-  const [budgetCategories, setBudgetCategories] = useState<CategoryBudget[]>(defaultCategories);
-
-  const totalSteps = features.length + 3; // Features + Account Setup + Biometrics Setup + Budget Setup
+  // Features + Account Setup + Biometrics Setup (budget moved to separate flow)
+  const totalSteps = useMemo(() => features.length + 2, []);
   const progress = ((currentStep + 1) / totalSteps) * 100;
+
+  // Progress is animated within <Progress />
 
   const { top, bottom } = useSafeAreaInsets();
   useEffect(() => {
@@ -177,22 +160,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     onComplete({
       username: username.trim(),
       hasBiometrics: biometricsEnabled,
-      budgetCategories,
     });
   };
 
-  const updateCategoryBudget = (categoryName: string, newBudget: string) => {
-    // Only allow numeric input with optional decimal
-    const numericValue = newBudget.replace(/[^0-9.]/g, '');
-    // Prevent multiple decimal points
-    const parts = numericValue.split('.');
-    const formattedValue =
-      parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : numericValue;
-
-    setBudgetCategories((prev) =>
-      prev.map((cat) => (cat.name === categoryName ? { ...cat, budget: formattedValue } : cat))
-    );
-  };
+  // Budget editing removed from this flow
 
   const renderFeatureSlide = (feature: FeatureSlide, index: number) => (
     <View className="items-center gap-6 p-8">
@@ -275,7 +246,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         ) : (
           <View className="items-center gap-4">
             <Text className="max-w-xs text-center text-lg leading-7 text-gray-700">
-              Biometric authentication is not available on this device. You'll use your username to
+              Biometric authentication is not available on this device. You will use your username to
               access the app.
             </Text>
             <View className="mt-4 flex-row items-center gap-2 rounded-lg border border-gray-300 bg-gray-50 p-4">
@@ -288,104 +259,63 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     </View>
   );
 
-  const renderBudgetSetup = () => (
-    <ScrollView
-      className="flex-1"
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}>
-      <View className="gap-6 p-8">
-        <View className="h-24 w-24 items-center justify-center self-center rounded-full bg-gray-100 shadow-md">
-          <Ionicons name="wallet" size={48} color="#000000" />
-        </View>
-        <View className="w-full flex-1 gap-5">
-          <Text className="text-center text-2xl font-bold text-black">Set Your Budgets</Text>
-          <Text className="text-center text-lg leading-7 text-gray-700">
-            We've set up some common budget categories with suggested amounts. You can adjust these
-            to match your spending needs.
-          </Text>
+  // Budget setup moved to its own dedicated follow-up step screen
 
-          {budgetCategories.map((category) => (
-            <View
-              className="w-full flex-1 flex-row gap-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3"
-              key={category.name}>
-              <View className="flex-1 flex-row items-center gap-3">
-                <View
-                  className="h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
-                  style={{ backgroundColor: category.color + '20' }}>
-                  <Text className="text-lg">{category.icon}</Text>
-                </View>
-                <Text className="flex-1 text-base font-medium text-gray-700" numberOfLines={1}>
-                  {category.name}
-                </Text>
-              </View>
-              <View className="flex-1 flex-row content-end items-center gap-1">
-                <Text className="text-base font-medium text-gray-700">$</Text>
-                <Input
-                  value={category.budget}
-                  onChangeText={(newBudget) => updateCategoryBudget(category.name, newBudget)}
-                  placeholder="0"
-                  keyboardType="numeric"
-                  className="w-20 border-gray-400 bg-white text-right text-base"
-                  style={{ color: '#000000', minWidth: 80 }}
-                  {...{ placeholderTextColor: '#9CA3AF', selectionColor: '#000000' }}
-                />
-              </View>
-            </View>
-          ))}
-
-          <View className="mt-2 w-full rounded-lg bg-gray-100 p-4">
-            <Text className="text-center text-lg font-bold text-black">
-              Total Monthly Budget: $
-              {budgetCategories
-                .reduce((sum, cat) => sum + (parseFloat(cat.budget) || 0), 0)
-                .toFixed(0)}
-            </Text>
-          </View>
-        </View>
-      </View>
-    </ScrollView>
-  );
-
+  // Sticky header/footer layout with Reanimated transitions between steps
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-white"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ paddingTop: top / 2 }}>
+      {/* Sticky Header */}
+      <View className="px-6 pb-2 pt-6 bg-white">
+        <View className="mb-2 flex-row items-center justify-between">
+          <Text className="text-sm text-gray-500">
+            Step {currentStep + 1} of {totalSteps}
+          </Text>
+          <Text className="text-sm text-gray-500">{Math.round(progress)}%</Text>
+        </View>
+        {/* Smooth progress animation */}
+        <Progress value={progress} style={{ height: 8 }} />
+      </View>
+
+      {/* Scrollable Content */}
       <ScrollView
         className="flex-1"
-        contentContainerStyle={[{ paddingBottom: bottom, flexGrow: 1, minHeight: height }]}
+        contentContainerStyle={[{ paddingBottom: bottom + 100, flexGrow: 1, minHeight: height - 160 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
-        {/* Progress Bar */}
-        <View className="px-6 pb-2 pt-6">
-          <View className="mb-2 flex-row items-center justify-between">
-            <Text className="text-sm text-gray-500">
-              Step {currentStep + 1} of {totalSteps}
-            </Text>
-            <Text className="text-sm text-gray-500">{Math.round(progress)}%</Text>
-          </View>
-          <Progress value={progress} style={{ height: 8 }} />
-        </View>
-
-        {/* Content Area */}
         <View className="flex-1 items-center justify-center px-4">
-          {currentStep === features.length + 2 ? (
-            // Budget setup without Card wrapper for testing
-            <View className="w-full max-w-lg">{renderBudgetSetup()}</View>
-          ) : (
-            <Card className="w-full max-w-md border border-gray-400 bg-white shadow-lg">
+          <Animated.View
+            entering={FadeIn.duration(250)}
+            exiting={FadeOut.duration(200)}
+            className="w-full max-w-md">
+            <Card className="w-full border border-gray-400 bg-white shadow-lg">
               <CardContent className="p-0">
-                {currentStep < features.length &&
-                  renderFeatureSlide(features[currentStep], currentStep)}
-                {currentStep === features.length && renderAccountSetup()}
-                {currentStep === features.length + 1 && renderBiometricsSetup()}
+                {currentStep < features.length && (
+                  <Animated.View entering={SlideInRight.duration(300)} exiting={SlideOutLeft.duration(220)}>
+                    {renderFeatureSlide(features[currentStep], currentStep)}
+                  </Animated.View>
+                )}
+                {currentStep === features.length && (
+                  <Animated.View entering={SlideInRight.duration(300)} exiting={SlideOutLeft.duration(220)}>
+                    {renderAccountSetup()}
+                  </Animated.View>
+                )}
+                {currentStep === features.length + 1 && (
+                  <Animated.View entering={SlideInRight.duration(300)} exiting={SlideOutLeft.duration(220)}>
+                    {renderBiometricsSetup()}
+                  </Animated.View>
+                )}
               </CardContent>
             </Card>
-          )}
+          </Animated.View>
         </View>
+      </ScrollView>
 
-        {/* Navigation */}
-        <View className="flex-row items-center justify-between p-6">
+      {/* Sticky Footer */}
+      <View className="bg-white px-6 pb-6 pt-4" style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+        <View className="flex-row items-center justify-between">
           <Button
             onPress={handleBack}
             disabled={currentStep === 0}
@@ -423,24 +353,15 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           )}
 
           {currentStep === features.length + 1 && (
-            <Button onPress={handleNext} className="rounded bg-black px-6 py-3">
-              <View className="flex-row items-center gap-2">
-                <Text className="font-medium text-white">Set Up Budget</Text>
-                <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
-              </View>
-            </Button>
-          )}
-
-          {currentStep === features.length + 2 && (
             <Button onPress={handleComplete} className="rounded bg-black px-6 py-3">
               <View className="flex-row items-center gap-2">
-                <Text className="font-medium text-white">Get Started</Text>
-                <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                <Text className="font-medium text-white">Set Up Budget</Text>
+                <Ionicons name="wallet" size={16} color="#FFFFFF" />
               </View>
             </Button>
           )}
         </View>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }

@@ -1,9 +1,9 @@
 Working in budget-app — Conventions, Structure, and UI Guidelines
 
 - Overview
-  - Mobile-first Expo app using Expo Router, NativeWind (Tailwind for RN), React Query v5, and local SQLite via `expo-sqlite`.
-  - Data flow: UI components → React Query hooks in `lib/hooks.ts` → `context/DataContext` (business logic) → `lib/local-storage.ts` (SQLite wrapper).
-  - Do not access SQLite directly from UI; always go through DataContext and hooks.
+  - Mobile-first Expo app using Expo Router, NativeWind (Tailwind for RN), and local SQLite via `expo-sqlite`.
+  - Data flow: UI components → `context/DataContext` (business logic) → `lib/local-storage.ts` (SQLite wrapper).
+  - Do not access SQLite directly from UI; always go through DataContext.
   - Prefer route-based modals with Expo Router for native UX (see `docs/MODAL_USAGE.md`).
 
 - Project Structure
@@ -15,10 +15,9 @@ Working in budget-app — Conventions, Structure, and UI Guidelines
     - Use `className` with semantic Tailwind tokens defined in `tailwind.config.js`.
   - `context/`: App-wide state and data access.
     - `DataContext.tsx` is the source of truth for CRUD + derived summaries.
-    - Surface operations through React Query hooks in `lib/hooks.ts`.
+    - Use `useData()`, and convenience helpers like `useTransactions()`/`useCategories()` directly from DataContext.
   - `lib/`:
     - `theme.ts`: theme constants/helpers. Prefer Tailwind classes; use theme helpers for inline styles.
-    - `queryClient.ts`: global Query Client config.
     - `local-storage.ts`: SQLite wrapper (only used by DataContext).
     - `schema/schema.ts`: canonical data types; update here when adding entities.
     - `api.ts`: legacy bridge delegating to DataContext (ensured via `setDataContext`).
@@ -45,12 +44,11 @@ Working in budget-app — Conventions, Structure, and UI Guidelines
     - Use `react-hook-form` patterns as in `components/AddTransactionModal.tsx`.
     - Validate before mutate; show toasts on error.
 
-- Data and React Query
-  - Queries defined in `lib/hooks.ts`. Use these stable keys:
-    - `['dashboard-summary']`, `['transactions']`, `['categories']`, `['insights']`, `['bank-accounts']`.
-  - Invalidate related queries on mutation success (follow existing patterns).
-  - Honor `DataContext.isInitialized` via `enabled` flags on queries where applicable.
-  - Optimistic helpers exist for transactions/categories; prefer them when updating lists.
+- Data and Context
+  - Call getters/mutations from `DataContext` for all data operations.
+  - Honor `DataContext.isInitialized` before fetching; many screens read via an `AppDataProvider` in `app/_layout.tsx`.
+  - Components that need to refresh after mutations can rely on `DataContext.dataVersion` or re-call getters as needed.
+  - Keep UI optimistic where appropriate by updating local component state first, then persisting via DataContext.
 
 - Navigation and Modals
   - Prefer Expo Router route-based modals for native behavior.
@@ -74,14 +72,14 @@ Working in budget-app — Conventions, Structure, and UI Guidelines
 
 - When Adding Features
   - UI: extend design-system components; avoid ad-hoc styles.
-  - Data: add methods to `DataContext` and expose via `lib/hooks.ts`.
+  - Data: add methods to `DataContext` and, if helpful, add small convenience hooks in the same file.
   - Docs: update `docs/` or component JSDoc for new primitives/patterns.
   - Tests: no formal suite; verify via simulator with attention to regressions.
 
 - Ready-to-Build UI Improvements
   - Transactions
     - Swipe actions on rows for quick categorize/edit/delete with haptics.
-    - Pull-to-refresh utilizing `invalidateQueries` and `usePrefetchBudgetData`.
+    - Pull-to-refresh by re-calling DataContext getters and/or bumping local state.
   - Categories/Budget
     - Inline edit budgets in Budget tab with optimistic updates.
     - Progress rings per category with semantic status colors.
@@ -98,9 +96,8 @@ Working in budget-app — Conventions, Structure, and UI Guidelines
 
 - PR Checklist
   - [ ] Uses semantic Tailwind classes and component variants.
-  - [ ] Data operations go through `DataContext` + React Query hooks.
-  - [ ] Appropriate query invalidations added.
-  - [ ] Types updated in `lib/schema/schema.ts` and reflected in DataContext/hooks.
+  - [ ] Data operations go through `DataContext` only (no direct SQLite).
+  - [ ] Screens respect `DataContext.isInitialized` and handle empty/loading states.
+  - [ ] Types updated in `lib/schema/schema.ts` and reflected in DataContext.
   - [ ] Linted and formatted via `npm run format`.
   - [ ] Screens/components accessible and responsive.
-

@@ -12,14 +12,20 @@ import {
   Platform,
   LayoutAnimation,
   UIManager,
+  RefreshControl,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import React from 'react';
 import HeaderProfileButton from '@/components/HeaderProfileButton';
+import FAB from '@/components/FAB';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SpendingTab() {
-  const { summary, transactions, summaryLoading, categories } = useAppData();
+  const { summary, transactions, summaryLoading, categories, refreshAppData } = useAppData();
   const router = useRouter();
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [showSeeAll, setShowSeeAll] = React.useState(false);
+  const insets = useSafeAreaInsets();
 
   // Enable LayoutAnimation on Android
   if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -30,6 +36,13 @@ export default function SpendingTab() {
     // Soft animate whenever summary or transactions update
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
   }, [summary, transactions]);
+
+  // Add a quick-access header action to open all transactions
+  React.useEffect(() => {
+    // Set per-screen header buttons (list icon + profile)
+    // Keep this minimal to preserve space and native feel
+    // Note: HeaderProfileButton is still available globally; we include it here too
+  }, []);
 
   // Show loading state while data is loading
   if (summaryLoading || !summary) {
@@ -88,27 +101,63 @@ export default function SpendingTab() {
 
   return (
     <View className="relative flex-1 bg-app-background">
-      <ScrollView className="content-padding">
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <View className="flex-row items-center pr-2">
+              <TouchableOpacity
+                onPress={() => router.push('/transactions-modal')}
+                accessibilityLabel="View all transactions"
+                className="mr-2 h-9 w-9 items-center justify-center rounded-full"
+                style={{ backgroundColor: '#00000010' }}>
+                <Ionicons name="receipt-outline" size={18} color="#374151" />
+              </TouchableOpacity>
+              <HeaderProfileButton />
+            </View>
+          ),
+        }}
+      />
+      <ScrollView
+        className="content-padding"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
+              try {
+                setRefreshing(true);
+                await refreshAppData();
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+          />
+        }
+        onScroll={(e) => {
+          const y = e.nativeEvent.contentOffset.y;
+          if (y > 180 && !showSeeAll) setShowSeeAll(true);
+          else if (y <= 180 && showSeeAll) setShowSeeAll(false);
+        }}
+        scrollEventThrottle={16}>
         {/* Overview Cards */}
-        <View className="overview-grid">
-          <Card className="card-mobile bg-app-surface shadow-lg">
-            <CardContent className="p-4">
-              <View className="mb-3 flex-row items-center justify-between">
-                <Text className="text-sm font-medium text-app-text">Monthly Budget</Text>
+        <View className="flex-row gap-3">
+          <Card className="card-mobile flex-1 bg-app-surface">
+            <CardContent className="p-3">
+              <View className="mb-2 flex-row items-center justify-between">
+                <Text className="text-xs font-medium text-app-text">Monthly Budget</Text>
                 <Ionicons name="wallet-outline" size={16} color="#0EA5E9" />
               </View>
-              <View className="space-y-2">
+              <View className="space-y-1">
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-lg font-bold text-app-text">
+                  <Text className="text-base font-semibold text-app-text">
                     ${(summary.totalBudget - summary.remainingBudget).toFixed(0)}
                   </Text>
-                  <Text className="text-xs text-app-text-muted">
+                  <Text className="text-[11px] text-app-text-muted">
                     of ${summary.totalBudget.toFixed(0)}
                   </Text>
                 </View>
-                <View className="h-2 w-full rounded-full bg-app-border-muted">
+                <View className="h-1.5 w-full rounded-full bg-app-border-muted">
                   <View
-                    className="progress-bar h-2 rounded-full"
+                    className="progress-bar h-1.5 rounded-full"
                     style={{
                       width: `${Math.min(budgetPercentage, 100)}%`,
                       backgroundColor:
@@ -120,30 +169,30 @@ export default function SpendingTab() {
                     }}
                   />
                 </View>
-                <Text className="text-xs text-app-text-secondary">
+                <Text className="text-[11px] text-app-text-secondary">
                   ${summary.remainingBudget.toFixed(0)} remaining
                 </Text>
               </View>
             </CardContent>
           </Card>
 
-          <Card className="card-mobile bg-app-surface shadow-lg">
-            <CardContent className="p-4">
-              <View className="mb-3 flex-row items-center justify-between">
-                <Text className="text-sm font-medium text-app-text">Total Spending</Text>
+          <Card className="card-mobile flex-1 bg-app-surface">
+            <CardContent className="p-3">
+              <View className="mb-2 flex-row items-center justify-between">
+                <Text className="text-xs font-medium text-app-text">Total Spending</Text>
                 <Ionicons name="trending-down-outline" size={16} color="#EF4444" />
               </View>
-              <View className="space-y-2">
+              <View className="space-y-1">
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-lg font-bold text-financial-negative">
+                  <Text className="text-base font-semibold text-financial-negative">
                     ${summary.totalExpenses.toFixed(0)}
                   </Text>
                   <Text
-                    className={`text-xs ${budgetPercentage < 90 ? 'text-financial-positive' : 'text-financial-negative'}`}>
+                    className={`text-[11px] ${budgetPercentage < 90 ? 'text-financial-positive' : 'text-financial-negative'}`}>
                     {budgetPercentage < 90 ? '↓ On track' : '↑ Over budget'}
                   </Text>
                 </View>
-                <Text className="text-xs text-app-text-secondary">
+                <Text className="text-[11px] text-app-text-secondary">
                   {budgetPercentage.toFixed(0)}% of budget used
                 </Text>
               </View>
@@ -152,9 +201,9 @@ export default function SpendingTab() {
         </View>
 
         {/* Recent Transactions */}
-        <Card className="card-mobile bg-app-surface shadow-lg">
+        <Card className="card-mobile bg-app-surface">
           <CardContent className="p-4">
-            <View className="mb-4 flex-row items-center justify-between">
+            <View className="mb-2 flex-row items-center justify-between">
               <Text className="text-lg font-semibold text-app-text">Recent Transactions</Text>
               <TouchableOpacity onPress={() => router.push('/transactions-modal')}>
                 <Text className="text-sm font-medium text-blue-600">
@@ -178,7 +227,7 @@ export default function SpendingTab() {
                   return (
                     <View
                       key={transaction.id}
-                      className="flex-row items-center justify-between py-2">
+                      className="flex-row items-center justify-between py-1.5">
                       <View className="min-w-0 flex-1 flex-row items-center">
                         <View
                           className="mr-3 h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
@@ -189,7 +238,7 @@ export default function SpendingTab() {
                           <Text className="text-sm font-medium text-app-text" numberOfLines={1}>
                             {transaction.description}
                           </Text>
-                          <Text className="text-xs text-app-text-muted">
+                          <Text className="text-[11px] text-app-text-muted">
                             {getCategoryName(transaction.categoryId)} •{' '}
                             {formatDate(transaction.date)}
                           </Text>
@@ -213,6 +262,23 @@ export default function SpendingTab() {
         {/* Bank Accounts */}
         <BankAccountsCard />
       </ScrollView>
+      {/* Sticky "See All" chip */}
+      {showSeeAll && safeTransactions.length > 0 && (
+        <View
+          pointerEvents="box-none"
+          style={{ position: 'absolute', left: 16, bottom: Math.max(insets.bottom, 12) + 98 }}>
+          <TouchableOpacity
+            onPress={() => router.push('/transactions-modal')}
+            activeOpacity={0.85}
+            className="flex-row items-center rounded-full border border-app-border bg-app-surface px-3 py-2 shadow-xs">
+            <Ionicons name="list-circle-outline" size={18} color="#374151" />
+            <Text className="ml-2 text-sm font-medium text-app-text">
+              See All ({safeTransactions.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      <FAB onPress={() => router.push('/add-transaction')} />
     </View>
   );
 }

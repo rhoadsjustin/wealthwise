@@ -15,12 +15,12 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Card, CardContent } from '../components/Card';
 import { useAppData } from './_layout';
-import { useUpdateTransactionMutation } from '../lib/hooks';
+import { useTransactions } from '../context/DataContext';
 
 export default function TransactionsModal() {
   const router = useRouter();
   const { transactions, categories } = useAppData();
-  const updateTransactionMutation = useUpdateTransactionMutation();
+  const { updateTransaction } = useTransactions();
   const [filter, setFilter] = useState<'all' | 'income' | 'expense' | 'uncategorized'>('all');
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -115,10 +115,7 @@ export default function TransactionsModal() {
       setUpdatingTransactions((prev) => new Set(prev).add(transactionId));
 
       try {
-        await updateTransactionMutation.mutateAsync({
-          id: transactionId,
-          data: { categoryId },
-        });
+        await updateTransaction(transactionId, { categoryId });
 
         // Close modal and clear selection
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);

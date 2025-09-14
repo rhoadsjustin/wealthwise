@@ -129,8 +129,17 @@ export const SelectContent = React.forwardRef<View, SelectContentProps>(({ child
   return (
     <View
       ref={ref}
-      className="bg-background-primary border-border-default absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-hidden rounded-lg border shadow-md">
-      {children}
+      className="bg-background-primary border-border-default absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border shadow-md"
+      style={{ maxHeight: 240 }}
+    >
+      <Animated.ScrollView
+        showsVerticalScrollIndicator
+        bounces
+        keyboardShouldPersistTaps="handled"
+        style={{ maxHeight: 240 }}
+      >
+        {children}
+      </Animated.ScrollView>
     </View>
   );
 });
