@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import CategoriesManager from '../../components/CategoriesManager';
+import CategoriesManager from '../components/CategoriesManager';
 
 export default function CategoriesScreen() {
   return (

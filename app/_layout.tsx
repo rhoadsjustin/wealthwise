@@ -18,6 +18,7 @@ import {
 } from '../lib/hooks';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { VectorStoreProvider } from '@/context/RAGContext';
+import HeaderProfileButton from '@/components/HeaderProfileButton';
 
 // Create context for sharing data across tabs
 interface AppDataContextType {
@@ -88,10 +89,36 @@ function AppContent() {
                 backgroundColor: '#FAFAFA',
               },
             }}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="(tabs)"
+              options={{
+                headerRight: () => (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignContent: 'center',
+                      alignItems: 'center',
+                      paddingHorizontal: 8,
+                      paddingBottom: 2,
+                    }}>
+                    <HeaderProfileButton />
+                  </View>
+                ),
+                title: 'Wealth Wise',
+                headerBackVisible: false,
+              }}
+            />
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             <Stack.Screen name="auth" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="gamify"
+              options={{ headerShown: false, presentation: 'formSheet' }}
+            />
+            <Stack.Screen
+              name="categories"
+              options={{ headerShown: false, presentation: 'formSheet' }}
+            />
             <Stack.Screen
               name="modal"
               options={{

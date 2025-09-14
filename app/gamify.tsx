@@ -1,9 +1,9 @@
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useAppData } from '../_layout';
-import { Card, CardContent } from '../../components/Card';
-import { Skeleton } from '../../components/Skeleton';
+import { useAppData } from './_layout';
+import { Card, CardContent } from '../components/Card';
+import { Skeleton } from '../components/Skeleton';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { useVectorStore } from '../../context/RAGContext';
+import { useVectorStore } from '../context/RAGContext';
 import { useState, useEffect } from 'react';
 
 export default function GamifyTab() {

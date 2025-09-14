@@ -1,5 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
-import { Platform, View, Text, ScrollView, TouchableOpacity, Modal, Alert, LayoutAnimation, UIManager } from 'react-native';
+import {
+  Platform,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Modal,
+  Alert,
+  LayoutAnimation,
+  UIManager,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
@@ -136,9 +146,9 @@ export default function TransactionsModal() {
   };
 
   return (
-    <View className="bg-app-background flex-1">
+    <View className="flex-1 bg-app-background">
       {/* Header */}
-      <View className="bg-app-surface border-app-border border-b px-4 pb-4 pt-12">
+      <View className="border-b border-app-border bg-app-surface px-4 pb-4 pt-12">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center">
             <TouchableOpacity
@@ -147,9 +157,9 @@ export default function TransactionsModal() {
               style={{ backgroundColor: '#00000010' }}>
               <Ionicons name="close" size={24} color="#374151" />
             </TouchableOpacity>
-            <Text className="text-app-text text-xl font-semibold">All Transactions</Text>
+            <Text className="text-xl font-semibold text-app-text">All Transactions</Text>
           </View>
-          <Text className="text-app-text-secondary text-sm">
+          <Text className="text-sm text-app-text-secondary">
             {filteredTransactions.length} items
           </Text>
         </View>
@@ -202,10 +212,10 @@ export default function TransactionsModal() {
         {filteredTransactions.length === 0 ? (
           <View className="items-center py-12">
             <Ionicons name="receipt-outline" size={48} color="#9CA3AF" />
-            <Text className="text-app-text-secondary mt-4 text-center text-lg">
+            <Text className="mt-4 text-center text-lg text-app-text-secondary">
               No transactions found
             </Text>
-            <Text className="text-app-text-muted mt-1 text-center">
+            <Text className="mt-1 text-center text-app-text-muted">
               {filter === 'uncategorized'
                 ? 'All your transactions are categorized!'
                 : 'Start adding transactions to see them here'}
@@ -220,7 +230,7 @@ export default function TransactionsModal() {
               const isUpdating = updatingTransactions.has(transaction.id);
 
               return (
-                <Card key={transaction.id} variant="default" className="bg-app-surface animate-fade-in">
+                <Card key={transaction.id} variant="default" className="bg-app-surface">
                   <CardContent className="p-4">
                     <View className="flex-row items-center justify-between">
                       <View className="min-w-0 flex-1 flex-row items-center">
@@ -232,7 +242,7 @@ export default function TransactionsModal() {
                           </Text>
                         </View>
                         <View className="min-w-0 flex-1">
-                          <Text className="text-app-text text-base font-medium" numberOfLines={1}>
+                          <Text className="text-base font-medium text-app-text" numberOfLines={1}>
                             {transaction.description}
                           </Text>
                           <View className="mt-1 flex-row items-center">
@@ -256,7 +266,7 @@ export default function TransactionsModal() {
                               </View>
                             ) : null}
                           </View>
-                          <Text className="text-app-text-muted mt-1 text-xs">
+                          <Text className="mt-1 text-xs text-app-text-muted">
                             {formatDate(transaction.date)}
                           </Text>
                         </View>
@@ -296,10 +306,10 @@ export default function TransactionsModal() {
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={handleCloseCategoryModal}>
-        <View className="bg-app-background flex-1">
-          <View className="bg-app-surface border-app-border border-b px-4 pb-4 pt-12">
+        <View className="flex-1 bg-app-background">
+          <View className="border-b border-app-border bg-app-surface px-4 pb-4 pt-12">
             <View className="flex-row items-center justify-between">
-              <Text className="text-app-text text-xl font-semibold">Select Category</Text>
+              <Text className="text-xl font-semibold text-app-text">Select Category</Text>
               <TouchableOpacity
                 onPress={handleCloseCategoryModal}
                 className="h-8 w-8 items-center justify-center rounded-full"
@@ -308,11 +318,11 @@ export default function TransactionsModal() {
               </TouchableOpacity>
             </View>
             {selectedTransaction && (
-              <View className="bg-app-border-muted mt-3 rounded-lg p-3">
-                <Text className="text-app-text text-sm font-medium">
+              <View className="mt-3 rounded-lg bg-app-border-muted p-3">
+                <Text className="text-sm font-medium text-app-text">
                   {selectedTransaction.description}
                 </Text>
-                <Text className="text-app-text-secondary text-xs">
+                <Text className="text-xs text-app-text-secondary">
                   ${Math.abs(parseFloat(selectedTransaction.amount)).toFixed(2)} •{' '}
                   {formatDate(selectedTransaction.date)}
                 </Text>
@@ -329,7 +339,7 @@ export default function TransactionsModal() {
                     key={category.id}
                     onPress={() => handleCategorySelect(category.id)}
                     disabled={updatingTransactions.size > 0}
-                    className={`bg-app-surface border-app-border rounded-lg border p-4 ${updatingTransactions.size > 0 ? 'opacity-50' : ''}`}>
+                    className={`rounded-lg border border-app-border bg-app-surface p-4 ${updatingTransactions.size > 0 ? 'opacity-50' : ''}`}>
                     <View className="flex-row items-center">
                       <View
                         className="mr-3 h-10 w-10 items-center justify-center rounded-lg"
@@ -337,8 +347,8 @@ export default function TransactionsModal() {
                         <Text className="text-base">{category.icon}</Text>
                       </View>
                       <View className="flex-1">
-                        <Text className="text-app-text text-base font-medium">{category.name}</Text>
-                        <Text className="text-app-text-secondary text-sm">
+                        <Text className="text-base font-medium text-app-text">{category.name}</Text>
+                        <Text className="text-sm text-app-text-secondary">
                           Budget: ${parseFloat(category.budget).toFixed(2)}
                         </Text>
                       </View>

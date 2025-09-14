@@ -12,7 +12,7 @@ export interface ToastConfig {
 }
 
 // Custom Toast Components
-const SuccessToast = ({ text1, text2, onPress }: any) => (
+const SuccessToast = ({ text1, text2 }: any) => (
   <View style={[styles.toastContainer, styles.successToast]}>
     <View style={styles.toastContent}>
       <View style={styles.iconContainer}>
@@ -23,13 +23,13 @@ const SuccessToast = ({ text1, text2, onPress }: any) => (
         {text2 && <Text style={[styles.toastDescription, styles.successDescription]}>{text2}</Text>}
       </View>
     </View>
-    <TouchableOpacity onPress={onPress} style={styles.closeButton}>
+    <TouchableOpacity onPress={() => Toast.hide()} style={styles.closeButton}>
       <Ionicons name="close" size={16} color="#6B7280" />
     </TouchableOpacity>
   </View>
 );
 
-const ErrorToast = ({ text1, text2, onPress }: any) => (
+const ErrorToast = ({ text1, text2 }: any) => (
   <View style={[styles.toastContainer, styles.errorToast]}>
     <View style={styles.toastContent}>
       <View style={styles.iconContainer}>
@@ -40,13 +40,13 @@ const ErrorToast = ({ text1, text2, onPress }: any) => (
         {text2 && <Text style={[styles.toastDescription, styles.errorDescription]}>{text2}</Text>}
       </View>
     </View>
-    <TouchableOpacity onPress={onPress} style={styles.closeButton}>
+    <TouchableOpacity onPress={() => Toast.hide()} style={styles.closeButton}>
       <Ionicons name="close" size={16} color="#6B7280" />
     </TouchableOpacity>
   </View>
 );
 
-const InfoToast = ({ text1, text2, onPress }: any) => (
+const InfoToast = ({ text1, text2 }: any) => (
   <View style={[styles.toastContainer, styles.infoToast]}>
     <View style={styles.toastContent}>
       <View style={styles.iconContainer}>
@@ -57,13 +57,13 @@ const InfoToast = ({ text1, text2, onPress }: any) => (
         {text2 && <Text style={[styles.toastDescription, styles.infoDescription]}>{text2}</Text>}
       </View>
     </View>
-    <TouchableOpacity onPress={onPress} style={styles.closeButton}>
+    <TouchableOpacity onPress={() => Toast.hide()} style={styles.closeButton}>
       <Ionicons name="close" size={16} color="#6B7280" />
     </TouchableOpacity>
   </View>
 );
 
-const WarningToast = ({ text1, text2, onPress }: any) => (
+const WarningToast = ({ text1, text2 }: any) => (
   <View style={[styles.toastContainer, styles.warningToast]}>
     <View style={styles.toastContent}>
       <View style={styles.iconContainer}>
@@ -74,7 +74,7 @@ const WarningToast = ({ text1, text2, onPress }: any) => (
         {text2 && <Text style={[styles.toastDescription, styles.warningDescription]}>{text2}</Text>}
       </View>
     </View>
-    <TouchableOpacity onPress={onPress} style={styles.closeButton}>
+    <TouchableOpacity onPress={() => Toast.hide()} style={styles.closeButton}>
       <Ionicons name="close" size={16} color="#6B7280" />
     </TouchableOpacity>
   </View>
@@ -97,6 +97,7 @@ export const showToast = {
       text2: description,
       visibilityTime: 4000,
       autoHide: true,
+      onPress: () => Toast.hide(),
       topOffset: 60,
     });
   },
@@ -108,6 +109,7 @@ export const showToast = {
       text2: description,
       visibilityTime: 5000,
       autoHide: true,
+      onPress: () => Toast.hide(),
       topOffset: 60,
     });
   },
@@ -119,6 +121,7 @@ export const showToast = {
       text2: description,
       visibilityTime: 4000,
       autoHide: true,
+      onPress: () => Toast.hide(),
       topOffset: 60,
     });
   },
@@ -130,6 +133,7 @@ export const showToast = {
       text2: description,
       visibilityTime: 4000,
       autoHide: true,
+      onPress: () => Toast.hide(),
       topOffset: 60,
     });
   },

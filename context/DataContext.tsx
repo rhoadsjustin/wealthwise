@@ -99,7 +99,9 @@ interface DataContextType {
   createCategory: (data: Omit<Category, 'id' | 'userId'>) => Promise<Category>;
   updateCategory: (id: number, updates: Partial<Category>) => Promise<Category>;
   deleteCategory: (id: number) => Promise<{ success: boolean }>;
-  updateCategoriesBudgets: (budgetCategories: Array<{ name: string; budget: string }>) => Promise<void>;
+  updateCategoriesBudgets: (
+    budgetCategories: Array<{ name: string; budget: string }>
+  ) => Promise<void>;
 
   // Transactions
   getTransactions: () => Promise<Transaction[]>;
@@ -138,13 +140,17 @@ interface DataProviderProps {
   initialBudgetCategories?: Array<{ name: string; budget: string }> | null;
 }
 
-export function DataProvider({ children, userId = 1, initialBudgetCategories = null }: DataProviderProps) {
+export function DataProvider({
+  children,
+  userId = 1,
+  initialBudgetCategories = null,
+}: DataProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [currentUserId] = useState(userId);
 
   // Development mode flag - set to true to clear and reinitialize data every launch
-  const DEVELOPMENT_MODE = true;
+  const DEVELOPMENT_MODE = false;
 
   // Initialize local storage on mount
   useEffect(() => {
@@ -300,7 +306,7 @@ export function DataProvider({ children, userId = 1, initialBudgetCategories = n
       // Verify categories were saved
       const savedCategories = await localStorage.getItems<Category>('categories', currentUserId);
       console.log('🔍 Verified saved categories:', savedCategories.length);
-      
+
       // Also check all categories in the table (debug)
       const allCategories = await localStorage.getAllItems<Category>('categories');
       console.log('🔍 All categories in database:', allCategories.length);
@@ -348,9 +354,12 @@ export function DataProvider({ children, userId = 1, initialBudgetCategories = n
       console.log('✅ Demo transactions created');
 
       // Verify transactions were saved
-      const savedTransactions = await localStorage.getItems<Transaction>('transactions', currentUserId);
+      const savedTransactions = await localStorage.getItems<Transaction>(
+        'transactions',
+        currentUserId
+      );
       console.log('🔍 Verified saved transactions:', savedTransactions.length);
-      
+
       // Also check all transactions in the table (debug)
       const allTransactions = await localStorage.getAllItems<Transaction>('transactions');
       console.log('🔍 All transactions in database:', allTransactions.length);
@@ -406,8 +415,13 @@ export function DataProvider({ children, userId = 1, initialBudgetCategories = n
 
         // Test database connection
         try {
-          const testResult = await localStorage.query("SELECT name FROM sqlite_master WHERE type='table'");
-          console.log('🔍 Tables in database:', testResult.map((row: any) => row.name));
+          const testResult = await localStorage.query(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+          );
+          console.log(
+            '🔍 Tables in database:',
+            testResult.map((row: any) => row.name)
+          );
         } catch (error) {
           console.error('❌ Error checking database tables:', error);
         }
@@ -534,7 +548,7 @@ export function DataProvider({ children, userId = 1, initialBudgetCategories = n
   // Dashboard methods
   const getDashboardSummary = useCallback(async (): Promise<DashboardSummary> => {
     console.log('🔍 getDashboardSummary called for userId:', currentUserId);
-    
+
     try {
       const [transactions, categories] = await Promise.all([
         localStorage.getItems<Transaction>('transactions', currentUserId),
@@ -635,9 +649,9 @@ export function DataProvider({ children, userId = 1, initialBudgetCategories = n
   const updateCategoriesBudgets = useCallback(
     async (budgetCategories: Array<{ name: string; budget: string }>): Promise<void> => {
       const categories = await getCategories();
-      
+
       for (const budgetCategory of budgetCategories) {
-        const category = categories.find(cat => cat.name === budgetCategory.name);
+        const category = categories.find((cat) => cat.name === budgetCategory.name);
         if (category) {
           await updateCategory(category.id, { budget: budgetCategory.budget });
         }

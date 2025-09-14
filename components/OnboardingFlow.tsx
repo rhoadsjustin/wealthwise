@@ -227,10 +227,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             value={username}
             onChangeText={setUsername}
             placeholder="Enter your username"
-            className="w-full rounded-md border-gray-400 bg-white px-3 py-3 text-base"
-            style={{ color: '#000000' }}
+            className="w-full rounded-md border-gray-400 px-3 text-base"
+            style={{ color: 'black' }}
             maxLength={20}
-            {...{ placeholderTextColor: '#9CA3AF', selectionColor: '#000000' }}
+            {...{ placeholderTextColor: '#9CA3AF', selectionColor: 'black' }}
           />
           {username ? (
             <Text className="self-start text-sm text-gray-500">

@@ -4,9 +4,18 @@ import { useAppData } from '../_layout';
 import BankAccountsCard from '../../components/BankAccountsCard';
 import CategoryStatsCard from '../../components/CategoryStatsCard';
 import { Skeleton } from '../../components/Skeleton';
-import { View, Text, ScrollView, TouchableOpacity, Platform, LayoutAnimation, UIManager } from 'react-native';
-import { useRouter } from 'expo-router';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Platform,
+  LayoutAnimation,
+  UIManager,
+} from 'react-native';
+import { Stack, useRouter } from 'expo-router';
 import React from 'react';
+import HeaderProfileButton from '@/components/HeaderProfileButton';
 
 export default function SpendingTab() {
   const { summary, transactions, summaryLoading, categories } = useAppData();
@@ -78,26 +87,26 @@ export default function SpendingTab() {
   };
 
   return (
-    <View className="bg-app-background relative flex-1">
+    <View className="relative flex-1 bg-app-background">
       <ScrollView className="content-padding">
         {/* Overview Cards */}
         <View className="overview-grid">
-          <Card className="card-mobile bg-app-surface shadow-lg animate-fade-in">
+          <Card className="card-mobile bg-app-surface shadow-lg">
             <CardContent className="p-4">
               <View className="mb-3 flex-row items-center justify-between">
-                <Text className="text-app-text text-sm font-medium">Monthly Budget</Text>
+                <Text className="text-sm font-medium text-app-text">Monthly Budget</Text>
                 <Ionicons name="wallet-outline" size={16} color="#0EA5E9" />
               </View>
               <View className="space-y-2">
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-app-text text-lg font-bold">
+                  <Text className="text-lg font-bold text-app-text">
                     ${(summary.totalBudget - summary.remainingBudget).toFixed(0)}
                   </Text>
-                  <Text className="text-app-text-muted text-xs">
+                  <Text className="text-xs text-app-text-muted">
                     of ${summary.totalBudget.toFixed(0)}
                   </Text>
                 </View>
-                <View className="bg-app-border-muted h-2 w-full rounded-full">
+                <View className="h-2 w-full rounded-full bg-app-border-muted">
                   <View
                     className="progress-bar h-2 rounded-full"
                     style={{
@@ -111,22 +120,22 @@ export default function SpendingTab() {
                     }}
                   />
                 </View>
-                <Text className="text-app-text-secondary text-xs">
+                <Text className="text-xs text-app-text-secondary">
                   ${summary.remainingBudget.toFixed(0)} remaining
                 </Text>
               </View>
             </CardContent>
           </Card>
 
-          <Card className="card-mobile bg-app-surface shadow-lg animate-fade-in">
+          <Card className="card-mobile bg-app-surface shadow-lg">
             <CardContent className="p-4">
               <View className="mb-3 flex-row items-center justify-between">
-                <Text className="text-app-text text-sm font-medium">Total Spending</Text>
+                <Text className="text-sm font-medium text-app-text">Total Spending</Text>
                 <Ionicons name="trending-down-outline" size={16} color="#EF4444" />
               </View>
               <View className="space-y-2">
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-financial-negative text-lg font-bold">
+                  <Text className="text-lg font-bold text-financial-negative">
                     ${summary.totalExpenses.toFixed(0)}
                   </Text>
                   <Text
@@ -134,7 +143,7 @@ export default function SpendingTab() {
                     {budgetPercentage < 90 ? '↓ On track' : '↑ Over budget'}
                   </Text>
                 </View>
-                <Text className="text-app-text-secondary text-xs">
+                <Text className="text-xs text-app-text-secondary">
                   {budgetPercentage.toFixed(0)}% of budget used
                 </Text>
               </View>
@@ -143,10 +152,10 @@ export default function SpendingTab() {
         </View>
 
         {/* Recent Transactions */}
-        <Card className="card-mobile bg-app-surface shadow-lg animate-fade-in">
+        <Card className="card-mobile bg-app-surface shadow-lg">
           <CardContent className="p-4">
             <View className="mb-4 flex-row items-center justify-between">
-              <Text className="text-app-text text-lg font-semibold">Recent Transactions</Text>
+              <Text className="text-lg font-semibold text-app-text">Recent Transactions</Text>
               <TouchableOpacity onPress={() => router.push('/transactions-modal')}>
                 <Text className="text-sm font-medium text-blue-600">
                   View All ({safeTransactions.length})
@@ -155,8 +164,8 @@ export default function SpendingTab() {
             </View>
             {safeTransactions.length === 0 ? (
               <View className="items-center py-8">
-                <Text className="text-app-text-secondary text-center">No transactions yet</Text>
-                <Text className="text-app-text-muted mt-1 text-center text-sm">
+                <Text className="text-center text-app-text-secondary">No transactions yet</Text>
+                <Text className="mt-1 text-center text-sm text-app-text-muted">
                   Add your first transaction to get started
                 </Text>
               </View>
@@ -169,7 +178,7 @@ export default function SpendingTab() {
                   return (
                     <View
                       key={transaction.id}
-                      className="flex-row items-center justify-between py-2 animate-slide-in">
+                      className="flex-row items-center justify-between py-2">
                       <View className="min-w-0 flex-1 flex-row items-center">
                         <View
                           className="mr-3 h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
@@ -177,10 +186,10 @@ export default function SpendingTab() {
                           <Text>{iconInfo.icon.includes('fa-') ? '💳' : iconInfo.icon}</Text>
                         </View>
                         <View className="min-w-0 flex-1">
-                          <Text className="text-app-text text-sm font-medium" numberOfLines={1}>
+                          <Text className="text-sm font-medium text-app-text" numberOfLines={1}>
                             {transaction.description}
                           </Text>
-                          <Text className="text-app-text-muted text-xs">
+                          <Text className="text-xs text-app-text-muted">
                             {getCategoryName(transaction.categoryId)} •{' '}
                             {formatDate(transaction.date)}
                           </Text>

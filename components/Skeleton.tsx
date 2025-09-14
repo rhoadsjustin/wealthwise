@@ -1,7 +1,16 @@
-import { View } from 'react-native';
+import React from 'react';
+import { Animated } from 'react-native';
 
-function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <View className={'bg-muted animate-pulse rounded-md'} {...props} />;
-}
+type SkeletonProps = React.ComponentProps<typeof Animated.View> & {
+  className?: string;
+};
+
+const Skeleton = React.forwardRef<Animated.View, SkeletonProps>(
+  ({ className = '', ...props }, ref) => {
+    return <Animated.View ref={ref} className={`rounded-md bg-gray-200 ${className}`} {...props} />;
+  }
+);
+
+Skeleton.displayName = 'Skeleton';
 
 export { Skeleton };

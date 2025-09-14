@@ -90,8 +90,8 @@ export default function BankAccountsCard() {
             <Text className="text-lg font-semibold text-gray-900">Bank Accounts</Text>
           </View>
           <View className="space-y-3">
-            <View className="h-12 animate-pulse rounded bg-gray-200" />
-            <View className="h-12 animate-pulse rounded bg-gray-200" />
+            <View className="h-12 rounded bg-gray-200" />
+            <View className="h-12 rounded bg-gray-200" />
           </View>
         </CardContent>
       </Card>
