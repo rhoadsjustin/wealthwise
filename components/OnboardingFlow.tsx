@@ -13,10 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const { height } = Dimensions.get('window');
 
 interface OnboardingFlowProps {
-  onComplete: (userData: {
-    username: string;
-    hasBiometrics: boolean;
-  }) => void;
+  onComplete: (userData: { username: string; hasBiometrics: boolean }) => void;
 }
 
 interface FeatureSlide {
@@ -110,21 +107,21 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         if (Platform.OS === 'web') {
           localStorage.setItem(`biometric_${username}`, 'enabled');
         }
-        showToast.success(
-          'Biometric Setup Complete',
-          'You can now use FaceID/TouchID to access your account'
-        );
+        // showToast.success(
+        //   'Biometric Setup Complete',
+        //   'You can now use FaceID/TouchID to access your account'
+        // );
       } else {
-        showToast.warning(
-          'Biometric Setup Cancelled',
-          'You can still use your username to access the app'
-        );
+        // showToast.warning(
+        //   'Biometric Setup Cancelled',
+        //   'You can still use your username to access the app'
+        // );
       }
     } catch (error) {
-      showToast.error(
-        'Biometric Setup Failed',
-        'You can still use your username to access the app'
-      );
+      // showToast.error(
+      //   'Biometric Setup Failed',
+      //   'You can still use your username to access the app'
+      // );
     } finally {
       setIsLoading(false);
     }
@@ -144,12 +141,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   const handleAccountSetup = () => {
     if (!username.trim()) {
-      showToast.error('Username Required', 'Please enter a username to continue');
+      // showToast.error('Username Required', 'Please enter a username to continue');
       return;
     }
 
     if (username.length < 3) {
-      showToast.error('Username Too Short', 'Username must be at least 3 characters long');
+      // showToast.error('Username Too Short', 'Username must be at least 3 characters long');
       return;
     }
 
@@ -246,8 +243,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         ) : (
           <View className="items-center gap-4">
             <Text className="max-w-xs text-center text-lg leading-7 text-gray-700">
-              Biometric authentication is not available on this device. You will use your username to
-              access the app.
+              Biometric authentication is not available on this device. You will use your username
+              to access the app.
             </Text>
             <View className="mt-4 flex-row items-center gap-2 rounded-lg border border-gray-300 bg-gray-50 p-4">
               <Ionicons name="shield-checkmark" size={24} color="#6B7280" />
@@ -268,7 +265,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ paddingTop: top / 2 }}>
       {/* Sticky Header */}
-      <View className="px-6 pb-2 pt-6 bg-white">
+      <View className="bg-white px-6 pb-2 pt-6">
         <View className="mb-2 flex-row items-center justify-between">
           <Text className="text-sm text-gray-500">
             Step {currentStep + 1} of {totalSteps}
@@ -282,7 +279,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       {/* Scrollable Content */}
       <ScrollView
         className="flex-1"
-        contentContainerStyle={[{ paddingBottom: bottom + 100, flexGrow: 1, minHeight: height - 160 }]}
+        contentContainerStyle={[
+          { paddingBottom: bottom + 100, flexGrow: 1, minHeight: height - 160 },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         <View className="flex-1 items-center justify-center px-4">
@@ -293,17 +292,23 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             <Card className="w-full border border-gray-400 bg-white shadow-lg">
               <CardContent className="p-0">
                 {currentStep < features.length && (
-                  <Animated.View entering={SlideInRight.duration(300)} exiting={SlideOutLeft.duration(220)}>
+                  <Animated.View
+                    entering={SlideInRight.duration(300)}
+                    exiting={SlideOutLeft.duration(220)}>
                     {renderFeatureSlide(features[currentStep], currentStep)}
                   </Animated.View>
                 )}
                 {currentStep === features.length && (
-                  <Animated.View entering={SlideInRight.duration(300)} exiting={SlideOutLeft.duration(220)}>
+                  <Animated.View
+                    entering={SlideInRight.duration(300)}
+                    exiting={SlideOutLeft.duration(220)}>
                     {renderAccountSetup()}
                   </Animated.View>
                 )}
                 {currentStep === features.length + 1 && (
-                  <Animated.View entering={SlideInRight.duration(300)} exiting={SlideOutLeft.duration(220)}>
+                  <Animated.View
+                    entering={SlideInRight.duration(300)}
+                    exiting={SlideOutLeft.duration(220)}>
                     {renderBiometricsSetup()}
                   </Animated.View>
                 )}
@@ -314,7 +319,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       </ScrollView>
 
       {/* Sticky Footer */}
-      <View className="bg-white px-6 pb-6 pt-4" style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+      <View
+        className="bg-white px-6 pb-6 pt-4"
+        style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
         <View className="flex-row items-center justify-between">
           <Button
             onPress={handleBack}

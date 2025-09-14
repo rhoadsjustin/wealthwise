@@ -160,7 +160,7 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
       }
       const val = parseFloat(edit.budget || '');
       if (isNaN(val) || val < 0) {
-        showToast.error('Invalid amount', 'Enter a valid non-negative number');
+        // showToast.error('Invalid amount', 'Enter a valid non-negative number');
         return;
       }
     }
@@ -171,7 +171,8 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
           const edit = localEdits[c.id];
           if (!edit) return Promise.resolve();
           const updates: any = {};
-          if (typeof edit.budget === 'string' && edit.budget !== c.budget) updates.budget = edit.budget;
+          if (typeof edit.budget === 'string' && edit.budget !== c.budget)
+            updates.budget = edit.budget;
           if (edit.name && edit.name !== c.name) updates.name = edit.name.trim();
           if (edit.icon && edit.icon !== c.icon) updates.icon = edit.icon;
           if (Object.keys(updates).length === 0) return Promise.resolve();
@@ -188,8 +189,7 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
     <KeyboardAvoidingView
       className="flex-1 bg-white"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ paddingTop: top / 2 }}
-    >
+      style={{ paddingTop: top / 2 }}>
       {/* Sticky Header */}
       <View className="bg-white px-6 pb-2 pt-6">
         <View className="mb-2 flex-row items-center justify-between">
@@ -206,10 +206,11 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
         className="flex-1"
         contentContainerStyle={{ paddingBottom: bottom + 120, flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
+        showsVerticalScrollIndicator={false}>
         <View className="flex-1 px-6 pt-6">
-          <Text className="mb-4 text-center text-2xl font-bold text-black">Set your starting budgets</Text>
+          <Text className="mb-4 text-center text-2xl font-bold text-black">
+            Set your starting budgets
+          </Text>
           <Text className="mb-6 text-center text-base text-gray-600">
             Quickly review the suggested categories. You can fine-tune or add more later.
           </Text>
@@ -218,16 +219,14 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
             <Animated.View
               entering={FadeIn.duration(200)}
               exiting={FadeOut.duration(150)}
-              className="rounded-xl border border-gray-200 bg-gray-50 p-4"
-            >
+              className="rounded-xl border border-gray-200 bg-gray-50 p-4">
               {/* Editable fields for emoji, title, and amount */}
               <View className="gap-4">
                 <View>
                   <Text className="mb-2 text-sm font-medium text-gray-700">Emoji</Text>
                   <Select
                     value={localEdits[currentCategory.id]?.icon || currentCategory.icon}
-                    onValueChange={handleIconChange}
-                  >
+                    onValueChange={handleIconChange}>
                     <SelectTrigger>
                       <View className="flex-row items-center gap-2">
                         <Text className="text-lg">
@@ -238,8 +237,25 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectLabel>Common</SelectLabel>
-                      <View className="flex-row flex-wrap px-2 pb-2 pt-1 gap-2">
-                        {['🍽️','🛒','🚗','⛽','🎬','💡','🏥','🛍️','🏠','💻','🏋️','☕','🎵','📚','✈️','🐕'].map((emj) => (
+                      <View className="flex-row flex-wrap gap-2 px-2 pb-2 pt-1">
+                        {[
+                          '🍽️',
+                          '🛒',
+                          '🚗',
+                          '⛽',
+                          '🎬',
+                          '💡',
+                          '🏥',
+                          '🛍️',
+                          '🏠',
+                          '💻',
+                          '🏋️',
+                          '☕',
+                          '🎵',
+                          '📚',
+                          '✈️',
+                          '🐕',
+                        ].map((emj) => (
                           <SelectItem key={emj} value={emj} className="px-2 py-2">
                             <Text className="text-lg">{emj}</Text>
                           </SelectItem>
@@ -247,8 +263,8 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
                       </View>
                       <SelectSeparator />
                       <SelectLabel>More</SelectLabel>
-                      <View className="flex-row flex-wrap px-2 pb-3 pt-1 gap-2">
-                        {['🎁','📱','🔧','🛡️','📋','🎮','🚇','💊','⚡','🏦'].map((emj) => (
+                      <View className="flex-row flex-wrap gap-2 px-2 pb-3 pt-1">
+                        {['🎁', '📱', '🔧', '🛡️', '📋', '🎮', '🚇', '💊', '⚡', '🏦'].map((emj) => (
                           <SelectItem key={emj} value={emj} className="px-2 py-2">
                             <Text className="text-lg">{emj}</Text>
                           </SelectItem>
@@ -309,13 +325,17 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
             </Animated.View>
           ) : (
             <View className="items-center justify-center">
-              <Text className="text-gray-600">No categories found. Add a category to get started.</Text>
+              <Text className="text-gray-600">
+                No categories found. Add a category to get started.
+              </Text>
             </View>
           )}
 
           {/* Add more categories section */}
           <View className="mt-8 rounded-xl border border-gray-200 bg-gray-50 p-4">
-            <Text className="mb-2 text-base font-semibold text-gray-800">Need more categories?</Text>
+            <Text className="mb-2 text-base font-semibold text-gray-800">
+              Need more categories?
+            </Text>
             <Text className="mb-4 text-sm text-gray-600">
               You can add more now or anytime from the Categories tab.
             </Text>
@@ -327,7 +347,9 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
       </ScrollView>
 
       {/* Sticky Footer */}
-      <View className="bg-white px-6 pb-6 pt-4" style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+      <View
+        className="bg-white px-6 pb-6 pt-4"
+        style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
         {stepIndex < totalSteps - 1 ? (
           <View className="flex-row items-center gap-3">
             <Button
@@ -338,13 +360,7 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
               className="flex-1"
               size="lg"
             />
-            <Button
-              title="Next"
-              variant="default"
-              onPress={goNext}
-              className="flex-1"
-              size="lg"
-            />
+            <Button title="Next" variant="default" onPress={goNext} className="flex-1" size="lg" />
           </View>
         ) : (
           <View className="flex-row items-center gap-3">
