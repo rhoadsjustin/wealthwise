@@ -35,7 +35,7 @@ function CategoryStats({ category, spent, className }: CategoryStatsProps) {
   };
 
   return (
-    <Card variant="default" padding="md" className={`bg-app-surface ${className}`}>
+    <Card variant="default" padding="md" className={`bg-secondary-50 ${className}`}>
       <CardContent className="p-4">
         <View className="mb-3 flex-row items-center">
           <View
@@ -123,7 +123,7 @@ export default function CategoryStatsCard({
 
   if (sortedCategories.length === 0) {
     return (
-      <Card variant="elevated" className={`card-mobile bg-app-surface ${className}`}>
+      <Card variant="elevated" className={`card-mobile bg-secondary-50 ${className}`}>
         <CardContent className="p-6">
           <Text className="text-app-text mb-2 text-lg font-semibold">Category Overview</Text>
           <View className="items-center py-8">
@@ -143,7 +143,7 @@ export default function CategoryStatsCard({
   const totalSpent = Object.values(categorySpending).reduce((sum, amount) => sum + amount, 0);
 
   return (
-    <Card variant="elevated" className={`card-mobile bg-app-surface ${className}`}>
+    <Card variant="elevated" className={`card-mobile bg-secondary-50 ${className}`}>
       <CardContent className="p-6">
         <View className="mb-4 flex-row items-center justify-between">
           <Text className="text-app-text text-lg font-semibold">Category Overview</Text>

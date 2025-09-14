@@ -186,7 +186,7 @@ function AppContent() {
   const pathname = usePathname();
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+    <View style={{ flex: 1, backgroundColor: '#F7F9FC' }}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
       <DataProvider userId={1} initialBudgetCategories={null}>
         <AppDataProvider>
@@ -202,7 +202,7 @@ function AppContent() {
               },
               headerTintColor: '#0EA5E9',
               contentStyle: {
-                backgroundColor: '#FAFAFA',
+                backgroundColor: '#F7F9FC',
               },
             }}>
             <Stack.Screen

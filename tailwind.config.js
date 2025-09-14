@@ -2,6 +2,7 @@
 module.exports = {
   content: ['./app/**/*.{js,ts,tsx}', './components/**/*.{js,ts,tsx}'],
   presets: [require('nativewind/preset')],
+  darkMode: 'media',
   theme: {
     extend: {
       colors: {
@@ -125,7 +126,31 @@ module.exports = {
           border: '#e5e7eb',
           shadow: 'rgba(0, 0, 0, 0.1)',
         },
-        // App-level theme colors
+        // App-level semantic tokens (light)
+        'app-background': '#F7F9FC',
+        'app-surface': '#FFFFFF',
+        'app-surface-alt': '#F9FBFF',
+        'app-border': '#E6EAF2',
+        'app-border-muted': '#EEF2F8',
+        'app-text': '#111827',
+        'app-text-secondary': '#374151',
+        'app-text-muted': '#6B7280',
+
+        // App-level semantic tokens (dark)
+        'app-background-dark': '#0B1220',
+        'app-surface-dark': '#111827',
+        'app-surface-alt-dark': '#0F1626',
+        'app-border-dark': '#1F2A3A',
+        'app-text-dark': '#F3F4F6',
+        'app-text-secondary-dark': '#CBD5E1',
+        'app-text-muted-dark': '#94A3B8',
+
+        // Financial shortcuts used in components
+        'financial-positive': '#22C55E',
+        'financial-negative': '#EF4444',
+
+        // Misc semantic
+        'budget-primary': '#3B82F6',
         app: {
           primary: '#0EA5E9', // Sky blue - main brand color
           'primary-dark': '#0284C7', // Darker blue for active states

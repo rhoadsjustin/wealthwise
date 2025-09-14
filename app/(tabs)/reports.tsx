@@ -85,7 +85,7 @@ export default function ReportsTab() {
       </View>
 
       {/* Monthly Spending Trend */}
-      <Card className="card-mobile mb-6">
+      <Card className="card-mobile mb-6 bg-info-50 border-info-100">
         <CardContent className="p-4">
           <View className="mb-4 flex-row items-center justify-between">
             <Text className="text-lg font-semibold text-gray-900">Spending Trend</Text>
@@ -119,7 +119,7 @@ export default function ReportsTab() {
       </Card>
 
       {/* Category Breakdown */}
-      <Card className="card-mobile mb-6">
+      <Card className="card-mobile mb-6 bg-success-50 border-success-100">
         <CardContent className="p-4">
           <View className="mb-4 flex-row items-center justify-between">
             <Text className="text-lg font-semibold text-gray-900">Category Breakdown</Text>
@@ -223,7 +223,7 @@ export default function ReportsTab() {
       </Card>
 
       {/* Report Summary */}
-      <Card className="card-mobile">
+      <Card className="card-mobile bg-secondary-50 border-secondary-200">
         <CardContent className="p-4">
           <Text className="mb-4 text-lg font-semibold text-gray-900">Monthly Summary</Text>
 

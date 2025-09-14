@@ -25,6 +25,7 @@ export default function SpendingTab() {
   const router = useRouter();
   const [refreshing, setRefreshing] = React.useState(false);
   const [showSeeAll, setShowSeeAll] = React.useState(false);
+  const [period, setPeriod] = React.useState<'this' | 'last'>('this');
   const insets = useSafeAreaInsets();
 
   // Enable LayoutAnimation on Android
@@ -44,7 +45,49 @@ export default function SpendingTab() {
     // Note: HeaderProfileButton is still available globally; we include it here too
   }, []);
 
-  // Show loading state while data is loading
+  // Derive period-based summary from local transactions + categories
+  const displaySummary = React.useMemo(() => {
+    if (!Array.isArray(transactions) || !Array.isArray(categories)) {
+      return summary;
+    }
+    const now = new Date();
+    const target = new Date(now);
+    if (period === 'last') {
+      target.setMonth(target.getMonth() - 1);
+    }
+    const targetMonth = target.getMonth();
+    const targetYear = target.getFullYear();
+
+    const inPeriod = transactions.filter((t: any) => {
+      const d = new Date(t.date);
+      return d.getMonth() === targetMonth && d.getFullYear() === targetYear;
+    });
+
+    const totalIncome = inPeriod
+      .filter((t: any) => t.type === 'income')
+      .reduce((s: number, t: any) => s + parseFloat(t.amount), 0);
+    const totalExpenses = inPeriod
+      .filter((t: any) => t.type === 'expense')
+      .reduce((s: number, t: any) => s + parseFloat(t.amount), 0);
+    const totalBudget = categories.reduce((s: number, c: any) => s + parseFloat(c.budget), 0);
+    const remainingBudget = totalBudget - totalExpenses;
+
+    return {
+      ...summary,
+      totalIncome,
+      totalExpenses,
+      totalBudget,
+      remainingBudget,
+    } as any;
+  }, [transactions, categories, period, summary]);
+
+  const budgetPercentage =
+    displaySummary.totalBudget > 0
+      ? ((displaySummary.totalBudget - displaySummary.remainingBudget) /
+          displaySummary.totalBudget) * 100
+      : 0;
+
+  // Show loading state while data is loading (must be after all hooks)
   if (summaryLoading || !summary) {
     return (
       <ScrollView className="content-padding">
@@ -63,11 +106,6 @@ export default function SpendingTab() {
   // Ensure we have arrays to work with
   const safeTransactions = Array.isArray(transactions) ? transactions : [];
   const safeCategories = Array.isArray(categories) ? categories : [];
-
-  const budgetPercentage =
-    summary.totalBudget > 0
-      ? ((summary.totalBudget - summary.remainingBudget) / summary.totalBudget) * 100
-      : 0;
 
   const getTransactionIcon = (type: string, categoryId: number | null) => {
     if (type === 'income') {
@@ -117,6 +155,96 @@ export default function SpendingTab() {
           ),
         }}
       />
+      {/* Hero gradient-like header band */}
+      <View className="px-4 pt-3">
+        <View
+          className="rounded-2xl bg-info-50 dark:bg-info-900/20 border border-info-100 dark:border-info-800 px-4 py-4"
+          style={{ overflow: 'hidden' }}
+        >
+          <View className="flex-row items-center justify-between">
+            <Text className="text-info-800 dark:text-info-200 text-base font-semibold">
+              Overview
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push('/transactions-modal')}
+              className="h-8 px-3 items-center justify-center rounded-full bg-white/70 dark:bg-white/10 border border-info-100 dark:border-info-800">
+              <Text className="text-info-700 dark:text-info-200 text-xs font-medium">All Transactions</Text>
+            </TouchableOpacity>
+          </View>
+          {/* Period selector */}
+          <View className="mt-3 flex-row gap-2">
+            {(
+              [
+                { key: 'this', label: 'This Month' },
+                { key: 'last', label: 'Last Month' },
+              ] as const
+            ).map((opt) => (
+              <TouchableOpacity
+                key={opt.key}
+                onPress={() => setPeriod(opt.key)}
+                className={`rounded-full border px-3 py-1 ${
+                  period === opt.key
+                    ? 'bg-blue-600 border-blue-600'
+                    : 'bg-white/70 dark:bg-white/10 border-info-100 dark:border-info-800'
+                }`}
+              >
+                <Text
+                  className={`text-xs font-medium ${
+                    period === opt.key ? 'text-white' : 'text-info-700 dark:text-info-200'
+                  }`}
+                >
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View className="mt-3 rounded-xl bg-white/40 dark:bg-white/5 px-3 py-3">
+            <View className="flex-row justify-between">
+              <View className="flex-1 mr-2 rounded-lg border border-info-100/60 dark:border-info-800 bg-white/70 dark:bg-white/10 px-3 py-2">
+                <Text className="text-[11px] text-info-700 dark:text-info-300">Income</Text>
+                <Text className="text-base font-semibold text-success-700 dark:text-success-400">
+                  ${displaySummary.totalIncome.toFixed(0)}
+                </Text>
+              </View>
+              <View className="flex-1 mr-2 rounded-lg border border-info-100/60 dark:border-info-800 bg-white/70 dark:bg-white/10 px-3 py-2">
+                <Text className="text-[11px] text-info-700 dark:text-info-300">Expenses</Text>
+                <Text className="text-base font-semibold text-error-700 dark:text-error-400">
+                  ${displaySummary.totalExpenses.toFixed(0)}
+                </Text>
+              </View>
+              <View className="flex-1 rounded-lg border border-info-100/60 dark:border-info-800 bg-white/70 dark:bg-white/10 px-3 py-2">
+                <Text className="text-[11px] text-info-700 dark:text-info-300">Remaining</Text>
+                <Text className="text-base font-semibold text-info-800 dark:text-info-300">
+                  ${displaySummary.remainingBudget.toFixed(0)}
+                </Text>
+              </View>
+            </View>
+            {/* Tiny progress bar showing budget used */}
+            <View className="mt-3 h-1.5 w-full rounded-full bg-info-100 dark:bg-info-900/40">
+              <View
+                className="h-1.5 rounded-full"
+                style={{
+                  width: `${Math.min(
+                    displaySummary.totalBudget > 0
+                      ? (displaySummary.totalExpenses / displaySummary.totalBudget) * 100
+                      : 0,
+                    100
+                  )}%`,
+                  backgroundColor:
+                    displaySummary.totalBudget > 0 &&
+                    displaySummary.totalExpenses / displaySummary.totalBudget >= 0.9
+                      ? '#EF4444'
+                      : displaySummary.totalBudget > 0 &&
+                        displaySummary.totalExpenses / displaySummary.totalBudget >= 0.7
+                      ? '#F59E0B'
+                      : '#0EA5E9',
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      </View>
+
       <ScrollView
         className="content-padding"
         refreshControl={
@@ -140,59 +268,54 @@ export default function SpendingTab() {
         scrollEventThrottle={16}>
         {/* Overview Cards */}
         <View className="flex-row gap-3">
-          <Card className="card-mobile flex-1 bg-app-surface">
+          <Card className="card-mobile flex-1 bg-info-50 border-info-100">
             <CardContent className="p-3">
               <View className="mb-2 flex-row items-center justify-between">
-                <Text className="text-xs font-medium text-app-text">Monthly Budget</Text>
+                <Text className="text-xs font-medium text-info-700">Monthly Budget</Text>
                 <Ionicons name="wallet-outline" size={16} color="#0EA5E9" />
               </View>
               <View className="space-y-1">
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-base font-semibold text-app-text">
-                    ${(summary.totalBudget - summary.remainingBudget).toFixed(0)}
+                  <Text className="text-base font-semibold text-info-800">
+                    ${(displaySummary.totalBudget - displaySummary.remainingBudget).toFixed(0)}
                   </Text>
-                  <Text className="text-[11px] text-app-text-muted">
-                    of ${summary.totalBudget.toFixed(0)}
+                  <Text className="text-[11px] text-info-600">
+                    of ${displaySummary.totalBudget.toFixed(0)}
                   </Text>
                 </View>
-                <View className="h-1.5 w-full rounded-full bg-app-border-muted">
+                <View className="h-1.5 w-full rounded-full bg-info-100">
                   <View
                     className="progress-bar h-1.5 rounded-full"
                     style={{
                       width: `${Math.min(budgetPercentage, 100)}%`,
-                      backgroundColor:
-                        budgetPercentage >= 90
-                          ? '#EF4444'
-                          : budgetPercentage >= 70
-                            ? '#F59E0B'
-                            : '#22C55E',
+                      backgroundColor: budgetPercentage >= 90 ? '#EF4444' : budgetPercentage >= 70 ? '#F59E0B' : '#0EA5E9',
                     }}
                   />
                 </View>
-                <Text className="text-[11px] text-app-text-secondary">
-                  ${summary.remainingBudget.toFixed(0)} remaining
+                <Text className="text-[11px] text-info-700">
+                  ${displaySummary.remainingBudget.toFixed(0)} remaining
                 </Text>
               </View>
             </CardContent>
           </Card>
 
-          <Card className="card-mobile flex-1 bg-app-surface">
+          <Card className="card-mobile flex-1 bg-error-50 border-error-100">
             <CardContent className="p-3">
               <View className="mb-2 flex-row items-center justify-between">
-                <Text className="text-xs font-medium text-app-text">Total Spending</Text>
+                <Text className="text-xs font-medium text-error-700">Total Spending</Text>
                 <Ionicons name="trending-down-outline" size={16} color="#EF4444" />
               </View>
               <View className="space-y-1">
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-base font-semibold text-financial-negative">
-                    ${summary.totalExpenses.toFixed(0)}
+                  <Text className="text-base font-semibold text-error-700">
+                    ${displaySummary.totalExpenses.toFixed(0)}
                   </Text>
                   <Text
-                    className={`text-[11px] ${budgetPercentage < 90 ? 'text-financial-positive' : 'text-financial-negative'}`}>
+                    className={`text-[11px] ${budgetPercentage < 90 ? 'text-success-700' : 'text-error-700'}`}>
                     {budgetPercentage < 90 ? '↓ On track' : '↑ Over budget'}
                   </Text>
                 </View>
-                <Text className="text-[11px] text-app-text-secondary">
+                <Text className="text-[11px] text-error-700">
                   {budgetPercentage.toFixed(0)}% of budget used
                 </Text>
               </View>
@@ -219,15 +342,20 @@ export default function SpendingTab() {
                 </Text>
               </View>
             ) : (
-              <View className="space-y-3">
-                {safeTransactions.slice(0, 8).map((transaction: any) => {
+              <View className="space-y-1">
+                {safeTransactions.slice(0, 8).map((transaction: any, idx: number) => {
                   const iconInfo = getTransactionIcon(transaction.type, transaction.categoryId);
                   const isExpense = transaction.type === 'expense';
 
                   return (
                     <View
                       key={transaction.id}
-                      className="flex-row items-center justify-between py-1.5">
+                      className={`flex-row items-center justify-between rounded-lg border px-3 py-2 ${
+                        idx % 2 === 0
+                          ? 'bg-app-surface-alt border-app-border'
+                          : 'bg-app-surface border-app-border'
+                      }`}
+                    >
                       <View className="min-w-0 flex-1 flex-row items-center">
                         <View
                           className="mr-3 h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
@@ -235,10 +363,10 @@ export default function SpendingTab() {
                           <Text>{iconInfo.icon.includes('fa-') ? '💳' : iconInfo.icon}</Text>
                         </View>
                         <View className="min-w-0 flex-1">
-                          <Text className="text-sm font-medium text-app-text" numberOfLines={1}>
+                          <Text className="text-sm font-medium text-app-text dark:text-app-text-dark" numberOfLines={1}>
                             {transaction.description}
                           </Text>
-                          <Text className="text-[11px] text-app-text-muted">
+                          <Text className="text-[11px] text-app-text-muted dark:text-app-text-muted-dark">
                             {getCategoryName(transaction.categoryId)} •{' '}
                             {formatDate(transaction.date)}
                           </Text>

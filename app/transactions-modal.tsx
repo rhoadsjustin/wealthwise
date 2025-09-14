@@ -145,7 +145,7 @@ export default function TransactionsModal() {
   return (
     <View className="flex-1 bg-app-background">
       {/* Header */}
-      <View className="border-b border-app-border bg-app-surface px-4 pb-4 pt-12">
+      <View className="border-b border-app-border bg-app-surface-alt px-4 pb-4 pt-12">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center">
             <TouchableOpacity
@@ -328,7 +328,7 @@ export default function TransactionsModal() {
           </View>
 
           <ScrollView className="flex-1 px-4 pt-4">
-            <View className="space-y-2 pb-6">
+            <View className="space-y-1 pb-6">
               {categories
                 .filter((cat: any) => parseFloat(cat.budget) > 0) // Only show categories with budgets for expenses
                 .map((category: any) => (
@@ -336,7 +336,9 @@ export default function TransactionsModal() {
                     key={category.id}
                     onPress={() => handleCategorySelect(category.id)}
                     disabled={updatingTransactions.size > 0}
-                    className={`rounded-lg border border-app-border bg-app-surface p-4 ${updatingTransactions.size > 0 ? 'opacity-50' : ''}`}>
+                    className={`rounded-lg border p-4 ${
+                      updatingTransactions.size > 0 ? 'opacity-50' : ''
+                    } bg-app-surface-alt border-app-border`}>
                     <View className="flex-row items-center">
                       <View
                         className="mr-3 h-10 w-10 items-center justify-center rounded-lg"
