@@ -22,6 +22,7 @@ import { useAppData } from '@/app/_layout';
 import { Ionicons } from '@expo/vector-icons';
 import CreateCategoryModal from './CreateCategoryModal';
 import { selection, success as hapticSuccess } from '../lib/haptics';
+import type { Transaction as Tx } from '@/lib/schema/schema';
 
 interface TransactionFormData {
   description: string;
@@ -33,11 +34,13 @@ interface TransactionFormData {
 
 interface AddTransactionModalProps {
   onClose: () => void;
+  mode?: 'create' | 'edit';
+  initialTransaction?: Tx | null;
 }
 
-export default function AddTransactionModal({ onClose }: AddTransactionModalProps) {
+export default function AddTransactionModal({ onClose, mode = 'create', initialTransaction = null }: AddTransactionModalProps) {
   const { toast } = useToast();
-  const { createTransaction, getCategories } = useData();
+  const { createTransaction, updateTransaction, getCategories } = useData();
   const { refreshAppData } = useAppData();
   const [submitting, setSubmitting] = React.useState(false);
   const [categories, setCategories] = React.useState<any[]>([]);
@@ -70,6 +73,30 @@ export default function AddTransactionModal({ onClose }: AddTransactionModalProp
   });
 
   const transactionType = watch('type');
+  const amountRaw = watch('amount') || '';
+  const [amountDisplay, setAmountDisplay] = React.useState('');
+
+  useEffect(() => {
+    // Keep display string in sync when raw value changes programmatically
+    if (!amountRaw) {
+      setAmountDisplay('');
+      return;
+    }
+    const num = Number(amountRaw);
+    if (!isNaN(num)) {
+      try {
+        const formatted = new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(num);
+        setAmountDisplay(formatted);
+      } catch {
+        setAmountDisplay(`$${num.toFixed(2)}`);
+      }
+    }
+  }, [amountRaw]);
 
   // Clear categoryId when switching to income type and reset form properly
   useEffect(() => {
@@ -78,17 +105,27 @@ export default function AddTransactionModal({ onClose }: AddTransactionModalProp
     }
   }, [transactionType, setValue]);
 
-  // Reset form when modal opens
+  // Initialize/reset form on open and when switching modes or initialTransaction changes
   useEffect(() => {
-    reset({
-      type: 'expense',
-      description: '',
-      amount: '',
-      categoryId: null,
-    });
-  }, [reset]);
+    if (mode === 'edit' && initialTransaction) {
+      reset({
+        type: initialTransaction.type,
+        description: initialTransaction.description || '',
+        amount: initialTransaction.amount || '',
+        categoryId: initialTransaction.type === 'income' ? null : (initialTransaction.categoryId ?? null),
+        date: initialTransaction.date,
+      });
+    } else {
+      reset({
+        type: 'expense',
+        description: '',
+        amount: '',
+        categoryId: null,
+      });
+    }
+  }, [reset, mode, initialTransaction]);
 
-  const submitCreate = async (data: TransactionFormData) => {
+  const submitSave = async (data: TransactionFormData) => {
     try {
       setSubmitting(true);
       const transactionData = {
@@ -96,15 +133,21 @@ export default function AddTransactionModal({ onClose }: AddTransactionModalProp
         amount: data.amount,
         type: data.type,
         categoryId: data.type === 'income' ? null : data.categoryId || null,
-        date: data.date || new Date().toISOString(),
-      };
-      await createTransaction(transactionData);
+        date: data.date || (mode === 'edit' && initialTransaction?.date) || new Date().toISOString().split('T')[0],
+      } as const;
+
+      if (mode === 'edit' && initialTransaction?.id != null) {
+        await updateTransaction(initialTransaction.id, transactionData as any);
+      } else {
+        await createTransaction(transactionData as any);
+      }
       // Ensure dashboard reflects the addition immediately
       await refreshAppData();
       hapticSuccess();
       toast({
-        title: 'Transaction Added',
-        description: 'Your transaction has been successfully added.',
+        title: mode === 'edit' ? 'Transaction Updated' : 'Transaction Added',
+        description:
+          mode === 'edit' ? 'Your changes have been saved.' : 'Your transaction has been successfully added.',
       });
       reset();
       onClose();
@@ -146,10 +189,10 @@ export default function AddTransactionModal({ onClose }: AddTransactionModalProp
       amount: data.amount,
       type: data.type,
       categoryId: data.type === 'income' ? null : data.categoryId || null,
-      date: new Date().toISOString(),
+      date: new Date().toISOString().split('T')[0],
     };
 
-    submitCreate(submitData);
+    submitSave(submitData);
   };
 
   return (
@@ -165,7 +208,7 @@ export default function AddTransactionModal({ onClose }: AddTransactionModalProp
                 className="mb-3 h-1.5 w-12 rounded-full bg-border-default"
                 accessibilityElementsHidden
               />
-              <Text className="text-lg font-semibold text-foreground-primary">Add Transaction</Text>
+              <Text className="text-lg font-semibold text-foreground-primary">{mode === 'edit' ? 'Edit Transaction' : 'Add Transaction'}</Text>
             </View>
           </View>
         </SafeAreaView>
@@ -245,20 +288,39 @@ export default function AddTransactionModal({ onClose }: AddTransactionModalProp
                 <View>
                   <Label className="mb-2 text-sm font-medium text-foreground-primary">Amount</Label>
                   <Input
-                    keyboardType="numeric"
-                    value={watch('amount') || ''}
+                    keyboardType={Platform.OS === 'ios' ? 'decimal-pad' : 'numeric'}
+                    returnKeyType="done"
+                    value={amountDisplay}
                     onChangeText={(value) => {
-                      // Only allow numbers and decimal point
+                      // Strip currency symbols and grouping, keep digits and single dot
                       const cleaned = value.replace(/[^0-9.]/g, '');
-                      // Prevent multiple decimal points
                       const parts = cleaned.split('.');
-                      const formatted =
-                        parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : cleaned;
-                      setValue('amount', formatted);
+                      const normalized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : cleaned;
+                      // Limit to two decimal places if present
+                      const [intPart, decPart] = normalized.split('.');
+                      const limited = decPart !== undefined ? `${intPart}.${decPart.slice(0, 2)}` : intPart;
+                      setValue('amount', limited);
+                      // Display formatted currency for UX
+                      if (limited === '' || isNaN(Number(limited))) {
+                        setAmountDisplay('');
+                      } else {
+                        try {
+                          const formatted = new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: 'USD',
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          }).format(Number(limited));
+                          setAmountDisplay(formatted);
+                        } catch {
+                          setAmountDisplay(`$${Number(limited).toFixed(2)}`);
+                        }
+                      }
                     }}
-                    placeholder="0.00"
+                    placeholder="$0.00"
                     variant="outline"
                     onFocus={() => selection()}
+                    onSubmitEditing={handleSubmit(onSubmit)}
                   />
                   {errors.amount && (
                     <Text className="mt-1 text-xs text-error-600">
@@ -376,7 +438,7 @@ export default function AddTransactionModal({ onClose }: AddTransactionModalProp
                 loading={submitting}
                 className="w-full"
                 size="lg">
-                <Text>Save</Text>
+                <Text>{mode === 'edit' ? 'Save Changes' : 'Save'}</Text>
               </Button>
             </View>
           </SafeAreaView>

@@ -13,21 +13,22 @@ import {
 import { useVectorStore } from '../../context/RAGContext';
 import { useAppData } from '../_layout';
 import { Ionicons } from '@expo/vector-icons';
-import FAB from '@/components/FAB';
-import { useRouter } from 'expo-router';
+// Chat-focused screen
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '@/context/useAuth';
 import type {
   Transaction,
   Category,
   DashboardSummary,
   CategoryBreakdown,
 } from '../../context/DataContext';
+import { useRAG } from 'react-native-rag';
 
 function InsightsTab() {
-  const router = useRouter();
-  const { vectorStore } = useVectorStore();
+  const { vectorStore, llm } = useVectorStore();
   const { summary, insights, user, transactions, categories, summaryLoading, insightsLoading } =
     useAppData();
+  const { username: authUsername } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [query, setQuery] = useState('');
@@ -37,18 +38,20 @@ function InsightsTab() {
   const [isLoading, setIsLoading] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
   const messagesScrollRef = useRef<ScrollView | null>(null);
+  const liveAssistantIndexRef = useRef<number | null>(null);
+
+  const rag = useRAG({ vectorStore, llm });
 
   // Initialize conversation and load data into vector store
   useEffect(() => {
-    if (!vectorStore || !transactions || !categories || !summary || dataLoaded) return;
-
+    if (!rag.isReady || !transactions || !categories || !summary || dataLoaded) return;
+    console.log('Vector Store: ', vectorStore);
     const loadFinancialData = async () => {
       try {
         setIsLoading(true);
 
         // Create documents from your financial data
         const documents = [];
-
         // Transaction documents
         if (transactions && transactions.length > 0) {
           transactions.forEach((tx: Transaction) => {
@@ -111,7 +114,14 @@ function InsightsTab() {
 
         // Add documents to vector store
         if (documents.length > 0) {
-          await vectorStore.addDocuments(documents);
+          console.log('Adding documents to vector store...');
+          for (const doc of documents) {
+            try {
+              await rag.addDocument(doc.pageContent, doc.metadata);
+            } catch (e) {
+              console.warn('Add doc failed:', e);
+            }
+          }
         }
 
         setDataLoaded(true);
@@ -125,7 +135,7 @@ function InsightsTab() {
           },
           {
             role: 'assistant',
-            content: `Hi ${user?.username || 'there'}! I can help you understand your finances. Try asking questions like "How much did I spend on groceries this month?" or "Am I on track with my budget?"`,
+            content: `Hi ${authUsername || user?.username || 'there'}! I can help you understand your finances. Try asking questions like "How much did I spend on groceries this month?" or "Am I on track with my budget?"`,
           },
         ]);
       } catch (error) {
@@ -136,72 +146,9 @@ function InsightsTab() {
     };
 
     loadFinancialData();
-  }, [vectorStore, transactions, categories, summary, insights, user, dataLoaded]);
+  }, [rag.isReady, transactions, categories, summary, insights, user, authUsername, dataLoaded]);
 
-  // Generate automated financial insights
-  const generateSmartInsights = () => {
-    if (!summary || !transactions || !categories) return [];
-
-    const smartInsights = [];
-
-    // Budget status insight
-    const budgetUsedPercentage =
-      summary.totalBudget > 0 ? (summary.totalExpenses / summary.totalBudget) * 100 : 0;
-    smartInsights.push({
-      title: 'Budget Status',
-      content: `You've used ${budgetUsedPercentage.toFixed(0)}% of your monthly budget ($${summary.totalExpenses.toFixed(2)} of $${summary.totalBudget.toFixed(2)})`,
-      icon:
-        budgetUsedPercentage > 90
-          ? 'warning'
-          : budgetUsedPercentage > 75
-            ? 'alert'
-            : 'checkmark-circle',
-      color:
-        budgetUsedPercentage > 90 ? '#f44336' : budgetUsedPercentage > 75 ? '#ff9800' : '#4caf50',
-    });
-
-    // Top spending category from category breakdown
-    if (summary.categoryBreakdown && summary.categoryBreakdown.length > 0) {
-      const topCategory = summary.categoryBreakdown.reduce((prev, current) =>
-        prev.spent > current.spent ? prev : current
-      );
-
-      smartInsights.push({
-        title: 'Top Spending Category',
-        content: `Your highest spending is in ${topCategory.name} at $${topCategory.spent.toFixed(2)}`,
-        icon: 'trending-up',
-        color: '#2196f3',
-      });
-    }
-
-    // Category budget warnings from category breakdown
-    if (summary.categoryBreakdown) {
-      summary.categoryBreakdown.forEach((breakdown: CategoryBreakdown) => {
-        if (breakdown.percentage > 85) {
-          smartInsights.push({
-            title: `${breakdown.name} Budget Alert`,
-            content: `You've used ${breakdown.percentage.toFixed(0)}% of your ${breakdown.name} budget`,
-            icon: breakdown.percentage > 100 ? 'alert-circle' : 'alert',
-            color: breakdown.percentage > 100 ? '#f44336' : '#ff9800',
-          });
-        }
-      });
-    }
-
-    // Income vs expenses insight
-    if (summary.totalIncome > 0) {
-      const savingsRate =
-        ((summary.totalIncome - summary.totalExpenses) / summary.totalIncome) * 100;
-      smartInsights.push({
-        title: 'Savings Rate',
-        content: `You're saving ${savingsRate.toFixed(0)}% of your income ($${(summary.totalIncome - summary.totalExpenses).toFixed(2)})`,
-        icon: savingsRate > 20 ? 'trending-up' : savingsRate > 0 ? 'remove' : 'trending-down',
-        color: savingsRate > 20 ? '#4caf50' : savingsRate > 0 ? '#ff9800' : '#f44336',
-      });
-    }
-
-    return smartInsights;
-  };
+  // Removed Smart Insights to focus on chat
 
   // Handle user query submission
   const handleSubmitQuery = async () => {
@@ -213,19 +160,49 @@ function InsightsTab() {
       // Add user message
       const userMessage = { role: 'user' as const, content: query };
       setMessages((prev) => [...prev, userMessage]);
-
-      // Retrieve relevant documents
-      const searchResults = await vectorStore.similaritySearch(query, 5);
-
-      // Format context from retrieved documents
-      const context = searchResults.map((doc) => doc.pageContent).join('\n');
-
-      // Generate response based on context and query
-      const aiResponse = await generateResponse(query, context);
-
-      // Add AI response
-      setMessages((prev) => [...prev, { role: 'assistant', content: aiResponse }]);
       setQuery('');
+
+      // Prepare chat history for RAG
+      const history = [
+        {
+          role: 'system' as const,
+          content:
+            'You are a helpful personal finance assistant running on-device. Answer using only the provided context from the user\'s transactions, categories, and budget summary. Prefer the current month unless the user specifies a timeframe. Show currency as $X,XXX.XX. Be concise and actionable.',
+        },
+        ...messages,
+        userMessage,
+      ];
+
+      // Streaming placeholder; track index for live updates
+      setMessages((prev) => {
+        const idx = prev.length;
+        liveAssistantIndexRef.current = idx;
+        return [...prev, { role: 'assistant', content: '' }];
+      });
+
+      // Generate with RAG augmentation
+      const response = await rag.generate(history, {
+        augmentedGeneration: true,
+        k: 5,
+        // Optional: custom prompt formatting
+        promptGenerator: (msgs, retrieved) => {
+          const last = msgs[msgs.length - 1];
+          const ctx = retrieved
+            .map((d, i) => `#${i + 1}: ${d.content}`)
+            .join('\n');
+          return `User question: ${last?.content}\nContext (most relevant first):\n${ctx}\nGuidelines: Use only the context. If unclear, ask a brief follow-up.`;
+        },
+      });
+
+      // Ensure final text is set (in case last token callback missed)
+      setMessages((prev) => {
+        const next = [...prev];
+        const idx = liveAssistantIndexRef.current;
+        if (idx != null && next[idx]) {
+          next[idx] = { role: 'assistant', content: response };
+        }
+        return next;
+      });
     } catch (error) {
       console.error('Error processing query:', error);
       setMessages((prev) => [
@@ -239,6 +216,18 @@ function InsightsTab() {
       setIsLoading(false);
     }
   };
+
+  // Live streaming: update the last assistant placeholder as tokens arrive
+  useEffect(() => {
+    if (!rag.isGenerating) return;
+    const idx = liveAssistantIndexRef.current;
+    if (idx == null) return;
+    setMessages((prev) => {
+      const next = [...prev];
+      if (next[idx]) next[idx] = { role: 'assistant', content: rag.response || '' };
+      return next;
+    });
+  }, [rag.response, rag.isGenerating]);
 
   // Enhanced response generation based on query patterns
   const generateResponse = async (query: string, context: string) => {
@@ -337,121 +326,106 @@ function InsightsTab() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 82 : 0}
       style={{ flex: 1 }}>
       <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 12) + 72 }]}>
-      {/* Smart Insights Section */}
-      <View style={styles.insightsContainer}>
-        <Text style={styles.sectionTitle}>Smart Insights</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {generateSmartInsights().map((insight, index) => (
-            <View key={index} style={styles.insightCard}>
-              <View style={[styles.iconContainer, { backgroundColor: insight.color }]}>
-                <Ionicons name={insight.icon as any} size={24} color="white" />
-              </View>
-              <Text style={styles.insightTitle}>{insight.title}</Text>
-              <Text style={styles.insightContent}>{insight.content}</Text>
-            </View>
-          ))}
-        </ScrollView>
-      </View>
+        {/* Smart Insights removed to focus on AI chat */}
 
-      {/* Generated Insights from Backend */}
-      {insights && insights.length > 0 && (
-        <View style={styles.insightsContainer}>
-          <Text style={styles.sectionTitle}>System Insights</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {insights.map((insight, index) => (
-              <View key={index} style={styles.insightCard}>
-                <View
-                  style={[
-                    styles.iconContainer,
-                    {
-                      backgroundColor:
-                        insight.severity === 'error'
-                          ? '#f44336'
-                          : insight.severity === 'warning'
-                            ? '#ff9800'
-                            : '#4caf50',
-                    },
-                  ]}>
-                  <Ionicons
-                    name={
-                      insight.type === 'alert'
-                        ? 'alert-circle'
-                        : insight.type === 'suggestion'
-                          ? 'bulb'
-                          : 'trending-up'
-                    }
-                    size={24}
-                    color="white"
-                  />
+        {/* Generated Insights from Backend */}
+        {false && insights && insights.length > 0 && (
+          <View style={styles.insightsContainer}>
+            <Text style={styles.sectionTitle}>System Insights</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {insights.map((insight, index) => (
+                <View key={index} style={styles.insightCard}>
+                  <View
+                    style={[
+                      styles.iconContainer,
+                      {
+                        backgroundColor:
+                          insight.severity === 'error'
+                            ? '#f44336'
+                            : insight.severity === 'warning'
+                              ? '#ff9800'
+                              : '#4caf50',
+                      },
+                    ]}>
+                    <Ionicons
+                      name={
+                        insight.type === 'alert'
+                          ? 'alert-circle'
+                          : insight.type === 'suggestion'
+                            ? 'bulb'
+                            : 'trending-up'
+                      }
+                      size={24}
+                      color="white"
+                    />
+                  </View>
+                  <Text style={styles.insightTitle}>{insight.title}</Text>
+                  <Text style={styles.insightContent}>{insight.description}</Text>
                 </View>
-                <Text style={styles.insightTitle}>{insight.title}</Text>
-                <Text style={styles.insightContent}>{insight.description}</Text>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* Chat Interface */}
-      <View style={styles.chatContainer}>
-        <Text style={styles.sectionTitle}>Ask About Your Finances</Text>
-
-        <ScrollView
-          ref={(r) => (messagesScrollRef.current = r)}
-          style={styles.messagesContainer}
-          contentContainerStyle={styles.messagesContent}
-          keyboardShouldPersistTaps="handled"
-          onContentSizeChange={() => messagesScrollRef.current?.scrollToEnd({ animated: true })}>
-          {messages
-            .filter((m) => m.role !== 'system')
-            .map((message, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.messageContainer,
-                  message.role === 'user' ? styles.userMessage : styles.aiMessage,
-                ]}>
-                <Text
-                  style={[
-                    styles.messageText,
-                    message.role === 'user' ? styles.userMessageText : styles.aiMessageText,
-                  ]}>
-                  {message.content}
-                </Text>
-              </View>
-            ))}
-          {isLoading && (
-            <View style={styles.typingIndicator}>
-              <ActivityIndicator size="small" color="#0000ff" />
-              <Text style={styles.typingText}>Thinking...</Text>
-            </View>
-          )}
-        </ScrollView>
-
-        <SafeAreaView edges={["bottom"]}>
-          <View style={[styles.inputContainer, { marginBottom: Math.max(insets.bottom, 8) }]}>
-            <TextInput
-              style={styles.input}
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Ask about your finances..."
-              multiline
-              maxLength={200}
-              returnKeyType="send"
-              onSubmitEditing={handleSubmitQuery}
-            />
-            <TouchableOpacity
-              style={[styles.sendButton, !query.trim() && styles.disabledButton]}
-              onPress={handleSubmitQuery}
-              disabled={!query.trim() || isLoading}>
-              <Ionicons name="send" size={20} color="white" />
-            </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
-        </SafeAreaView>
+        )}
+
+        {/* Chat Interface */}
+        <View style={styles.chatContainer}>
+          <Text style={styles.sectionTitle}>Ask About Your Finances</Text>
+
+          <ScrollView
+            ref={(r) => (messagesScrollRef.current = r)}
+            style={styles.messagesContainer}
+            contentContainerStyle={styles.messagesContent}
+            keyboardShouldPersistTaps="handled"
+            onContentSizeChange={() => messagesScrollRef.current?.scrollToEnd({ animated: true })}>
+            {messages
+              .filter((m) => m.role !== 'system')
+              .map((message, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.messageContainer,
+                    message.role === 'user' ? styles.userMessage : styles.aiMessage,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.messageText,
+                      message.role === 'user' ? styles.userMessageText : styles.aiMessageText,
+                    ]}>
+                    {message.content}
+                  </Text>
+                </View>
+              ))}
+            {isLoading && (
+              <View style={styles.typingIndicator}>
+                <ActivityIndicator size="small" color="#6B7280" />
+                <Text style={styles.typingText}>Thinking…</Text>
+              </View>
+            )}
+          </ScrollView>
+
+          <SafeAreaView edges={['bottom']}>
+            <View style={[styles.inputContainer, { marginBottom: Math.max(insets.bottom, 8) }]}>
+              <TextInput
+                style={styles.input}
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Ask about your finances..."
+                multiline
+                maxLength={200}
+                returnKeyType="send"
+                onSubmitEditing={handleSubmitQuery}
+              />
+              <TouchableOpacity
+                style={[styles.sendButton, !query.trim() && styles.disabledButton]}
+                onPress={handleSubmitQuery}
+                disabled={!query.trim() || isLoading}>
+                <Ionicons name="send" size={20} color="white" />
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </View>
+        {/* Close outer container view before floating FAB */}
       </View>
-      {/* Close outer container view before floating FAB */}
-      </View>
-      <FAB onPress={() => router.push('/add-transaction')} />
     </KeyboardAvoidingView>
   );
 }
@@ -477,40 +451,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 15,
     color: '#333',
-  },
-  insightsContainer: {
-    marginBottom: 30,
-  },
-  insightCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginRight: 12,
-    width: 280,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  insightTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#333',
-  },
-  insightContent: {
-    fontSize: 16,
-    color: '#666',
-    lineHeight: 22,
   },
   chatContainer: {
     flex: 1,

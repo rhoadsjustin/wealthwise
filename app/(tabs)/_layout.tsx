@@ -30,24 +30,9 @@ export default function TabLayout() {
         <Icon sf={{ default: 'wallet.bifold', selected: 'wallet.bifold.fill' }} />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="reports">
-        <Label>Reports</Label>
-        <Icon
-          sf={{
-            default: 'figure.mind.and.body.circle',
-            selected: 'figure.mind.and.body.circle.fill',
-          }}
-        />
-      </NativeTabs.Trigger>
-
       <NativeTabs.Trigger name="insights">
         <Label>Insights</Label>
         <Icon sf={{ default: 'apple.intelligence', selected: 'apple.intelligence' }} />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="settings">
-        <Label>Settings</Label>
-        <Icon sf={{ default: 'gear.circle', selected: 'gear.circle.fill' }} />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

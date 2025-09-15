@@ -6,10 +6,10 @@ The DataContext was simplified to use direct SQLite storage with expo-sqlite, re
 
 ## Changes Made
 
-### 1. Development Mode Setup
-- Added `DEVELOPMENT_MODE = true` flag to control data clearing behavior
-- In development mode: Clears all data stores and react-query cache on every app launch
-- In production mode: Only initializes data if none exists
+### 1. Seeding/Development Mode Setup
+- Added `DEVELOPMENT_MODE` controlled by `EXPO_PUBLIC_SEED_DEMO` ("true" or "1")
+- Development mode: clears data and seeds full demo data on each launch
+- Production/TestFlight: preserves data; seeds only starter categories if none exist
 
 ### 2. Database Schema Fix
 - **Issue**: Database schema required `password` field for user table (NOT NULL constraint)
@@ -35,11 +35,10 @@ Set isInitialized = true
 Setup API compatibility layer
 ```
 
-### 4. Demo Data Enhanced
-- **Categories**: 19 comprehensive categories with emojis, colors, and budgets
-- **Transactions**: Sample income and expense transactions
-- **Bank Accounts**: Demo checking, savings accounts
-- **User**: Demo user with all required fields including password
+### 4. Demo/Starter Data
+- Dev demo seed: categories, sample transactions, demo bank accounts
+- Production starter seed: categories only (zero budgets); no transactions/accounts
+- User: neutral local user record only if needed (not "demo_user")
 
 ### 5. Code Structure Improvements
 - Moved `initializeDemoData` function inline within useEffect to avoid dependency issues
@@ -77,9 +76,9 @@ When the app launches in development mode, you should see these console logs:
 2. `🔄 Initializing demo data...`
 3. `📁 Creating 19 demo categories...`
 4. `✅ Demo categories created`
-5. `💰 Creating 3 demo transactions...`
+5. `💰 Creating demo transactions...`
 6. `✅ Demo transactions created`
-7. `🏦 Creating 2 demo bank accounts...`
+7. `🏦 Creating demo bank accounts...`
 8. `✅ Demo bank accounts created`
 9. `🎉 All demo data initialization complete!`
 10. `✅ Demo data reinitialized successfully`
@@ -92,9 +91,10 @@ When the app launches in development mode, you should see these console logs:
 5. Switch to production mode when ready for normal operation
 
 ## Toggle Development Mode
-To switch between development and production mode:
-```typescript
-// In DataContext.tsx line ~144
-const DEVELOPMENT_MODE = true;  // Development: clears data every launch
-const DEVELOPMENT_MODE = false; // Production: preserves existing data
+Set the environment variable before building/running:
+
+```bash
+EXPO_PUBLIC_SEED_DEMO=true expo run:ios
+# or
+EXPO_PUBLIC_SEED_DEMO=1 expo start
 ```

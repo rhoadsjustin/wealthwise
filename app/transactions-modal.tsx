@@ -10,17 +10,24 @@ import {
   LayoutAnimation,
   UIManager,
 } from 'react-native';
+import SwipeableRow from '@/components/SwipeableRow';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Card, CardContent } from '../components/Card';
 import { useAppData } from './_layout';
 import { useTransactions } from '../context/DataContext';
+import {
+  impactLight,
+  selection,
+  success as hapticSuccess,
+  warning as hapticWarn,
+} from '../lib/haptics';
 
 export default function TransactionsModal() {
   const router = useRouter();
   const { transactions, categories } = useAppData();
-  const { updateTransaction } = useTransactions();
+  const { updateTransaction, deleteTransaction } = useTransactions();
   const [filter, setFilter] = useState<'all' | 'income' | 'expense' | 'uncategorized'>('all');
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -48,7 +55,7 @@ export default function TransactionsModal() {
   };
 
   const getCategoryName = (categoryId: number | null) => {
-    if (!categoryId) return 'Uncategorized';
+    if (!categoryId) return null;
     const category = categories.find((c: any) => c.id === categoryId);
     return category?.name || 'Unknown';
   };
@@ -102,6 +109,7 @@ export default function TransactionsModal() {
 
   const handleCategorizeTransaction = (transaction: any) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    impactLight();
     setSelectedTransaction(transaction);
     setShowCategoryModal(true);
   };
@@ -116,6 +124,7 @@ export default function TransactionsModal() {
 
       try {
         await updateTransaction(transactionId, { categoryId });
+        hapticSuccess();
 
         // Close modal and clear selection
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -124,6 +133,7 @@ export default function TransactionsModal() {
       } catch (error) {
         console.error('Failed to update transaction:', error);
         Alert.alert('Error', 'Failed to update transaction category. Please try again.');
+        hapticWarn();
       } finally {
         // Remove from updating set
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -136,6 +146,34 @@ export default function TransactionsModal() {
     }
   };
 
+  const handleDeleteTransaction = (transactionId: number) => {
+    selection();
+    Alert.alert('Delete Transaction', 'Are you sure you want to delete this transaction?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          setUpdatingTransactions((prev) => new Set(prev).add(transactionId));
+          try {
+            await deleteTransaction(transactionId);
+            hapticSuccess();
+          } catch (e) {
+            console.error('Failed to delete transaction:', e);
+            hapticWarn();
+          } finally {
+            setUpdatingTransactions((prev) => {
+              const next = new Set(prev);
+              next.delete(transactionId);
+              return next;
+            });
+          }
+        },
+      },
+    ]);
+  };
+
   const handleCloseCategoryModal = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setShowCategoryModal(false);
@@ -145,7 +183,7 @@ export default function TransactionsModal() {
   return (
     <View className="flex-1 bg-app-background">
       {/* Header */}
-      <View className="border-b border-app-border bg-app-surface-alt px-4 pb-4 pt-12">
+      <View className="bg-app-surface-alt border-b border-app-border px-4 pb-4 pt-12">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center">
             <TouchableOpacity
@@ -227,70 +265,110 @@ export default function TransactionsModal() {
               const isUpdating = updatingTransactions.has(transaction.id);
 
               return (
-                <Card key={transaction.id} variant="default" className="bg-app-surface">
-                  <CardContent className="p-4">
-                    <View className="flex-row items-center justify-between">
-                      <View className="min-w-0 flex-1 flex-row items-center">
-                        <View
-                          className="mr-3 h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
-                          style={{ backgroundColor: `${iconInfo.color}20` }}>
-                          <Text className="text-base">
-                            {iconInfo.icon.includes('fa-') ? '💳' : iconInfo.icon}
-                          </Text>
-                        </View>
-                        <View className="min-w-0 flex-1">
-                          <Text className="text-base font-medium text-app-text" numberOfLines={1}>
-                            {transaction.description}
-                          </Text>
-                          <View className="mt-1 flex-row items-center">
-                            <Text
-                              className={`text-sm ${
-                                needsCategorization ? 'text-orange-600' : 'text-app-text-secondary'
-                              }`}>
-                              {getCategoryName(transaction.categoryId)}
-                            </Text>
-                            {isUpdating ? (
-                              <View className="ml-2 rounded-full bg-blue-100 px-2 py-0.5">
-                                <Text className="text-xs font-medium text-blue-600">
-                                  Updating...
-                                </Text>
-                              </View>
-                            ) : needsCategorization ? (
-                              <View className="ml-2 rounded-full bg-orange-100 px-2 py-0.5">
-                                <Text className="text-xs font-medium text-orange-600">
-                                  Needs category
-                                </Text>
-                              </View>
-                            ) : null}
-                          </View>
-                          <Text className="mt-1 text-xs text-app-text-muted">
-                            {formatDate(transaction.date)}
-                          </Text>
-                        </View>
-                      </View>
-                      <View className="ml-3 flex-shrink-0 items-end">
-                        <Text
-                          className={`text-lg font-semibold ${
-                            isExpense ? 'text-financial-negative' : 'text-financial-positive'
-                          }`}>
-                          {isExpense ? '-' : '+'}$
-                          {Math.abs(parseFloat(transaction.amount)).toFixed(2)}
-                        </Text>
-                        {isUpdating ? (
-                          <Text className="mt-1 text-xs font-medium text-gray-400">
-                            Updating...
-                          </Text>
-                        ) : needsCategorization ? (
-                          <TouchableOpacity
-                            className="mt-1"
-                            onPress={() => handleCategorizeTransaction(transaction)}>
-                            <Text className="text-xs font-medium text-blue-600">Categorize</Text>
-                          </TouchableOpacity>
-                        ) : null}
-                      </View>
+                <SwipeableRow
+                  key={transaction.id}
+                  leftWidth={64}
+                  rightWidth={128}
+                  leftActions={({ close }) => (
+                    <View className="h-full flex-row items-stretch">
+                      <TouchableOpacity
+                        onPress={() => {
+                          handleCategorizeTransaction(transaction);
+                          close();
+                        }}
+                        activeOpacity={0.9}
+                        className="h-full w-16 items-center justify-center rounded-l-xl border border-success-200 bg-success-100 dark:border-success-800 dark:bg-success-900/30"
+                        accessibilityLabel="Categorize">
+                        <Ionicons name="pricetags-outline" size={20} color="#15803d" />
+                      </TouchableOpacity>
                     </View>
-                  </CardContent>
-                </Card>
+                  )}
+                  rightActions={({ close }) => (
+                    <View className="h-full flex-row items-stretch rounded-r-xl">
+                      <TouchableOpacity
+                        onPress={() => {
+                          selection();
+                          close();
+                          router.push(`/edit-transaction/${transaction.id}`);
+                        }}
+                        activeOpacity={0.9}
+                        className="h-full w-16 items-center justify-center border border-primary-200 bg-primary-100 dark:border-primary-800 dark:bg-primary-900/30"
+                        accessibilityLabel="Edit">
+                        <Ionicons name="create-outline" size={20} color="#0369a1" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          handleDeleteTransaction(transaction.id);
+                          close();
+                        }}
+                        activeOpacity={0.9}
+                        className="h-full w-16 items-center justify-center rounded-r-xl border border-error-200 bg-error-100 dark:border-error-800 dark:bg-error-900/30"
+                        accessibilityLabel="Delete">
+                        <Ionicons name="trash-outline" size={20} color="#b91c1c" />
+                      </TouchableOpacity>
+                    </View>
+                  )}>
+                  <Card variant="default" className="bg-app-surface">
+                    <CardContent className="p-4">
+                      <View className="flex-row items-center justify-between">
+                        <View className="min-w-0 flex-1 flex-row items-center">
+                          <View
+                            className="mr-3 h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+                            style={{ backgroundColor: `${iconInfo.color}20` }}>
+                            <Text className="text-base">
+                              {iconInfo.icon.includes('fa-') ? '💳' : iconInfo.icon}
+                            </Text>
+                          </View>
+                          <View className="min-w-0 flex-1">
+                            <Text className="text-base font-medium text-app-text" numberOfLines={1}>
+                              {transaction.description}
+                            </Text>
+                            <View className="mt-1 flex-row items-center">
+                              <Text
+                                className={`text-sm ${
+                                  needsCategorization
+                                    ? 'text-orange-600'
+                                    : 'text-app-text-secondary'
+                                }`}>
+                                {getCategoryName(transaction.categoryId)}
+                              </Text>
+                              {isUpdating ? (
+                                <View className="ml-2 rounded-full bg-blue-100 px-2 py-0.5">
+                                  <Text className="text-xs font-medium text-blue-600">
+                                    Updating...
+                                  </Text>
+                                </View>
+                              ) : needsCategorization ? (
+                                <View className="ml-2 rounded-full bg-orange-100 px-2 py-0.5">
+                                  <Text className="text-xs font-medium text-orange-600">
+                                    Needs category
+                                  </Text>
+                                </View>
+                              ) : null}
+                            </View>
+                            <Text className="mt-1 text-xs text-app-text-muted">
+                              {formatDate(transaction.date)}
+                            </Text>
+                          </View>
+                        </View>
+                        <View className="ml-3 flex-shrink-0 items-end">
+                          <Text
+                            className={`text-lg font-semibold ${
+                              isExpense ? 'text-financial-negative' : 'text-financial-positive'
+                            }`}>
+                            {isExpense ? '-' : '+'}$
+                            {Math.abs(parseFloat(transaction.amount)).toFixed(2)}
+                          </Text>
+                          {isUpdating && (
+                            <Text className="mt-1 text-xs font-medium text-gray-400">
+                              Updating...
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    </CardContent>
+                  </Card>
+                </SwipeableRow>
               );
             })}
           </View>

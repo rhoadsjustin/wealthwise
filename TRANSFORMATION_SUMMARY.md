@@ -95,7 +95,10 @@ budget-app/
 
 ## Demo Data
 
-The app automatically initializes with realistic demo data:
+Seeding behavior now depends on environment:
+
+- Development (EXPO_PUBLIC_SEED_DEMO=true|1): seeds demo categories, transactions, and bank accounts for local testing.
+- Production/TestFlight (default): seeds only a small set of starter categories with zero budgets when no data exists. No demo transactions or bank accounts are created.
 
 ### Categories (4)
 - Food & Dining ($500 budget)
@@ -103,14 +106,11 @@ The app automatically initializes with realistic demo data:
 - Entertainment ($200 budget)
 - Utilities ($250 budget)
 
-### Transactions (3)
-- Grocery shopping ($85.50 expense)
-- Salary ($3,500.00 income)
-- Gas station ($45.20 expense)
+### Transactions
+- Not seeded in production; only in development when demo seeding is enabled.
 
 ### User Account
-- Demo user with basic profile
-- Ready for authentication integration
+- A local placeholder user is created only if needed (username: local_user) to satisfy schema constraints; replace with real auth when available.
 
 ## Usage Patterns
 

@@ -151,8 +151,13 @@ export function DataProvider({
   const [dataVersion, setDataVersion] = useState(0);
   const bumpVersion = useCallback(() => setDataVersion((v) => v + 1), []);
 
-  // Development mode flag - set to true to clear and reinitialize data every launch
-  const DEVELOPMENT_MODE = false;
+  // Development/demo seed flag (set via EXPO_PUBLIC_SEED_DEMO="true|1" for local/dev)
+  // Defaults to false for TestFlight/production to avoid seeding demo data
+  const DEVELOPMENT_MODE =
+    (typeof process !== 'undefined' &&
+      typeof process.env !== 'undefined' &&
+      (process.env.EXPO_PUBLIC_SEED_DEMO === 'true' || process.env.EXPO_PUBLIC_SEED_DEMO === '1')) ||
+    false;
 
   // Initialize local storage on mount
   useEffect(() => {
@@ -311,6 +316,25 @@ export function DataProvider({
       console.log('✅ Demo bank accounts created');
       console.log('🎉 All demo data initialization complete!');
     };
+    // Seed only starter categories (no transactions/accounts) for production/real users
+    const initializeStarterCategories = async () => {
+      console.log('🔄 Initializing starter categories...');
+      const starterCategories: Omit<Category, 'id'>[] = [
+        { name: 'Housing', icon: '🏠', color: '#8BC34A', budget: '0', userId: currentUserId },
+        { name: 'Utilities', icon: '💡', color: '#FFA07A', budget: '0', userId: currentUserId },
+        { name: 'Insurance', icon: '🛡️', color: '#795548', budget: '0', userId: currentUserId },
+        { name: 'Cell Phone', icon: '📱', color: '#673AB7', budget: '0', userId: currentUserId },
+        { name: 'Gas', icon: '⛽', color: '#FF9800', budget: '0', userId: currentUserId },
+      ];
+
+      for (const category of starterCategories) {
+        await localStorage.saveItem('categories', category);
+      }
+      console.log('✅ Starter categories created');
+
+      const savedCategories = await localStorage.getItems<Category>('categories', currentUserId);
+      console.log('🔍 Verified saved starter categories:', savedCategories.length);
+    };
     const initializeStorage = async () => {
       try {
         console.log('🔄 Initializing local storage...');
@@ -345,40 +369,40 @@ export function DataProvider({
 
           // No query cache to clear (react-query removed)
 
-          // Create demo user (let DB assign ID)
-          const demoUserNoId: Omit<User, 'id'> = {
-            username: 'demo_user',
-            password: 'demo_password',
-            email: 'demo@example.com',
+          // Create local user (let DB assign ID)
+          const localUserNoId: Omit<User, 'id'> = {
+            username: 'local_user',
+            password: 'local_password',
+            email: 'local@example.com',
             createdAt: new Date().toISOString(),
           } as any;
-          await localStorage.saveItem('user', demoUserNoId as any);
+          await localStorage.saveItem('user', localUserNoId as any);
 
           // Always reinitialize demo data
           await initializeDemoData();
 
           console.log('✅ Demo data reinitialized successfully');
         } else {
-          // PRODUCTION MODE: Only initialize if no data exists
+          // PRODUCTION MODE: Only initialize minimal data if none exists
           console.log('🚀 Production mode: Checking for existing data...');
 
           // Check if we have a user, if not create a demo user
           const existingUser = await localStorage.getItem('user', currentUserId);
           if (!existingUser) {
-            const demoUserNoId: Omit<User, 'id'> = {
-              username: 'demo_user',
-              password: 'demo_password',
-              email: 'demo@example.com',
+            const localUserNoId: Omit<User, 'id'> = {
+              username: 'local_user',
+              password: 'local_password',
+              email: 'local@example.com',
               createdAt: new Date().toISOString(),
             } as any;
-            await localStorage.saveItem('user', demoUserNoId as any);
+            await localStorage.saveItem('user', localUserNoId as any);
           }
 
-          // Initialize with some demo data if no data exists
+          // Initialize with starter categories only if no data exists
           const existingCategories = await localStorage.getItems('categories', currentUserId);
           if (existingCategories.length === 0) {
-            console.log('No existing categories found initializing demo data');
-            await initializeDemoData();
+            console.log('No existing categories found — initializing starter categories');
+            await initializeStarterCategories();
           } else {
             console.log(`📊 Found ${existingCategories.length} existing categories`);
           }
@@ -485,14 +509,14 @@ export function DataProvider({
     const all = await localStorage.getAllItems<User>('user');
     if (all.length > 0) return all[0] as User;
 
-    // As a last resort, create a demo user
-    const demoUserNoId: Omit<User, 'id'> = {
-      username: 'demo_user',
-      password: 'demo_password',
-      email: 'demo@example.com',
+    // As a last resort, create a local user
+    const localUserNoId: Omit<User, 'id'> = {
+      username: 'local_user',
+      password: 'local_password',
+      email: 'local@example.com',
       createdAt: new Date().toISOString(),
     } as any;
-    const created = await localStorage.saveItem('user', demoUserNoId as any);
+    const created = await localStorage.saveItem('user', localUserNoId as any);
     return created as User;
   }, [currentUserId]);
 

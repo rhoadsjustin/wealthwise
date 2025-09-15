@@ -1,4 +1,5 @@
 import '../global.css';
+import 'react-native-gesture-handler';
 
 import { Stack, useRouter, usePathname } from 'expo-router';
 import { Platform, StatusBar, View } from 'react-native';
@@ -9,6 +10,7 @@ import AddTransactionModal from '../components/AddTransactionModal';
 import { ToastProvider } from '../components/Toast';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { VectorStoreProvider } from '@/context/RAGContext';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import HeaderProfileButton from '@/components/HeaderProfileButton';
 
 // Create context for sharing data across tabs
@@ -237,8 +239,12 @@ function AppContent() {
               options={{ headerShown: false, presentation: 'formSheet' }}
             />
             <Stack.Screen
-              name="categories"
+              name="edit-transaction/[id]"
               options={{ headerShown: false, presentation: 'formSheet' }}
+            />
+            <Stack.Screen
+              name="categories"
+              options={{ headerShown: false, presentation: 'modal' }}
             />
             <Stack.Screen
               name="modal"
@@ -274,14 +280,16 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   return (
-    <VectorStoreProvider>
-      <SafeAreaProvider>
-        <AuthProvider>
-          <ToastProvider>
-            <AppContent />
-          </ToastProvider>
-        </AuthProvider>
-      </SafeAreaProvider>
-    </VectorStoreProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <VectorStoreProvider>
+        <SafeAreaProvider>
+          <AuthProvider>
+            <ToastProvider>
+              <AppContent />
+            </ToastProvider>
+          </AuthProvider>
+        </SafeAreaProvider>
+      </VectorStoreProvider>
+    </GestureHandlerRootView>
   );
 }

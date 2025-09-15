@@ -12,6 +12,7 @@ export interface InputProps {
   onBlur?: () => void;
   onFocus?: () => void;
   keyboardType?: 'default' | 'numeric' | 'email-address' | 'phone-pad';
+  returnKeyType?: 'done' | 'go' | 'next' | 'search' | 'send' | 'default';
   secureTextEntry?: boolean;
   multiline?: boolean;
   numberOfLines?: number;

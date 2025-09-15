@@ -4,10 +4,11 @@ import { useAuth } from '@/context/useAuth';
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, completeOnboarding } = useAuth();
 
   const handleComplete = async (userData: { username: string; hasBiometrics: boolean }) => {
     await login(userData.username);
+    await completeOnboarding();
     router.replace('/budget-setup');
   };
 

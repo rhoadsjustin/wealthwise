@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
+import { localStorage } from '@/lib/local-storage';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -51,25 +52,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkBiometricSupport();
   }, []);
 
-  // Check for existing authentication - For testing, reset auth state on mount
+  // Load persisted auth + onboarding state from SQLite settings
   useEffect(() => {
     const loadAuthState = async () => {
       try {
-        // For testing purposes, clear all auth data on app mount
-        console.log('🔄 [TEST MODE] Clearing auth and onboarding state...');
-        await SecureStore.deleteItemAsync(STORAGE_KEYS.USERNAME);
-        await SecureStore.deleteItemAsync(STORAGE_KEYS.ONBOARDING_COMPLETE);
-        await SecureStore.deleteItemAsync(STORAGE_KEYS.BIOMETRIC_ENABLED);
-        
-        // Reset all state to initial values
-        setUsername(null);
-        setIsAuthenticated(false);
-        setHasCompletedOnboarding(false);
-        setIsBiometricEnabled(false);
-        
-        console.log('✅ [TEST MODE] Auth state cleared - ready for onboarding');
+        await localStorage.init();
+        const storedUsername = await localStorage.getSetting('username');
+        const onboardingDone = await localStorage.getSetting('onboardingCompleted');
+        const biometric = await SecureStore.getItemAsync(STORAGE_KEYS.BIOMETRIC_ENABLED);
+
+        if (storedUsername && typeof storedUsername === 'string') {
+          setUsername(storedUsername);
+          setIsAuthenticated(true);
+        }
+        setHasCompletedOnboarding(Boolean(onboardingDone));
+        setIsBiometricEnabled(biometric === 'true');
       } catch (error) {
-        console.error('Error clearing auth state:', error);
+        console.error('Error loading auth state:', error);
       }
     };
 
@@ -78,7 +77,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (userUsername: string) => {
     try {
-      await SecureStore.setItemAsync(STORAGE_KEYS.USERNAME, userUsername);
+      await localStorage.init();
+      await localStorage.setSetting('username', userUsername);
       setUsername(userUsername);
       setIsAuthenticated(true);
     } catch (error) {
@@ -89,7 +89,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await SecureStore.deleteItemAsync(STORAGE_KEYS.USERNAME);
+      await localStorage.init();
+      await localStorage.setSetting('username', '');
       setUsername(null);
       setIsAuthenticated(false);
       // Note: We don't remove onboarding completion status
@@ -101,7 +102,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const completeOnboarding = async () => {
     try {
-      await SecureStore.setItemAsync(STORAGE_KEYS.ONBOARDING_COMPLETE, 'true');
+      await localStorage.init();
+      await localStorage.setSetting('onboardingCompleted', true);
       setHasCompletedOnboarding(true);
     } catch (error) {
       console.error('Error completing onboarding:', error);
