@@ -33,7 +33,7 @@
     "icon": "./assets/app-icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/wealth_wise_splash_4096.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
