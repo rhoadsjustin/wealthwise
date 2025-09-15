@@ -21,6 +21,7 @@ Working in budget-app — Conventions, Structure, and UI Guidelines
     - `local-storage.ts`: SQLite wrapper (only used by DataContext).
     - `schema/schema.ts`: canonical data types; update here when adding entities.
     - `api.ts`: legacy bridge delegating to DataContext (ensured via `setDataContext`).
+    - `ai/categorizer.ts`: local, on-device categorization helper using the vector store + lightweight rules.
   - `store/`: Use for ephemeral UI state only (e.g., toggles). Not for persisted business data.
 
 - Styling and Theming
@@ -49,6 +50,57 @@ Working in budget-app — Conventions, Structure, and UI Guidelines
   - Honor `DataContext.isInitialized` before fetching; many screens read via an `AppDataProvider` in `app/_layout.tsx`.
   - Components that need to refresh after mutations can rely on `DataContext.dataVersion` or re-call getters as needed.
   - Keep UI optimistic where appropriate by updating local component state first, then persisting via DataContext.
+
+- RAG Assistant (On‑device)
+  - Provided by `react-native-rag` + `react-native-executorch` in `context/RAGContext.tsx` and used in `app/(tabs)/insights.tsx`.
+  - First‑time setup shows a progress card for Embeddings and LLM downloads. The assistant indicates readiness via `useRAG().isReady`.
+  - Document ingestion is bounded for stability: last 90 days of transactions (hard cap 500), plus compact category/summary/insight docs.
+  - Streaming responses are wired; if outputs appear truncated, a follow‑up “continue” pass completes the answer.
+  - Keep prompts short; retrieval `k` defaults to 3 to bound memory.
+
+- Auto‑Categorization (On‑device)
+  - `lib/ai/categorizer.ts` implements:
+    - `indexCategoryDocs(categories)` → indexes small per‑category docs in the vector store.
+    - `suggestCategory({ description }, categories)` → combines merchant rules + vector similarity + simple token match; returns `{ categoryId|null, confidence }`.
+    - `recordFeedback(description, categoryId, categoryName)` → updates a SQLite rule (settings table) and adds an exemplar doc: `"Tx: desc -> Category: name"`.
+  - DataContext integration:
+    - `createTransaction`: if expense with no category, auto‑assign when confidence ≥ 0.7.
+    - `updateTransaction`: when category changes, record feedback to improve future suggestions.
+  - UI integration:
+    - Add Transaction shows a “Suggested: {Category} (xx%)” chip for medium confidence (0.4–0.69).
+    - Transactions modal includes “Auto‑categorize” to process uncategorized expenses (cap 100 per run).
+
+- App Lock & Profile
+  - Profile modal at `app/profile.tsx`:
+    - Edit username (updates DataContext + greeting in Insights).
+    - Toggle “Require App Lock on Open” (persisted via SQLite settings), and optional numeric passcode.
+  - Lock screen at `app/lock.tsx` uses Face ID / Touch ID if available, or passcode fallback.
+  - `app/index.tsx` redirects to `/lock` if lock is required and the session isn’t unlocked.
+
+- Onboarding persistence
+  - `useAuth` now loads/saves `username` and `onboardingCompleted` via `localStorage` settings (SQLite). Onboarding won’t reappear after completion.
+  - Biometric preference still stored in `SecureStore`.
+
+- Transactions UI & Gestures
+  - Swipe actions implemented via a custom Reanimated pan (not RNGH Swipeable). Left: Categorize, Right: Edit/Delete.
+  - Native iOS‑like look: icon‑only slabs, subtle rounding on the revealed side, content dimming, light haptics.
+  - Action colors use semantic tokens: success/primary/error, or soft tints for low-contrast contexts.
+  - Add Transaction: currency masking, numeric keyboard (decimal on iOS), `returnKeyType="done"`, consistent `YYYY‑MM‑DD` date strings.
+
+- Budgets & Categories
+  - Categories screen supports inline budget edits with optimistic update and toast.
+  - Delete category: affected transactions are moved to `Uncategorized` (categoryId null) before deletion.
+  - Budget labels clarify monthly budgets.
+
+- Stability & Seeding
+  - Production/TestFlight seeding: only starter categories with zero budgets when DB is empty. No demo transactions/bank accounts.
+  - Development seeding (full demo data) behind `EXPO_PUBLIC_SEED_DEMO=true|1`.
+  - Insights ingestion limits + reduced retrieval keep memory bounded; LLM `maxTokens` ~256 by default to avoid cutoffs.
+
+- Progress & Feedback (Insights)
+  - While the assistant is initializing: progress card shows Embeddings/LLM download percentages and a short hint.
+  - After data ingestion begins: loading state indicates “Analyzing your financial data…”.
+  - Streaming responses update in place; auto‑continue finishes truncated outputs.
 
 - Navigation and Modals
   - Prefer Expo Router route-based modals for native behavior.
@@ -93,6 +145,13 @@ Working in budget-app — Conventions, Structure, and UI Guidelines
     - Use existing Tailwind keyframes; apply soft transitions on section updates.
   - Accessibility
     - Audit `accessibilityLabel` coverage and touch sizes across components.
+
+- Developer Notes
+  - Always import and use `useData()` for CRUD, not `localStorage` directly.
+  - Keep RAG prompts short; avoid feeding long, raw strings. Truncate strings you embed.
+  - When adding new categories or renaming, consider re‑indexing category docs via `categorizer.indexCategoryDocs(categories)`.
+  - For large operations (bulk categorize), cap batches (e.g., 100) to preserve UX and memory.
+  - Run `npm run format` before commits.
 
 - PR Checklist
   - [ ] Uses semantic Tailwind classes and component variants.

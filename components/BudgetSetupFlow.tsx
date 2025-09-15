@@ -339,9 +339,12 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
             <Text className="mb-4 text-sm text-gray-600">
               You can add more now or anytime from the Categories tab.
             </Text>
-            <Button variant="outline" onPress={() => setShowCreateModal(true)} size="md">
-              Add Category
-            </Button>
+            <Button
+              title="Add Category"
+              variant="outline"
+              onPress={() => setShowCreateModal(true)}
+              size="md"
+            />
           </View>
         </View>
       </ScrollView>

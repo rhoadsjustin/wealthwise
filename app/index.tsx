@@ -1,11 +1,33 @@
 import { Redirect } from 'expo-router';
-import { useAuth } from '@/context/useAuth';
+import { useEffect, useState } from 'react';
+import { localStorage } from '@/lib/local-storage';
+import { isAppUnlocked } from '@/context/appLock';
 
 export default function RootIndex() {
-  const { hasCompletedOnboarding, isAuthenticated } = useAuth();
+  const [requireLock, setRequireLock] = useState<boolean | null>(null);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        await localStorage.init();
+        const val = await localStorage.getSetting('requireAppLock');
+        console.log('the value of requireAppLock is:', val);
+        const hasCompletedOnboardingVal = await localStorage.getSetting('onboardingCompleted');
+        console.log('the value of hasCompletedOnboarding is:', hasCompletedOnboardingVal);
+        setRequireLock(Boolean(val));
+        setHasCompletedOnboarding(Boolean(hasCompletedOnboardingVal));
+      } catch {
+        setRequireLock(false);
+      }
+    };
+    load();
+  }, []);
+
+  // Wait until settings are loaded to avoid premature redirects
+  if (hasCompletedOnboarding === null || requireLock === null) return null;
 
   if (!hasCompletedOnboarding) return <Redirect href="/onboarding" />;
-  if (!isAuthenticated) return <Redirect href="/auth" />;
+  if (requireLock && !isAppUnlocked()) return <Redirect href="/lock" />;
   return <Redirect href="/(tabs)" />;
 }
-

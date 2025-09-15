@@ -14,7 +14,7 @@ import { Input } from './Input';
 import { Label } from './Label';
 // Drop custom Select for categories; use a simple scrollable list
 // RadioGroup removed in favor of a segmented toggle
-import { useForm } from 'react-hook-form';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 // Removed react-query; use DataContext directly
 import { useToast } from '../context/useToast';
 import { useData } from '../context/DataContext';
@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import CreateCategoryModal from './CreateCategoryModal';
 import { selection, success as hapticSuccess } from '../lib/haptics';
 import type { Transaction as Tx } from '@/lib/schema/schema';
+import categorizer from '@/lib/ai/categorizer';
 
 interface TransactionFormData {
   description: string;
@@ -45,6 +46,7 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
   const [submitting, setSubmitting] = React.useState(false);
   const [categories, setCategories] = React.useState<any[]>([]);
   const [showCreateCategory, setShowCreateCategory] = React.useState(false);
+  const [suggestion, setSuggestion] = React.useState<{ id: number; name: string; confidence: number } | null>(null);
 
   // Load categories on component mount
   const loadCategories = React.useCallback(async () => {
@@ -64,6 +66,7 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
     handleSubmit,
     setValue,
     watch,
+    control,
     reset,
     formState: { errors },
   } = useForm<TransactionFormData>({
@@ -72,31 +75,29 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
     },
   });
 
-  const transactionType = watch('type');
-  const amountRaw = watch('amount') || '';
-  const [amountDisplay, setAmountDisplay] = React.useState('');
+  const transactionType = useWatch({ control, name: 'type' }) || 'expense';
+  const amountRaw = useWatch({ control, name: 'amount' }) || '';
+  const description = useWatch({ control, name: 'description' }) || '';
+  const selectedCategoryId = useWatch({ control, name: 'categoryId' });
+  const [amountFocused, setAmountFocused] = React.useState(false);
 
-  useEffect(() => {
-    // Keep display string in sync when raw value changes programmatically
-    if (!amountRaw) {
-      setAmountDisplay('');
-      return;
-    }
+  const amountDisplay = React.useMemo(() => {
+    if (!amountRaw) return '';
+    if (amountFocused) return amountRaw;
     const num = Number(amountRaw);
-    if (!isNaN(num)) {
-      try {
-        const formatted = new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: 'USD',
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }).format(num);
-        setAmountDisplay(formatted);
-      } catch {
-        setAmountDisplay(`$${num.toFixed(2)}`);
-      }
+    if (isNaN(num)) return '';
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(num);
+    } catch {
+      return `$${num.toFixed(2)}`;
     }
-  }, [amountRaw]);
+  }, [amountRaw, amountFocused]);
+  // amountDisplay is derived; no effect needed
 
   // Clear categoryId when switching to income type and reset form properly
   useEffect(() => {
@@ -124,6 +125,29 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
       });
     }
   }, [reset, mode, initialTransaction]);
+
+  // Suggest category when description changes (expense only)
+  useEffect(() => {
+    const run = async () => {
+      const desc = description || '';
+      if (!desc.trim() || transactionType !== 'expense') {
+        setSuggestion(null);
+        return;
+      }
+      try {
+        const result = await categorizer.suggestCategory({ description: desc }, categories);
+        if (result.categoryId && result.confidence >= 0.4 && result.confidence < 0.7) {
+          const cat = categories.find((c) => c.id === result.categoryId);
+          if (cat) setSuggestion({ id: cat.id, name: cat.name, confidence: result.confidence });
+        } else {
+          setSuggestion(null);
+        }
+      } catch {
+        setSuggestion(null);
+      }
+    };
+    run();
+  }, [categories, description, transactionType]);
 
   const submitSave = async (data: TransactionFormData) => {
     try {
@@ -213,13 +237,15 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
           </View>
         </SafeAreaView>
 
-        {/* Content + sticky action container to keep screen within 2 direct children */}
-        <View style={{ flex: 1, position: 'relative' }}>
+        {/* Content and footer as siblings for proper keyboard avoidance */}
+        <View style={{ flex: 1 }}>
           <ScrollView
             className="flex-1"
-            contentContainerStyle={{ paddingBottom: 220 }}
+            contentContainerStyle={{ paddingBottom: 16 }}
             showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled">
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            contentInsetAdjustmentBehavior="automatic">
             {/* Form Content */}
             <View className="flex-1 px-6 py-6">
               {/* Type Segmented Toggle (moved below header to avoid overlap) */}
@@ -271,11 +297,17 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
                   <Label className="mb-2 text-sm font-medium text-foreground-primary">
                     Description
                   </Label>
-                  <Input
-                    value={watch('description') || ''}
-                    onChangeText={(value) => setValue('description', value)}
-                    placeholder="Enter transaction description"
-                    variant="outline"
+                  <Controller
+                    control={control}
+                    name="description"
+                    render={({ field: { value, onChange } }) => (
+                      <Input
+                        value={value || ''}
+                        onChangeText={onChange}
+                        placeholder="Enter transaction description"
+                        variant="outline"
+                      />
+                    )}
                   />
                   {errors.description && (
                     <Text className="mt-1 text-xs text-error-600">
@@ -292,34 +324,26 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
                     returnKeyType="done"
                     value={amountDisplay}
                     onChangeText={(value) => {
-                      // Strip currency symbols and grouping, keep digits and single dot
+                      // Keep only digits and a single decimal point, and limit to two decimals
                       const cleaned = value.replace(/[^0-9.]/g, '');
-                      const parts = cleaned.split('.');
-                      const normalized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : cleaned;
-                      // Limit to two decimal places if present
+                      const firstDot = cleaned.indexOf('.')
+                      let normalized = cleaned;
+                      if (firstDot !== -1) {
+                        const before = cleaned.slice(0, firstDot + 1);
+                        const after = cleaned.slice(firstDot + 1).replace(/\./g, '');
+                        normalized = before + after;
+                      }
                       const [intPart, decPart] = normalized.split('.');
                       const limited = decPart !== undefined ? `${intPart}.${decPart.slice(0, 2)}` : intPart;
-                      setValue('amount', limited);
-                      // Display formatted currency for UX
-                      if (limited === '' || isNaN(Number(limited))) {
-                        setAmountDisplay('');
-                      } else {
-                        try {
-                          const formatted = new Intl.NumberFormat('en-US', {
-                            style: 'currency',
-                            currency: 'USD',
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          }).format(Number(limited));
-                          setAmountDisplay(formatted);
-                        } catch {
-                          setAmountDisplay(`$${Number(limited).toFixed(2)}`);
-                        }
-                      }
+                      setValue('amount', limited, { shouldDirty: true });
                     }}
                     placeholder="$0.00"
                     variant="outline"
-                    onFocus={() => selection()}
+                    onFocus={() => {
+                      selection();
+                      setAmountFocused(true);
+                    }}
+                    onBlur={() => setAmountFocused(false)}
                     onSubmitEditing={handleSubmit(onSubmit)}
                   />
                   {errors.amount && (
@@ -334,6 +358,17 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
                 {/* Category Selection - Only for expenses */}
                 {transactionType === 'expense' && (
                   <View>
+                    {suggestion && !selectedCategoryId && (
+                      <View className="mb-2">
+                        <TouchableOpacity
+                          onPress={() => setValue('categoryId', suggestion.id, { shouldDirty: true })}
+                          className="self-start rounded-full border border-info-100 bg-info-50 px-3 py-1">
+                          <Text className="text-xs font-medium text-info-700">
+                            Suggested: {suggestion.name} ({Math.round(suggestion.confidence * 100)}%) — Tap to apply
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
                     <View className="mb-2 flex-row items-center justify-between">
                       <Label className="text-sm font-medium text-foreground-primary">
                         Category
@@ -351,20 +386,20 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
                     </View>
 
                     {/* Selected preview */}
-                    {watch('categoryId') ? (
+                    {selectedCategoryId ? (
                       <View className="mb-2 flex-row items-center rounded-lg border border-app-border bg-app-surface p-2">
                         <View
                           className="mr-3 h-8 w-8 items-center justify-center rounded-lg"
                           style={{
                             backgroundColor:
-                              categories.find((c) => c.id === watch('categoryId'))?.color + '20',
+                              categories.find((c) => c.id === selectedCategoryId)?.color + '20',
                           }}>
                           <Text className="text-sm">
-                            {categories.find((c) => c.id === watch('categoryId'))?.icon || '📊'}
+                            {categories.find((c) => c.id === selectedCategoryId)?.icon || '📊'}
                           </Text>
                         </View>
                         <Text className="flex-1 font-medium text-foreground-primary">
-                          {categories.find((c) => c.id === watch('categoryId'))?.name}
+                          {categories.find((c) => c.id === selectedCategoryId)?.name}
                         </Text>
                         <TouchableOpacity onPress={() => setValue('categoryId', null)}>
                           <Text className="text-xs font-medium text-blue-600">Clear</Text>
@@ -381,11 +416,11 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
                         keyboardShouldPersistTaps="handled"
                         nestedScrollEnabled>
                         {categories.map((category) => {
-                          const isSelected = watch('categoryId') === category.id;
+                          const isSelected = selectedCategoryId === category.id;
                           return (
                             <TouchableOpacity
                               key={category.id}
-                              onPress={() => setValue('categoryId', category.id)}
+                              onPress={() => setValue('categoryId', category.id, { shouldDirty: true })}
                               activeOpacity={0.7}
                               className={`flex-row items-center px-3 py-3 ${
                                 isSelected ? 'bg-blue-50' : 'bg-transparent'
@@ -424,11 +459,8 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
             </View>
           </ScrollView>
 
-          {/* Sticky Action Bar */}
-          <SafeAreaView
-            edges={['bottom']}
-            style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingBottom: 80 }}
-            className="bg-app-surface">
+          {/* Action Bar (non-absolute so it lifts above keyboard) */}
+          <SafeAreaView edges={['bottom']} className="bg-app-surface">
             <View className="border-t border-border-default px-6 py-4">
               <Button
                 title="Save"

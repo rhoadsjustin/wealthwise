@@ -1,6 +1,4 @@
 import '../global.css';
-import 'react-native-gesture-handler';
-
 import { Stack, useRouter, usePathname } from 'expo-router';
 import { Platform, StatusBar, View } from 'react-native';
 import { AuthProvider, useAuth } from '../context/useAuth';
@@ -12,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { VectorStoreProvider } from '@/context/RAGContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import HeaderProfileButton from '@/components/HeaderProfileButton';
+import categorizer from '@/lib/ai/categorizer';
 
 // Create context for sharing data across tabs
 interface AppDataContextType {
@@ -77,6 +76,9 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
         setUser(u);
         setTransactions(txs);
         setCategories(cats);
+        try {
+          await categorizer.indexCategoryDocs(cats);
+        } catch {}
       } catch (e) {
         console.warn('Failed to load app data:', e);
         if (!mounted) return;
@@ -232,15 +234,20 @@ function AppContent() {
             <Stack.Screen name="auth" options={{ headerShown: false }} />
             <Stack.Screen
               name="add-transaction"
-              options={{ headerShown: false, presentation: 'formSheet' }}
+              options={{ headerShown: false, presentation: 'modal' }}
             />
             <Stack.Screen
               name="gamify"
               options={{ headerShown: false, presentation: 'formSheet' }}
             />
             <Stack.Screen
-              name="edit-transaction/[id]"
+              name="profile"
               options={{ headerShown: false, presentation: 'formSheet' }}
+            />
+            <Stack.Screen name="lock" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="edit-transaction/[id]"
+              options={{ headerShown: false, presentation: 'modal' }}
             />
             <Stack.Screen
               name="categories"

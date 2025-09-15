@@ -624,11 +624,23 @@ export function DataProvider({
       categoryId?: number | null;
       date?: string;
     }): Promise<Transaction> => {
+      let assignedCategory: number | null = data.categoryId ?? null;
+      if (!assignedCategory && data.type === 'expense') {
+        try {
+          const cats = await localStorage.getItems<Category>('categories', currentUserId);
+          const { default: categorizer, suggestCategory } = await import('@/lib/ai/categorizer');
+          const suggestion = await suggestCategory({ description: data.description }, cats as any);
+          if (suggestion.categoryId && suggestion.confidence >= 0.7) {
+            assignedCategory = suggestion.categoryId;
+          }
+        } catch {}
+      }
+
       const newTransaction: Omit<Transaction, 'id'> = {
         description: data.description,
         amount: data.amount,
         type: data.type,
-        categoryId: data.categoryId || null,
+        categoryId: assignedCategory,
         userId: currentUserId,
         date: data.date || new Date().toISOString().split('T')[0],
         createdAt: new Date().toISOString(),
@@ -651,6 +663,16 @@ export function DataProvider({
 
       const updated = { ...existing, ...data };
       await localStorage.saveItem('transactions', updated);
+      if (data.categoryId != null && data.categoryId !== existing.categoryId) {
+        try {
+          const cats = await localStorage.getItems<Category>('categories', currentUserId);
+          const cat = cats.find((c) => c.id === data.categoryId);
+          if (cat) {
+            const { recordFeedback } = await import('@/lib/ai/categorizer');
+            await recordFeedback(existing.description, cat.id, cat.name);
+          }
+        } catch {}
+      }
       bumpVersion();
 
       return updated;

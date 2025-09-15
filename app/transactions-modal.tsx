@@ -23,15 +23,17 @@ import {
   success as hapticSuccess,
   warning as hapticWarn,
 } from '../lib/haptics';
+import categorizer from '@/lib/ai/categorizer';
 
 export default function TransactionsModal() {
   const router = useRouter();
   const { transactions, categories } = useAppData();
-  const { updateTransaction, deleteTransaction } = useTransactions();
+  const { updateTransaction, deleteTransaction, getTransactions } = useTransactions();
   const [filter, setFilter] = useState<'all' | 'income' | 'expense' | 'uncategorized'>('all');
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [updatingTransactions, setUpdatingTransactions] = useState<Set<number>>(new Set());
+  const [isAutoCategorizing, setIsAutoCategorizing] = useState(false);
 
   // Enable LayoutAnimation on Android
   if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -40,6 +42,28 @@ export default function TransactionsModal() {
 
   const handleClose = () => {
     router.back();
+  };
+
+  const handleAutoCategorize = async () => {
+    if (!transactions || transactions.length === 0) return;
+    try {
+      setIsAutoCategorizing(true);
+      const uncategorized = transactions.filter((t: any) => t.type === 'expense' && !t.categoryId);
+      const cats = categories;
+      for (const tx of uncategorized.slice(0, 100)) {
+        try {
+          const s = await categorizer.suggestCategory({ description: tx.description }, cats);
+          if (s.categoryId && s.confidence >= 0.7) {
+            await updateTransaction(tx.id, { categoryId: s.categoryId });
+          }
+        } catch {}
+      }
+      await getTransactions();
+    } catch (e) {
+      console.warn('Auto-categorize failed', e);
+    } finally {
+      setIsAutoCategorizing(false);
+    }
   };
 
   const getTransactionIcon = (type: string, categoryId: number | null) => {
@@ -194,9 +218,17 @@ export default function TransactionsModal() {
             </TouchableOpacity>
             <Text className="text-xl font-semibold text-app-text">All Transactions</Text>
           </View>
-          <Text className="text-sm text-app-text-secondary">
-            {filteredTransactions.length} items
-          </Text>
+          <View className="flex-row items-center gap-2">
+            <Text className="text-sm text-app-text-secondary">{filteredTransactions.length} items</Text>
+            <TouchableOpacity
+              onPress={handleAutoCategorize}
+              disabled={isAutoCategorizing}
+              className="rounded-full border border-app-border bg-app-surface px-3 py-1">
+              <Text className="text-xs font-medium text-app-text">
+                {isAutoCategorizing ? 'Categorizing…' : 'Auto-categorize'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Filter Buttons */}

@@ -24,6 +24,8 @@ export default function CategoriesManager() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [inlineEditId, setInlineEditId] = useState<number | null>(null);
+  const [inlineBudget, setInlineBudget] = useState<string>('');
 
   const load = async () => {
     setIsLoading(true);
@@ -94,7 +96,7 @@ export default function CategoriesManager() {
   const handleDeleteCategory = (category: Category) => {
     Alert.alert(
       'Delete Category',
-      `Are you sure you want to delete "${category.name}"? This action cannot be undone.`,
+      `Delete "${category.name}"? Transactions in this category will be moved to Uncategorized.`,
       [
         {
           text: 'Cancel',
@@ -105,9 +107,19 @@ export default function CategoriesManager() {
           style: 'destructive',
           onPress: () => {
             setIsSaving(true);
-            deleteCategory(category.id)
+            // Move transactions to uncategorized (null) then delete category
+            getTransactions()
+              .then(async (txs) => {
+                const affected = txs.filter((t: any) => t.categoryId === category.id);
+                for (const t of affected) {
+                  try {
+                    await updateTransaction(t.id, { categoryId: null } as any);
+                  } catch (e) {}
+                }
+                await deleteCategory(category.id);
+              })
               .then(() => {
-                toast({ title: 'Category Deleted', description: 'The category has been deleted successfully.' });
+                toast({ title: 'Category Deleted', description: 'Transactions moved to Uncategorized.' });
                 load();
               })
               .catch((error) => {
@@ -179,14 +191,62 @@ export default function CategoriesManager() {
                   .reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
                 return (
-                  <CategoryListItem
-                    key={category.id}
-                    category={category}
-                    mode="display"
-                    spent={spent}
-                    onEdit={() => handleEditCategory(category)}
-                    onDelete={() => handleDeleteCategory(category)}
-                  />
+                  <View key={category.id}>
+                    <CategoryListItem
+                      category={category}
+                      mode="display"
+                      spent={spent}
+                      onEdit={() => handleEditCategory(category)}
+                      onDelete={() => handleDeleteCategory(category)}
+                    />
+                    <View className="mt-2 flex-row items-center justify-between px-2">
+                      <TouchableOpacity
+                        onPress={() => {
+                          setInlineEditId(category.id);
+                          setInlineBudget(category.budget);
+                        }}
+                        className="rounded-lg border border-app-border bg-app-surface px-2 py-1">
+                        <Text className="text-sm text-app-text">Quick Edit Budget</Text>
+                      </TouchableOpacity>
+                      {inlineEditId === category.id && (
+                        <View className="flex-row items-center gap-2">
+                          <Input
+                            value={inlineBudget}
+                            onChangeText={(value) => {
+                              const cleaned = value.replace(/[^0-9.]/g, '');
+                              const parts = cleaned.split('.');
+                              const fmt = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : cleaned;
+                              setInlineBudget(fmt);
+                            }}
+                            keyboardType="numeric"
+                            placeholder="0.00"
+                            className="w-28"
+                          />
+                          <Button
+                            size="sm"
+                            onPress={async () => {
+                              try {
+                                setIsSaving(true);
+                                await updateCategory(category.id, { budget: inlineBudget || '0' });
+                                toast({ title: 'Budget Updated', description: `${category.name} set to $${Number(inlineBudget || '0').toFixed(2)}/month` });
+                                setInlineEditId(null);
+                                await load();
+                              } catch (e) {
+                                toast({ title: 'Error', description: 'Failed to update budget', variant: 'destructive' });
+                              } finally {
+                                setIsSaving(false);
+                              }
+                            }}>
+                            <Text>Save</Text>
+                          </Button>
+                          <Button variant="outline" size="sm" onPress={() => setInlineEditId(null)}>
+                            <Text>Cancel</Text>
+                          </Button>
+                        </View>
+                      )}
+                    </View>
+                    <Text className="mt-1 px-2 text-xs text-foreground-muted">Budgets are monthly</Text>
+                  </View>
                 );
               })}
             </View>

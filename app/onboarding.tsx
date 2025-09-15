@@ -9,7 +9,8 @@ export default function OnboardingScreen() {
   const handleComplete = async (userData: { username: string; hasBiometrics: boolean }) => {
     await login(userData.username);
     await completeOnboarding();
-    router.replace('/budget-setup');
+    // After onboarding, go straight to the main app tabs
+    router.replace('/(tabs)');
   };
 
   return <OnboardingFlow onComplete={handleComplete} />;

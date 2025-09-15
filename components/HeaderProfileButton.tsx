@@ -18,6 +18,11 @@ export default function HeaderProfileButton() {
           icon="gear.circle"
         />
         <Link.MenuAction
+          onPress={() => router.push('/profile')}
+          title="Profile"
+          icon="person.crop.circle"
+        />
+        <Link.MenuAction
           onPress={() => router.push('/gamify')}
           title="Goals"
           icon="trophy.circle"
