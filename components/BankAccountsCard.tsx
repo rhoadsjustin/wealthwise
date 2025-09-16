@@ -120,7 +120,7 @@ export default function BankAccountsCard() {
   }
 
   return (
-    <>
+    <View className="flex-row gap-3 py-4">
       <Card className="card-mobile">
         <CardContent className="p-4">
           <View className="mb-4 flex-row items-center justify-between">
@@ -198,6 +198,6 @@ export default function BankAccountsCard() {
       </Card>
 
       <ConnectBankModal isOpen={isBankModalOpen} onClose={() => setIsBankModalOpen(false)} />
-    </>
+    </View>
   );
 }

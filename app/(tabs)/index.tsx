@@ -179,20 +179,16 @@ export default function SpendingTab() {
         }}
       />
       {/* Hero gradient-like header band */}
-      <View className="px-4 pt-3">
+      <View className="px-4 pt-3" style={{ overflow: 'hidden' }}>
         <View
-          className="rounded-2xl border border-info-100 bg-info-50 px-4 py-4 dark:border-info-800 dark:bg-info-900/20"
+          className="rounded-2xl border border-info-100 bg-info-50 px-4 py-4"
           style={{ overflow: 'hidden' }}>
           <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-info-800 dark:text-info-200">
-              Overview
-            </Text>
+            <Text className="text-base font-semibold text-info-800">Overview</Text>
             <TouchableOpacity
               onPress={() => router.push('/transactions-modal')}
-              className="h-8 items-center justify-center rounded-full border border-info-100 bg-white/70 px-3 dark:border-info-800 dark:bg-white/10">
-              <Text className="text-xs font-medium text-info-700 dark:text-info-200">
-                All Transactions
-              </Text>
+              className="h-8 items-center justify-center rounded-full border border-info-100 bg-white/70 px-3">
+              <Text className="text-xs font-medium text-info-700">All Transactions</Text>
             </TouchableOpacity>
           </View>
           {/* Period selector */}
@@ -207,13 +203,11 @@ export default function SpendingTab() {
                 key={opt.key}
                 onPress={() => setPeriod(opt.key)}
                 className={`rounded-full border px-3 py-1 ${
-                  period === opt.key
-                    ? 'border-blue-600 bg-blue-600'
-                    : 'border-info-100 bg-white/70 dark:border-info-800 dark:bg-white/10'
+                  period === opt.key ? 'border-blue-600 bg-blue-600' : 'border-info-100 bg-white/70'
                 }`}>
                 <Text
                   className={`text-xs font-medium ${
-                    period === opt.key ? 'text-white' : 'text-info-700 dark:text-info-200'
+                    period === opt.key ? 'text-white' : 'text-info-700'
                   }`}>
                   {opt.label}
                 </Text>
@@ -222,19 +216,19 @@ export default function SpendingTab() {
           </View>
           <View className="mt-3 rounded-xl bg-white/40 px-3 py-3 dark:bg-white/5">
             <View className="flex-row justify-between">
-              <View className="mr-2 flex-1 rounded-lg border border-info-100/60 bg-white/70 px-3 py-2 dark:border-info-800 dark:bg-white/10">
+              <View className="mr-2 flex-1 rounded-lg border border-info-100/60 bg-white/70 px-3 py-2">
                 <Text className="text-[11px] text-info-700 dark:text-info-300">Income</Text>
                 <Text className="text-base font-semibold text-success-700 dark:text-success-400">
                   ${displaySummary.totalIncome.toFixed(0)}
                 </Text>
               </View>
-              <View className="mr-2 flex-1 rounded-lg border border-info-100/60 bg-white/70 px-3 py-2 dark:border-info-800 dark:bg-white/10">
+              <View className="mr-2 flex-1 rounded-lg border border-info-100/60 bg-white/70 px-3 py-2">
                 <Text className="text-[11px] text-info-700 dark:text-info-300">Expenses</Text>
                 <Text className="text-base font-semibold text-error-700 dark:text-error-400">
                   ${displaySummary.totalExpenses.toFixed(0)}
                 </Text>
               </View>
-              <View className="flex-1 rounded-lg border border-info-100/60 bg-white/70 px-3 py-2 dark:border-info-800 dark:bg-white/10">
+              <View className="flex-1 rounded-lg border border-info-100/60 bg-white/70 px-3 py-2">
                 <Text className="text-[11px] text-info-700 dark:text-info-300">Remaining</Text>
                 <Text className="text-base font-semibold text-info-800 dark:text-info-300">
                   ${displaySummary.remainingBudget.toFixed(0)}
@@ -242,7 +236,7 @@ export default function SpendingTab() {
               </View>
             </View>
             {/* Tiny progress bar showing budget used */}
-            <View className="mt-3 h-1.5 w-full rounded-full bg-info-100 dark:bg-info-900/40">
+            <View className="mt-3 h-1.5 w-full rounded-full bg-info-100">
               <View
                 className="h-1.5 rounded-full"
                 style={{
@@ -289,7 +283,7 @@ export default function SpendingTab() {
         }}
         scrollEventThrottle={16}>
         {/* Overview Cards */}
-        <View className="flex-row gap-3">
+        <View className="flex-row gap-3 py-4">
           <Card className="card-mobile flex-1 border-info-100 bg-info-50">
             <CardContent className="p-3">
               <View className="mb-2 flex-row items-center justify-between">

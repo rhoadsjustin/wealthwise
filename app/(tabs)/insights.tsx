@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { useVectorStore } from '../../context/RAGContext';
+import { useIsFocused } from '@react-navigation/native';
 import { useAppData } from '../_layout';
 import { Ionicons } from '@expo/vector-icons';
 // Chat-focused screen
@@ -25,7 +26,9 @@ import type {
 import { useRAG } from 'react-native-rag';
 
 function InsightsTab() {
-  const { vectorStore, llm, embeddingsProgress, llmProgress } = useVectorStore();
+  const { vectorStore, llm, embeddingsProgress, llmProgress, embeddingsInstalled, llmInstalled } =
+    useVectorStore();
+  const isFocused = useIsFocused();
   const { summary, insights, user, transactions, categories, summaryLoading, insightsLoading } =
     useAppData();
   const { username: authUsername } = useAuth();
@@ -41,7 +44,20 @@ function InsightsTab() {
   const liveAssistantIndexRef = useRef<number | null>(null);
   const [isContinuing, setIsContinuing] = useState(false);
 
-  const rag = useRAG({ vectorStore, llm });
+  // Defer loading RAG until both vector store and LLM exist to avoid an initial load error
+  const rag = useRAG({
+    // react-native-rag expects non-null instances; we prevent load until both are ready
+    vectorStore: vectorStore as any,
+    llm: llm as any,
+    preventLoad: !vectorStore || !llm || !isFocused,
+  });
+
+  // If leaving the screen mid-generation, try to interrupt to free memory sooner
+  useEffect(() => {
+    if (!isFocused && rag.isGenerating) {
+      rag.interrupt().catch(() => {});
+    }
+  }, [isFocused, rag.isGenerating]);
 
   // Initialize conversation and load data into vector store
   useEffect(() => {
@@ -65,7 +81,11 @@ function InsightsTab() {
             const category = categories?.find((cat) => cat.id === tx.categoryId);
             const categoryName = category?.name || 'Uncategorized';
 
-            const pageContent = `Transaction: ${tx.description} for $${tx.amount} on ${tx.date} in category ${categoryName}. Type: ${tx.type}`.slice(0, 256);
+            const pageContent =
+              `Transaction: ${tx.description} for $${tx.amount} on ${tx.date} in category ${categoryName}. Type: ${tx.type}`.slice(
+                0,
+                256
+              );
             documents.push({
               pageContent,
               metadata: {
@@ -91,7 +111,11 @@ function InsightsTab() {
         // Summary documents
         if (summary) {
           documents.push({
-            pageContent: `Financial Summary: Total income $${summary.totalIncome}, Total expenses $${summary.totalExpenses}, Total budget $${summary.totalBudget}, Remaining budget $${summary.remainingBudget}`.slice(0, 280),
+            pageContent:
+              `Financial Summary: Total income $${summary.totalIncome}, Total expenses $${summary.totalExpenses}, Total budget $${summary.totalBudget}, Remaining budget $${summary.remainingBudget}`.slice(
+                0,
+                280
+              ),
             metadata: { type: 'summary' },
           });
 
@@ -99,7 +123,11 @@ function InsightsTab() {
           if (summary.categoryBreakdown) {
             summary.categoryBreakdown.forEach((breakdown: CategoryBreakdown) => {
               documents.push({
-                pageContent: `Category breakdown: ${breakdown.name} has budget $${breakdown.budget}, spent $${breakdown.spent}, which is ${breakdown.percentage}% of budget`.slice(0, 240),
+                pageContent:
+                  `Category breakdown: ${breakdown.name} has budget $${breakdown.budget}, spent $${breakdown.spent}, which is ${breakdown.percentage}% of budget`.slice(
+                    0,
+                    240
+                  ),
                 metadata: {
                   type: 'category-breakdown',
                   categoryId: breakdown.id.toString(),
@@ -114,7 +142,11 @@ function InsightsTab() {
         if (insights && insights.length > 0) {
           insights.forEach((insight) => {
             documents.push({
-              pageContent: `Insight: ${insight.title} - ${insight.description}. Type: ${insight.type}, Severity: ${insight.severity}`.slice(0, 240),
+              pageContent:
+                `Insight: ${insight.title} - ${insight.description}. Type: ${insight.type}, Severity: ${insight.severity}`.slice(
+                  0,
+                  240
+                ),
               metadata: { type: 'insight', insightType: insight.type, severity: insight.severity },
             });
           });
@@ -175,7 +207,7 @@ function InsightsTab() {
         {
           role: 'system' as const,
           content:
-            'You are a helpful personal finance assistant running on-device. Answer using only the provided context from the user\'s transactions, categories, and budget summary. Prefer the current month unless the user specifies a timeframe. Show currency as $X,XXX.XX. Be concise and actionable.',
+            "You are a helpful personal finance assistant running on-device. Answer using only the provided context from the user's transactions, categories, and budget summary. Prefer the current month unless the user specifies a timeframe. Show currency as $X,XXX.XX. Be concise and actionable.",
         },
         ...messages,
         userMessage,
@@ -195,9 +227,7 @@ function InsightsTab() {
         // Optional: custom prompt formatting
         promptGenerator: (msgs, retrieved) => {
           const last = msgs[msgs.length - 1];
-          const ctx = retrieved
-            .map((d, i) => `#${i + 1}: ${d.content}`)
-            .join('\n');
+          const ctx = retrieved.map((d, i) => `#${i + 1}: ${d.content}`).join('\n');
           return `User question: ${last?.content}\nContext (most relevant first):\n${ctx}\nGuidelines: Use only the context. If unclear, ask a brief follow-up.`;
         },
       });
@@ -237,7 +267,10 @@ function InsightsTab() {
           setMessages((prev) => {
             const next = [...prev];
             if (idx != null && next[idx]) {
-              next[idx] = { role: 'assistant', content: (next[idx] as any).content + '\n' + cont } as any;
+              next[idx] = {
+                role: 'assistant',
+                content: (next[idx] as any).content + '\n' + cont,
+              } as any;
             }
             return next;
           });
@@ -365,7 +398,7 @@ function InsightsTab() {
   };
 
   // Show setup progress while local assistant is loading
-  if (!rag.isReady) {
+  if (!rag.isReady || !vectorStore || !llm) {
     return (
       <View style={styles.container}>
         <Text style={styles.header}>Setting up Local Assistant</Text>
@@ -373,15 +406,39 @@ function InsightsTab() {
           <Text style={styles.loadingTitle}>Downloading models</Text>
           <View style={styles.progressRow}>
             <Text style={styles.progressLabel}>Embeddings</Text>
-            <Text style={styles.progressValue}>{Math.round((embeddingsProgress || 0) * 100)}%</Text>
+            <Text style={styles.progressValue}>
+              {embeddingsInstalled
+                ? 'Installed'
+                : `${Math.round((embeddingsProgress || 0) * 100)}%`}
+            </Text>
           </View>
-          <View style={styles.progressBar}><View style={[styles.progressFill,{width:`${Math.round((embeddingsProgress||0)*100)}%`}]} /></View>
-          <View style={[styles.progressRow,{marginTop:12}] }>
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${Math.round(((embeddingsInstalled ? 1 : embeddingsProgress) || 0) * 100)}%`,
+                },
+              ]}
+            />
+          </View>
+          <View style={[styles.progressRow, { marginTop: 12 }]}>
             <Text style={styles.progressLabel}>LLM</Text>
-            <Text style={styles.progressValue}>{Math.round((llmProgress || 0) * 100)}%</Text>
+            <Text style={styles.progressValue}>
+              {llmInstalled ? 'Installed' : `${Math.round((llmProgress || 0) * 100)}%`}
+            </Text>
           </View>
-          <View style={styles.progressBar}><View style={[styles.progressFill,{width:`${Math.round((llmProgress||0)*100)}%`}]} /></View>
-          <Text style={styles.loadingHint}>Runs on-device. First-time setup may take a minute.</Text>
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${Math.round(((llmInstalled ? 1 : llmProgress) || 0) * 100)}%` },
+              ]}
+            />
+          </View>
+          <Text style={styles.loadingHint}>
+            Runs on-device. First-time setup may take a minute.
+          </Text>
         </View>
       </View>
     );
@@ -449,7 +506,7 @@ function InsightsTab() {
 
         {/* Chat Interface */}
         <View style={styles.chatContainer}>
-          <Text style={styles.sectionTitle}>Ask About Your Finances</Text>
+          <Text style={styles.sectionTitle}>Financial AI Assistant</Text>
 
           <ScrollView
             ref={(r) => (messagesScrollRef.current = r)}
@@ -536,7 +593,13 @@ const styles = StyleSheet.create({
   progressRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   progressLabel: { color: '#6B7280', fontSize: 13 },
   progressValue: { color: '#111827', fontSize: 13, fontWeight: '600' },
-  progressBar: { height: 8, backgroundColor: '#E5E7EB', borderRadius: 999, overflow: 'hidden', marginTop: 4 },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 999,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
   progressFill: { height: 8, backgroundColor: '#0EA5E9' },
   loadingHint: { marginTop: 12, color: '#6B7280', fontSize: 12 },
   loadingText: {
