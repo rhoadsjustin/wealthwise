@@ -6,12 +6,14 @@ interface MonthlySummaryCardProps {
   transactions: Transaction[] | null;
   totalExpenses: number;
   categoryBreakdown: { id: string; spent: number }[];
+  plannedSavings?: number;
 }
 
 export function MonthlySummaryCard({
   transactions,
   totalExpenses,
   categoryBreakdown,
+  plannedSavings = 0,
 }: MonthlySummaryCardProps) {
   const expenseTransactions = transactions?.filter((t) => t.type === 'expense') || [];
   const totalTransactions = transactions?.length || 0;
@@ -45,6 +47,13 @@ export function MonthlySummaryCard({
           <View className="flex-row justify-between">
             <Text className="text-sm text-gray-600">Largest Expense</Text>
             <Text className="text-sm font-semibold text-red-600">${largestExpense.toFixed(2)}</Text>
+          </View>
+
+          <View className="flex-row justify-between">
+            <Text className="text-sm text-gray-600">Planned Savings</Text>
+            <Text className="text-sm font-semibold text-sky-600">
+              ${plannedSavings.toFixed(2)}
+            </Text>
           </View>
 
           <View className="flex-row justify-between">

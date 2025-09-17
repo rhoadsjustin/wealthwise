@@ -34,13 +34,12 @@ export default function ReportsTab() {
     year: 'numeric',
   });
 
-  const totalIncome =
-    transactions
-      ?.filter((t: Transaction) => t.type === 'income')
-      .reduce((sum: number, t: Transaction) => sum + parseFloat(t.amount), 0) || 0;
-
+  const totalIncome = summary.incomeBaseline || summary.totalIncome || 0;
   const totalExpenses = summary.totalExpenses || 0;
-  const netIncome = totalIncome - totalExpenses;
+  const plannedSavings = summary.totalSavingsPlanned || 0;
+  const actualIncome = summary.actualIncome || totalIncome;
+  const netIncome = actualIncome - totalExpenses;
+  const netIncomeAfterSavings = summary.netIncomeAfterSavings ?? netIncome - plannedSavings;
 
   const expensesByMonth =
     transactions
@@ -64,7 +63,12 @@ export default function ReportsTab() {
         {/* Summary Cards */}
         <View className="overview-grid mb-6">
           <IncomeCard totalIncome={totalIncome} currentMonth={currentMonth} />
-          <NetIncomeCard netIncome={netIncome} currentMonth={currentMonth} />
+          <NetIncomeCard
+            netIncome={netIncome}
+            netIncomeAfterSavings={netIncomeAfterSavings}
+            plannedSavings={plannedSavings}
+            currentMonth={currentMonth}
+          />
         </View>
 
         {/* Monthly Spending Trend */}
@@ -74,6 +78,7 @@ export default function ReportsTab() {
         <CategoryBreakdownCard
           categoryBreakdown={summary.categoryBreakdown}
           totalExpenses={summary.totalExpenses}
+          incomeBaseline={summary.incomeBaseline}
         />
 
         {/* Budget Performance */}
@@ -87,6 +92,7 @@ export default function ReportsTab() {
           transactions={transactions}
           totalExpenses={totalExpenses}
           categoryBreakdown={summary.categoryBreakdown}
+          plannedSavings={plannedSavings}
         />
       </ScrollView>
       <FAB onPress={() => router.push('/add-transaction')} />

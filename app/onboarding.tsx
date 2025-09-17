@@ -6,7 +6,11 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const { login, completeOnboarding } = useAuth();
 
-  const handleComplete = async (userData: { username: string; hasBiometrics: boolean }) => {
+  const handleComplete = async (userData: {
+    username: string;
+    hasBiometrics: boolean;
+    monthlyIncome: number | null;
+  }) => {
     await login(userData.username);
     await completeOnboarding();
     // After onboarding, go straight to the main app tabs

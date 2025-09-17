@@ -111,7 +111,7 @@ const Input = React.forwardRef<TextInput, InputProps>(
         default:
           return {
             container: multiline ? 'min-h-input-md' : 'h-input-md',
-            input: 'text-base px-3',
+            input: 'text-base px-3 py-3',
             label: 'text-sm font-medium mb-2',
             helper: 'text-sm mt-2',
           };

@@ -38,6 +38,31 @@ export interface Budget {
   createdAt?: string;
 }
 
+export interface SavingsGoal {
+  id?: number;
+  userId: number;
+  name: string;
+  targetAmount: string; // Stored as TEXT for decimal support
+  currentAmount: string; // Stored as TEXT for decimal support
+  monthlyContribution?: string;
+  startDate?: string | null;
+  targetDate?: string | null;
+  autoDeduct?: boolean;
+  notes?: string | null;
+  createdAt?: string;
+}
+
+export interface SavingsContribution {
+  id?: number;
+  savingsGoalId: number;
+  userId: number;
+  amount: string; // Stored as TEXT for decimal support
+  contributedOn: string;
+  sourceTransactionId?: number | null;
+  notes?: string | null;
+  createdAt?: string;
+}
+
 export interface Insight {
   id?: number;
   userId: number;
@@ -145,6 +170,27 @@ export interface InsertBudget {
   categoryId: number;
   amount: string;
   period?: 'weekly' | 'monthly' | 'yearly';
+}
+
+export interface InsertSavingsGoal {
+  userId: number;
+  name: string;
+  targetAmount: string;
+  currentAmount?: string;
+  monthlyContribution?: string;
+  startDate?: string | null;
+  targetDate?: string | null;
+  autoDeduct?: boolean;
+  notes?: string | null;
+}
+
+export interface InsertSavingsContribution {
+  savingsGoalId: number;
+  userId: number;
+  amount: string;
+  contributedOn: string;
+  sourceTransactionId?: number | null;
+  notes?: string | null;
 }
 
 export interface InsertInsight {

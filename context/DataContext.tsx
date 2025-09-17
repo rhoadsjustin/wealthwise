@@ -8,7 +8,15 @@ export interface DashboardSummary {
   totalExpenses: number;
   totalBudget: number;
   remainingBudget: number;
+  totalSavingsPlanned: number;
+  totalSavingsProgress: number;
+  netIncomeAfterSavings: number;
+  incomeBaseline: number;
+  incomeRemaining: number;
+  actualIncome: number;
+  monthlyIncome: number | null;
   categoryBreakdown: CategoryBreakdown[];
+  savingsGoals: SavingsGoalSummary[];
   recentTransactions: Transaction[];
 }
 
@@ -20,6 +28,8 @@ export interface CategoryBreakdown {
   budget: number;
   spent: number;
   percentage: number;
+  incomeShare: number;
+  incomeWarning: boolean;
 }
 
 export interface Transaction {
@@ -41,6 +51,42 @@ export interface Category {
   color: string;
   budget: string;
   userId: number;
+}
+
+export interface SavingsGoal {
+  id: number;
+  userId: number;
+  name: string;
+  targetAmount: string;
+  currentAmount: string;
+  monthlyContribution?: string | null;
+  startDate?: string | null;
+  targetDate?: string | null;
+  autoDeduct?: boolean;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface SavingsContribution {
+  id: number;
+  savingsGoalId: number;
+  userId: number;
+  amount: string;
+  contributedOn: string;
+  sourceTransactionId?: number | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface SavingsGoalSummary {
+  id: number;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  progress: number;
+  monthlyContribution: number;
+  targetDate?: string | null;
+  autoDeduct: boolean;
 }
 
 export interface User {
@@ -85,10 +131,13 @@ interface DataContextType {
   isInitialized: boolean;
   currentUserId: number;
   dataVersion: number;
+  monthlyIncome: number | null;
 
   // Dashboard
   getDashboardSummary: () => Promise<DashboardSummary>;
   refreshDashboard: () => Promise<void>;
+  getMonthlyIncome: () => Promise<number | null>;
+  updateMonthlyIncome: (value: number | null) => Promise<void>;
 
   // User
   getUserProfile: () => Promise<User>;
@@ -102,6 +151,30 @@ interface DataContextType {
   updateCategoriesBudgets: (
     budgetCategories: { name: string; budget: string }[]
   ) => Promise<void>;
+
+  // Savings goals
+  getSavingsGoals: () => Promise<SavingsGoal[]>;
+  createSavingsGoal: (data: {
+    name: string;
+    targetAmount: string;
+    monthlyContribution?: string;
+    startDate?: string | null;
+    targetDate?: string | null;
+    autoDeduct?: boolean;
+    notes?: string | null;
+  }) => Promise<SavingsGoal>;
+  updateSavingsGoal: (id: number, updates: Partial<SavingsGoal>) => Promise<SavingsGoal>;
+  deleteSavingsGoal: (id: number) => Promise<{ success: boolean }>;
+  recordSavingsContribution: (
+    goalId: number,
+    data: {
+      amount: string;
+      contributedOn?: string;
+      sourceTransactionId?: number | null;
+      notes?: string | null;
+    }
+  ) => Promise<SavingsGoal>;
+  getSavingsContributions: (goalId: number) => Promise<SavingsContribution[]>;
 
   // Transactions
   getTransactions: () => Promise<Transaction[]>;
@@ -149,6 +222,7 @@ export function DataProvider({
   const [isInitialized, setIsInitialized] = useState(false);
   const [currentUserId] = useState(userId);
   const [dataVersion, setDataVersion] = useState(0);
+  const [monthlyIncome, setMonthlyIncome] = useState<number | null>(null);
   const bumpVersion = useCallback(() => setDataVersion((v) => v + 1), []);
 
   // Development/demo seed flag (set via EXPO_PUBLIC_SEED_DEMO="true|1" for local/dev)
@@ -158,6 +232,49 @@ export function DataProvider({
       typeof process.env !== 'undefined' &&
       (process.env.EXPO_PUBLIC_SEED_DEMO === 'true' || process.env.EXPO_PUBLIC_SEED_DEMO === '1')) ||
     false;
+
+  const normalizeSavingsGoal = useCallback((goal: any): SavingsGoal => {
+    if (!goal) {
+      throw new Error('Invalid savings goal record');
+    }
+
+    return {
+      id: goal.id,
+      userId: goal.userId,
+      name: goal.name,
+      targetAmount: goal.targetAmount,
+      currentAmount: goal.currentAmount,
+      monthlyContribution: goal.monthlyContribution ?? null,
+      startDate: goal.startDate ?? null,
+      targetDate: goal.targetDate ?? null,
+      notes: goal.notes ?? null,
+      autoDeduct: goal.autoDeduct === 1 || goal.autoDeduct === true,
+      createdAt: goal.createdAt ?? new Date().toISOString(),
+    };
+  }, []);
+
+  const normalizeSavingsContribution = useCallback(
+    (contribution: any): SavingsContribution => {
+      if (!contribution) {
+        throw new Error('Invalid savings contribution record');
+      }
+
+      return {
+        id: contribution.id,
+        savingsGoalId: contribution.savingsGoalId,
+        userId: contribution.userId,
+        amount: contribution.amount,
+        contributedOn: contribution.contributedOn,
+        sourceTransactionId:
+          contribution.sourceTransactionId === null || contribution.sourceTransactionId === undefined
+            ? null
+            : contribution.sourceTransactionId,
+        notes: contribution.notes ?? null,
+        createdAt: contribution.createdAt ?? new Date().toISOString(),
+      };
+    },
+    []
+  );
 
   // Initialize local storage on mount
   useEffect(() => {
@@ -314,6 +431,43 @@ export function DataProvider({
         await localStorage.saveItem('bankAccounts', newBankAccount);
       }
       console.log('✅ Demo bank accounts created');
+
+      const demoSavingsGoals: Omit<SavingsGoal, 'id'>[] = [
+        {
+          userId: currentUserId,
+          name: 'Emergency Fund',
+          targetAmount: '5000',
+          currentAmount: '1200',
+          monthlyContribution: '250',
+          startDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+          targetDate: new Date(Date.now() + 10 * 30 * 24 * 60 * 60 * 1000).toISOString(),
+          autoDeduct: true,
+          notes: 'Build cushion for unexpected expenses.',
+          createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+        {
+          userId: currentUserId,
+          name: 'Vacation',
+          targetAmount: '3000',
+          currentAmount: '800',
+          monthlyContribution: '150',
+          startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          targetDate: new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000).toISOString(),
+          autoDeduct: false,
+          notes: 'Summer getaway fund.',
+          createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+      ];
+
+      for (const goal of demoSavingsGoals) {
+        await localStorage.saveItem('savingsGoals', {
+          ...goal,
+          autoDeduct: goal.autoDeduct ? 1 : 0,
+        });
+      }
+
+      const savedGoals = await localStorage.getItems('savingsGoals', currentUserId);
+      console.log('💰 Demo savings goals created:', savedGoals.length);
       console.log('🎉 All demo data initialization complete!');
     };
     // Seed only starter categories (no transactions/accounts) for production/real users
@@ -365,6 +519,8 @@ export function DataProvider({
             localStorage.clearStore('transactions'),
             localStorage.clearStore('insights'),
             localStorage.clearStore('bankAccounts'),
+            localStorage.clearStore('savingsGoals'),
+            localStorage.clearStore('savingsContributions'),
           ]);
 
           // No query cache to clear (react-query removed)
@@ -409,6 +565,18 @@ export function DataProvider({
         }
 
         setIsInitialized(true);
+
+        try {
+          const storedIncome = await localStorage.getSetting('monthlyIncome');
+          if (storedIncome !== null && storedIncome !== undefined && storedIncome !== '') {
+            const parsed = parseFloat(storedIncome);
+            if (!Number.isNaN(parsed)) {
+              setMonthlyIncome(parsed);
+            }
+          }
+        } catch (incomeError) {
+          console.warn('Failed to load stored monthly income:', incomeError);
+        }
       } catch (error) {
         console.error('Failed to initialize data storage:', error);
       } finally {
@@ -420,8 +588,12 @@ export function DataProvider({
   }, [currentUserId, DEVELOPMENT_MODE]);
 
   const calculateDashboardSummary = useCallback(
-    async (transactions: Transaction[], categories: Category[]): Promise<DashboardSummary> => {
-      const totalIncome = transactions
+    async (
+      transactions: Transaction[],
+      categories: Category[],
+      savingsGoals: SavingsGoal[]
+    ): Promise<DashboardSummary> => {
+      const actualIncome = transactions
         .filter((t) => t.type === 'income')
         .reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
@@ -431,7 +603,22 @@ export function DataProvider({
 
       const totalBudget = categories.reduce((sum, c) => sum + parseFloat(c.budget), 0);
 
+      const baselineIncome = monthlyIncome ?? actualIncome;
+
+      const totalSavingsPlanned = savingsGoals.reduce((sum, goal) => {
+        const monthlyContribution = parseFloat(goal.monthlyContribution ?? '0');
+        return sum + (Number.isFinite(monthlyContribution) ? monthlyContribution : 0);
+      }, 0);
+
+      const totalSavingsProgress = savingsGoals.reduce((sum, goal) => {
+        const current = parseFloat(goal.currentAmount ?? '0');
+        return sum + (Number.isFinite(current) ? current : 0);
+      }, 0);
+
+      const netIncomeAfterSavings = baselineIncome - totalSavingsPlanned;
+
       const remainingBudget = totalBudget - totalExpenses;
+      const incomeRemaining = baselineIncome - totalExpenses;
 
       // Calculate category breakdown
       const categoryBreakdown: CategoryBreakdown[] = categories.map((category) => {
@@ -441,6 +628,8 @@ export function DataProvider({
 
         const budget = parseFloat(category.budget);
         const percentage = budget > 0 ? (spent / budget) * 100 : 0;
+        const incomeShare = baselineIncome > 0 ? spent / baselineIncome : 0;
+        const incomeWarning = incomeShare >= 0.25;
 
         return {
           id: category.id,
@@ -450,6 +639,26 @@ export function DataProvider({
           budget,
           spent,
           percentage,
+          incomeShare,
+          incomeWarning,
+        };
+      });
+
+      const savingsGoalSummaries: SavingsGoalSummary[] = savingsGoals.map((goal) => {
+        const targetAmount = parseFloat(goal.targetAmount ?? '0');
+        const currentAmount = parseFloat(goal.currentAmount ?? '0');
+        const monthlyContribution = parseFloat(goal.monthlyContribution ?? '0');
+        const progress = targetAmount > 0 ? currentAmount / targetAmount : 0;
+
+        return {
+          id: goal.id,
+          name: goal.name,
+          targetAmount: Number.isFinite(targetAmount) ? targetAmount : 0,
+          currentAmount: Number.isFinite(currentAmount) ? currentAmount : 0,
+          progress: Number.isFinite(progress) ? Math.min(Math.max(progress, 0), 1) : 0,
+          monthlyContribution: Number.isFinite(monthlyContribution) ? monthlyContribution : 0,
+          targetDate: goal.targetDate ?? null,
+          autoDeduct: Boolean(goal.autoDeduct),
         };
       });
 
@@ -459,15 +668,23 @@ export function DataProvider({
         .slice(0, 10);
 
       return {
-        totalIncome,
+        totalIncome: baselineIncome,
         totalExpenses,
         totalBudget,
         remainingBudget,
+        totalSavingsPlanned,
+        totalSavingsProgress,
+        netIncomeAfterSavings,
+        incomeBaseline: baselineIncome,
+        incomeRemaining,
+        actualIncome,
+        monthlyIncome: monthlyIncome ?? null,
         categoryBreakdown,
+        savingsGoals: savingsGoalSummaries,
         recentTransactions,
       };
     },
-    []
+    [monthlyIncome]
   );
 
   // Dashboard methods
@@ -475,24 +692,28 @@ export function DataProvider({
     console.log('🔍 getDashboardSummary called for userId:', currentUserId);
 
     try {
-      const [transactions, categories] = await Promise.all([
+      const [transactions, categories, savingsGoalsRaw] = await Promise.all([
         localStorage.getItems<Transaction>('transactions', currentUserId),
         localStorage.getItems<Category>('categories', currentUserId),
+        localStorage.getItems<any>('savingsGoals', currentUserId),
       ]);
 
       console.log('📊 Data loaded:', {
         transactionCount: transactions.length,
         categoryCount: categories.length,
+        savingsGoalCount: savingsGoalsRaw.length,
         transactions: transactions.slice(0, 2), // Log first 2 for debugging
         categories: categories.slice(0, 2), // Log first 2 for debugging
       });
 
-      return calculateDashboardSummary(transactions, categories);
+      const savingsGoals = savingsGoalsRaw.map((goal: any) => normalizeSavingsGoal(goal));
+
+      return calculateDashboardSummary(transactions, categories, savingsGoals);
     } catch (error) {
       console.error('❌ Error in getDashboardSummary:', error);
       throw error;
     }
-  }, [currentUserId, calculateDashboardSummary]);
+  }, [currentUserId, calculateDashboardSummary, normalizeSavingsGoal]);
 
   const refreshDashboard = useCallback(async (): Promise<void> => {
     // No-op since we no longer use a query cache
@@ -603,6 +824,190 @@ export function DataProvider({
     [getCategories, updateCategory]
   );
 
+  const getMonthlyIncome = useCallback(async (): Promise<number | null> => {
+    try {
+      const stored = await localStorage.getSetting('monthlyIncome');
+      if (stored === null || stored === undefined || stored === '') {
+        setMonthlyIncome(null);
+        return null;
+      }
+      const parsed = parseFloat(stored);
+      if (Number.isNaN(parsed)) {
+        setMonthlyIncome(null);
+        return null;
+      }
+      setMonthlyIncome(parsed);
+      return parsed;
+    } catch (error) {
+      console.warn('Failed to get monthly income:', error);
+      return null;
+    }
+  }, []);
+
+  const updateMonthlyIncome = useCallback(
+    async (value: number | null): Promise<void> => {
+      try {
+        if (value === null) {
+          await localStorage.setSetting('monthlyIncome', null);
+          setMonthlyIncome(null);
+        } else {
+          const normalized = Number.isFinite(value) ? Number(value.toFixed(2)) : 0;
+          await localStorage.setSetting('monthlyIncome', normalized);
+          setMonthlyIncome(normalized);
+        }
+        bumpVersion();
+      } catch (error) {
+        console.error('Failed to update monthly income:', error);
+        throw error;
+      }
+    },
+    [bumpVersion]
+  );
+
+  // Savings goal methods
+  const getSavingsGoals = useCallback(async (): Promise<SavingsGoal[]> => {
+    const results = await localStorage.getItems<any>('savingsGoals', currentUserId);
+    const normalized = results.map((goal: any) => normalizeSavingsGoal(goal));
+    return normalized.sort((a, b) => {
+      const dateA = a.targetDate ? new Date(a.targetDate).getTime() : Infinity;
+      const dateB = b.targetDate ? new Date(b.targetDate).getTime() : Infinity;
+      return dateA - dateB;
+    });
+  }, [currentUserId, normalizeSavingsGoal]);
+
+  const createSavingsGoal = useCallback(
+    async (data: {
+      name: string;
+      targetAmount: string;
+      monthlyContribution?: string;
+      startDate?: string | null;
+      targetDate?: string | null;
+      autoDeduct?: boolean;
+      notes?: string | null;
+    }): Promise<SavingsGoal> => {
+      const newGoal = {
+        userId: currentUserId,
+        name: data.name,
+        targetAmount: data.targetAmount,
+        currentAmount: '0',
+        monthlyContribution: data.monthlyContribution ?? null,
+        startDate: data.startDate ?? null,
+        targetDate: data.targetDate ?? null,
+        notes: data.notes ?? null,
+        autoDeduct: data.autoDeduct ? 1 : 0,
+        createdAt: new Date().toISOString(),
+      };
+
+      const saved = await localStorage.saveItem('savingsGoals', newGoal as any);
+      bumpVersion();
+      return normalizeSavingsGoal(saved);
+    },
+    [bumpVersion, currentUserId, normalizeSavingsGoal]
+  );
+
+  const updateSavingsGoal = useCallback(
+    async (id: number, updates: Partial<SavingsGoal>): Promise<SavingsGoal> => {
+      const existing = await localStorage.getItem<any>('savingsGoals', id);
+      if (!existing) {
+        throw new Error('Savings goal not found');
+      }
+
+      const currentGoal = normalizeSavingsGoal(existing);
+      const nextGoal: SavingsGoal = {
+        ...currentGoal,
+        ...updates,
+      };
+
+      const record = {
+        ...existing,
+        name: nextGoal.name,
+        targetAmount: nextGoal.targetAmount,
+        currentAmount: nextGoal.currentAmount,
+        monthlyContribution: nextGoal.monthlyContribution ?? null,
+        startDate: nextGoal.startDate ?? null,
+        targetDate: nextGoal.targetDate ?? null,
+        notes: nextGoal.notes ?? null,
+        autoDeduct: nextGoal.autoDeduct ? 1 : 0,
+      };
+
+      const saved = await localStorage.saveItem('savingsGoals', record);
+      bumpVersion();
+      return normalizeSavingsGoal(saved);
+    },
+    [bumpVersion, normalizeSavingsGoal]
+  );
+
+  const deleteSavingsGoal = useCallback(
+    async (id: number): Promise<{ success: boolean }> => {
+      const contributions = await localStorage.getItems<any>('savingsContributions', currentUserId);
+      for (const contribution of contributions) {
+        if (contribution.savingsGoalId === id && contribution.id) {
+          await localStorage.deleteItem('savingsContributions', contribution.id);
+        }
+      }
+
+      await localStorage.deleteItem('savingsGoals', id);
+      bumpVersion();
+      return { success: true };
+    },
+    [bumpVersion, currentUserId]
+  );
+
+  const recordSavingsContribution = useCallback(
+    async (
+      goalId: number,
+      data: {
+        amount: string;
+        contributedOn?: string;
+        sourceTransactionId?: number | null;
+        notes?: string | null;
+      }
+    ): Promise<SavingsGoal> => {
+      const goalRecord = await localStorage.getItem<any>('savingsGoals', goalId);
+      if (!goalRecord) {
+        throw new Error('Savings goal not found');
+      }
+
+      const normalizedGoal = normalizeSavingsGoal(goalRecord);
+      const amountValue = parseFloat(data.amount);
+      if (!Number.isFinite(amountValue)) {
+        throw new Error('Invalid contribution amount');
+      }
+
+      const newCurrent = (parseFloat(normalizedGoal.currentAmount ?? '0') + amountValue).toFixed(2);
+
+      await localStorage.saveItem('savingsContributions', {
+        savingsGoalId: goalId,
+        userId: currentUserId,
+        amount: data.amount,
+        contributedOn: data.contributedOn ?? new Date().toISOString().split('T')[0],
+        sourceTransactionId: data.sourceTransactionId ?? null,
+        notes: data.notes ?? null,
+      });
+
+      const updatedRecord = {
+        ...goalRecord,
+        currentAmount: newCurrent,
+      };
+
+      const saved = await localStorage.saveItem('savingsGoals', updatedRecord);
+      bumpVersion();
+      return normalizeSavingsGoal(saved);
+    },
+    [bumpVersion, currentUserId, normalizeSavingsGoal]
+  );
+
+  const getSavingsContributions = useCallback(
+    async (goalId: number): Promise<SavingsContribution[]> => {
+      const results = await localStorage.getItems<any>('savingsContributions', currentUserId);
+      return results
+        .filter((item) => item.savingsGoalId === goalId)
+        .map((item) => normalizeSavingsContribution(item))
+        .sort((a, b) => new Date(b.contributedOn).getTime() - new Date(a.contributedOn).getTime());
+    },
+    [currentUserId, normalizeSavingsContribution]
+  );
+
   // Transaction methods
   const getTransactions = useCallback(async (): Promise<Transaction[]> => {
     console.log('💰 getTransactions called for userId:', currentUserId);
@@ -692,7 +1097,13 @@ export function DataProvider({
   }, [currentUserId]);
 
   const generateInsights = useCallback(async (): Promise<{ insights: Insight[] }> => {
-    const [transactions, categories] = await Promise.all([getTransactions(), getCategories()]);
+    const [transactions, categories, savingsGoalsRaw] = await Promise.all([
+      getTransactions(),
+      getCategories(),
+      getSavingsGoals(),
+    ]);
+
+    const savingsGoals = savingsGoalsRaw.map((goal) => normalizeSavingsGoal(goal));
 
     const insights: Insight[] = [];
 
@@ -766,6 +1177,45 @@ export function DataProvider({
       });
     }
 
+    if (savingsGoals.length > 0) {
+      const totalSavingsPlanned = savingsGoals.reduce((sum, goal) => {
+        const monthly = parseFloat(goal.monthlyContribution ?? '0');
+        return sum + (Number.isFinite(monthly) ? monthly : 0);
+      }, 0);
+
+      if (totalSavingsPlanned > 0) {
+        insights.push({
+          id: Date.now() + Math.random(),
+          userId: currentUserId,
+          type: 'trend',
+          title: 'Savings Plan Active',
+          description: `You're reserving $${totalSavingsPlanned.toFixed(
+            2
+          )} each month toward your goals.`,
+          severity: 'info',
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      savingsGoals.forEach((goal) => {
+        const target = parseFloat(goal.targetAmount ?? '0');
+        const current = parseFloat(goal.currentAmount ?? '0');
+        if (target > 0 && current / target >= 0.85) {
+          insights.push({
+            id: Date.now() + Math.random(),
+            userId: currentUserId,
+            type: 'suggestion',
+            title: `${goal.name} is almost complete`,
+            description: `Only $${Math.max(target - current, 0).toFixed(
+              2
+            )} left to reach this savings goal.`,
+            severity: 'info',
+            createdAt: new Date().toISOString(),
+          });
+        }
+      });
+    }
+
     // Save insights to storage
     for (const insight of insights) {
       await localStorage.saveItem('insights', insight);
@@ -773,7 +1223,14 @@ export function DataProvider({
     bumpVersion();
 
     return { insights };
-  }, [currentUserId, getTransactions, getCategories, bumpVersion]);
+  }, [
+    currentUserId,
+    getTransactions,
+    getCategories,
+    getSavingsGoals,
+    normalizeSavingsGoal,
+    bumpVersion,
+  ]);
 
   // Bank Account methods
   const getBankAccounts = useCallback(async (): Promise<BankAccount[]> => {
@@ -831,7 +1288,11 @@ export function DataProvider({
       localStorage.clearStore('categories'),
       localStorage.clearStore('insights'),
       localStorage.clearStore('bankAccounts'),
+      localStorage.clearStore('savingsGoals'),
+      localStorage.clearStore('savingsContributions'),
     ]);
+    await localStorage.setSetting('monthlyIncome', null);
+    setMonthlyIncome(null);
     // Note: clearAllData functionality simplified for development
     console.log('Data cleared');
   }, []);
@@ -847,6 +1308,14 @@ export function DataProvider({
         createCategory,
         updateCategory,
         deleteCategory,
+        getMonthlyIncome,
+        updateMonthlyIncome,
+        getSavingsGoals,
+        createSavingsGoal,
+        updateSavingsGoal,
+        deleteSavingsGoal,
+        recordSavingsContribution,
+        getSavingsContributions,
         getTransactions,
         createTransaction,
         updateTransaction,
@@ -870,6 +1339,14 @@ export function DataProvider({
     createCategory,
     updateCategory,
     deleteCategory,
+    getMonthlyIncome,
+    updateMonthlyIncome,
+    getSavingsGoals,
+    createSavingsGoal,
+    updateSavingsGoal,
+    deleteSavingsGoal,
+    recordSavingsContribution,
+    getSavingsContributions,
     getTransactions,
     createTransaction,
     updateTransaction,
@@ -890,10 +1367,13 @@ export function DataProvider({
     isInitialized,
     currentUserId,
     dataVersion,
+    monthlyIncome,
 
     // Dashboard
     getDashboardSummary,
     refreshDashboard,
+    getMonthlyIncome,
+    updateMonthlyIncome,
 
     // User
     getUserProfile,
@@ -905,6 +1385,14 @@ export function DataProvider({
     updateCategory,
     deleteCategory,
     updateCategoriesBudgets,
+
+    // Savings goals
+    getSavingsGoals,
+    createSavingsGoal,
+    updateSavingsGoal,
+    deleteSavingsGoal,
+    recordSavingsContribution,
+    getSavingsContributions,
 
     // Transactions
     getTransactions,
@@ -986,4 +1474,24 @@ export function useCategories() {
 export function useInsights() {
   const { getInsights, generateInsights } = useData();
   return { getInsights, generateInsights };
+}
+
+export function useSavings() {
+  const {
+    getSavingsGoals,
+    createSavingsGoal,
+    updateSavingsGoal,
+    deleteSavingsGoal,
+    recordSavingsContribution,
+    getSavingsContributions,
+  } = useData();
+
+  return {
+    getSavingsGoals,
+    createSavingsGoal,
+    updateSavingsGoal,
+    deleteSavingsGoal,
+    recordSavingsContribution,
+    getSavingsContributions,
+  };
 }

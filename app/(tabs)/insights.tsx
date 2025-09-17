@@ -112,7 +112,7 @@ function InsightsTab() {
         if (summary) {
           documents.push({
             pageContent:
-              `Financial Summary: Total income $${summary.totalIncome}, Total expenses $${summary.totalExpenses}, Total budget $${summary.totalBudget}, Remaining budget $${summary.remainingBudget}`.slice(
+              `Financial Summary: Total income baseline $${summary.incomeBaseline || summary.totalIncome}, Total expenses $${summary.totalExpenses}, Total budget $${summary.totalBudget}, Remaining budget $${summary.remainingBudget}`.slice(
                 0,
                 280
               ),
@@ -362,7 +362,8 @@ function InsightsTab() {
 
     // Income queries
     if (lowerQuery.includes('income') || lowerQuery.includes('earn')) {
-      return `Your total income this month is $${summary?.totalIncome?.toFixed(2) || 0}. After expenses of $${summary?.totalExpenses?.toFixed(2) || 0}, you have $${((summary?.totalIncome || 0) - (summary?.totalExpenses || 0)).toFixed(2)} left.`;
+      const baseline = summary?.incomeBaseline ?? summary?.totalIncome ?? 0;
+      return `Your total income baseline this month is $${baseline.toFixed(2)}. After expenses of $${summary?.totalExpenses?.toFixed(2) || 0}, you have $${(baseline - (summary?.totalExpenses || 0)).toFixed(2)} left.`;
     }
 
     // Category queries
@@ -379,8 +380,9 @@ function InsightsTab() {
 
     // Savings queries
     if (lowerQuery.includes('save') || lowerQuery.includes('saving')) {
-      const savings = (summary?.totalIncome || 0) - (summary?.totalExpenses || 0);
-      const savingsRate = summary?.totalIncome > 0 ? (savings / summary.totalIncome) * 100 : 0;
+      const baseline = summary?.incomeBaseline ?? summary?.totalIncome ?? 0;
+      const savings = baseline - (summary?.totalExpenses || 0);
+      const savingsRate = baseline > 0 ? (savings / baseline) * 100 : 0;
       return `You're saving $${savings.toFixed(2)} this month, which is ${savingsRate.toFixed(0)}% of your income.`;
     }
 

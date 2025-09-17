@@ -70,14 +70,17 @@ export default function SpendingTab() {
       return d.getMonth() === targetMonth && d.getFullYear() === targetYear;
     });
 
-    const totalIncome = inPeriod
+    const periodIncome = inPeriod
       .filter((t: any) => t.type === 'income')
       .reduce((s: number, t: any) => s + parseFloat(t.amount), 0);
-    const totalExpenses = inPeriod
+    const periodExpenses = inPeriod
       .filter((t: any) => t.type === 'expense')
       .reduce((s: number, t: any) => s + parseFloat(t.amount), 0);
     const totalBudget = categories.reduce((s: number, c: any) => s + parseFloat(c.budget), 0);
-    const remainingBudget = totalBudget - totalExpenses;
+    const remainingBudget = totalBudget - periodExpenses;
+    const totalSavingsPlanned = summary?.totalSavingsPlanned ?? 0;
+    const totalSavingsProgress = summary?.totalSavingsProgress ?? 0;
+    const netIncomeAfterSavings = (summary?.incomeBaseline ?? periodIncome) - totalSavingsPlanned;
     const expensesByMonth =
       transactions
         ?.filter((t: Transaction) => t.type === 'expense')
@@ -95,10 +98,13 @@ export default function SpendingTab() {
       .map(([month, amount]) => ({ month, amount: amount as number }));
     return {
       ...summary,
-      totalIncome,
-      totalExpenses,
+      periodIncome,
+      periodExpenses,
       totalBudget,
       remainingBudget,
+      totalSavingsPlanned,
+      totalSavingsProgress,
+      netIncomeAfterSavings,
       monthlyData,
     } as any;
   }, [transactions, categories, period, summary]);
@@ -109,6 +115,20 @@ export default function SpendingTab() {
           displaySummary.totalBudget) *
         100
       : 0;
+
+  const incomeBaseline = displaySummary?.incomeBaseline ?? displaySummary?.totalIncome ?? 0;
+  const periodExpenses = displaySummary?.periodExpenses ?? displaySummary?.totalExpenses ?? 0;
+  const incomeRemaining = displaySummary?.incomeRemaining ?? incomeBaseline - periodExpenses;
+  const periodIncome = displaySummary?.periodIncome ?? displaySummary?.actualIncome ?? 0;
+  const incomePressureCategories = React.useMemo(() => {
+    const breakdown = displaySummary?.categoryBreakdown;
+    if (!Array.isArray(breakdown)) return [] as any[];
+    if (!incomeBaseline || incomeBaseline <= 0) return [] as any[];
+    return breakdown
+      .filter((cat: any) => Boolean(cat?.incomeWarning) && (cat?.incomeShare ?? 0) > 0)
+      .sort((a: any, b: any) => (b?.incomeShare ?? 0) - (a?.incomeShare ?? 0))
+      .slice(0, 3);
+  }, [displaySummary, incomeBaseline]);
 
   // Show loading state while data is loading (must be after all hooks)
   if (summaryLoading || !summary) {
@@ -217,21 +237,24 @@ export default function SpendingTab() {
           <View className="mt-3 rounded-xl bg-white/40 px-3 py-3 dark:bg-white/5">
             <View className="flex-row justify-between">
               <View className="mr-2 flex-1 rounded-lg border border-info-100/60 bg-white/70 px-3 py-2">
-                <Text className="text-[11px] text-info-700 dark:text-info-300">Income</Text>
+                <Text className="text-[11px] text-info-700 dark:text-info-300">Income Baseline</Text>
                 <Text className="text-base font-semibold text-success-700 dark:text-success-400">
-                  ${displaySummary.totalIncome.toFixed(0)}
+                  ${incomeBaseline.toFixed(0)}
+                </Text>
+                <Text className="text-[11px] text-info-600 dark:text-info-300">
+                  Actual this month: ${periodIncome.toFixed(0)}
                 </Text>
               </View>
               <View className="mr-2 flex-1 rounded-lg border border-info-100/60 bg-white/70 px-3 py-2">
                 <Text className="text-[11px] text-info-700 dark:text-info-300">Expenses</Text>
                 <Text className="text-base font-semibold text-error-700 dark:text-error-400">
-                  ${displaySummary.totalExpenses.toFixed(0)}
+                  ${periodExpenses.toFixed(0)}
                 </Text>
               </View>
               <View className="flex-1 rounded-lg border border-info-100/60 bg-white/70 px-3 py-2">
-                <Text className="text-[11px] text-info-700 dark:text-info-300">Remaining</Text>
+                <Text className="text-[11px] text-info-700 dark:text-info-300">Income Left</Text>
                 <Text className="text-base font-semibold text-info-800 dark:text-info-300">
-                  ${displaySummary.remainingBudget.toFixed(0)}
+                  ${incomeRemaining.toFixed(0)}
                 </Text>
               </View>
             </View>
@@ -242,20 +265,33 @@ export default function SpendingTab() {
                 style={{
                   width: `${Math.min(
                     displaySummary.totalBudget > 0
-                      ? (displaySummary.totalExpenses / displaySummary.totalBudget) * 100
+                      ? (periodExpenses / displaySummary.totalBudget) * 100
                       : 0,
                     100
                   )}%`,
                   backgroundColor:
                     displaySummary.totalBudget > 0 &&
-                    displaySummary.totalExpenses / displaySummary.totalBudget >= 0.9
+                    periodExpenses / displaySummary.totalBudget >= 0.9
                       ? '#EF4444'
-                      : displaySummary.totalBudget > 0 &&
-                          displaySummary.totalExpenses / displaySummary.totalBudget >= 0.7
+                      : displaySummary.totalBudget > 0 && periodExpenses / displaySummary.totalBudget >= 0.7
                         ? '#F59E0B'
                         : '#0EA5E9',
                 }}
               />
+            </View>
+            <View className="mt-3 flex-row gap-2">
+              <View className="flex-1 rounded-lg border border-info-100/60 bg-white/70 px-3 py-2">
+                <Text className="text-[11px] text-info-700 dark:text-info-300">Savings Plan</Text>
+                <Text className="text-base font-semibold text-info-800 dark:text-info-300">
+                  ${displaySummary.totalSavingsPlanned.toFixed(0)} / mo
+                </Text>
+              </View>
+              <View className="flex-1 rounded-lg border border-info-100/60 bg-white/70 px-3 py-2">
+                <Text className="text-[11px] text-info-700 dark:text-info-300">Net After Savings</Text>
+                <Text className="text-base font-semibold text-success-700 dark:text-success-400">
+                  ${displaySummary.netIncomeAfterSavings.toFixed(0)}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -329,7 +365,7 @@ export default function SpendingTab() {
               <View className="space-y-1">
                 <View className="flex-row items-center justify-between">
                   <Text className="text-base font-semibold text-error-700">
-                    ${displaySummary.totalExpenses.toFixed(0)}
+                    ${periodExpenses.toFixed(0)}
                   </Text>
                   <Text
                     className={`text-[11px] ${budgetPercentage < 90 ? 'text-success-700' : 'text-error-700'}`}>
@@ -345,9 +381,33 @@ export default function SpendingTab() {
         </View>
 
         <SpendingTrendCard monthlyData={displaySummary.monthlyData} />
+
+        {incomePressureCategories.length > 0 && (
+          <Card className="card-mobile mb-6 border-warning-200 bg-warning-50">
+            <CardContent className="p-4">
+              <Text className="mb-2 text-sm font-semibold text-warning-700">Spending Flags</Text>
+              {incomePressureCategories.map((cat: any) => (
+                <View key={cat.id} className="mb-2 flex-row items-center justify-between">
+                  <View>
+                    <Text className="text-sm font-medium text-warning-800">{cat.name}</Text>
+                    <Text className="text-xs text-warning-700">
+                      {((cat?.incomeShare ?? 0) * 100).toFixed(1)}% of income · ${cat.spent.toFixed(0)}
+                    </Text>
+                  </View>
+                  <Ionicons name="warning-outline" size={18} color="#B45309" />
+                </View>
+              ))}
+              <Text className="mt-2 text-xs text-warning-700">
+                Aim to keep any single category under 25% of your monthly income.
+              </Text>
+            </CardContent>
+          </Card>
+        )}
+
         <CategoryBreakdownCard
           categoryBreakdown={displaySummary.categoryBreakdown}
-          totalExpenses={displaySummary.totalExpenses}
+          totalExpenses={periodExpenses}
+          incomeBaseline={incomeBaseline}
         />
 
         {/* Budget Performance */}
@@ -359,8 +419,9 @@ export default function SpendingTab() {
         {/* Report Summary */}
         <MonthlySummaryCard
           transactions={transactions}
-          totalExpenses={displaySummary.totalExpenses}
+          totalExpenses={periodExpenses}
           categoryBreakdown={displaySummary.categoryBreakdown}
+          plannedSavings={displaySummary.totalSavingsPlanned}
         />
         {/* Bank Accounts */}
         <BankAccountsCard />

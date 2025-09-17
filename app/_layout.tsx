@@ -19,11 +19,14 @@ interface AppDataContextType {
   user: any;
   transactions: any;
   categories: any;
+  savingsGoals: any;
+  monthlyIncome: number | null;
   summaryLoading: boolean;
   insightsLoading: boolean;
   isAddModalOpen: boolean;
   setIsAddModalOpen: (open: boolean) => void;
   refreshAppData: () => Promise<void>;
+  updateMonthlyIncome: (value: number | null) => Promise<void>;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -47,6 +50,10 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
     getUserProfile,
     getTransactions,
     getCategories,
+    getSavingsGoals,
+    monthlyIncome: contextMonthlyIncome,
+    updateMonthlyIncome,
+    getMonthlyIncome,
   } = useData();
 
   const [summary, setSummary] = useState<any>(null);
@@ -54,6 +61,7 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [savingsGoals, setSavingsGoals] = useState<any[]>([]);
   const [summaryLoading, setSummaryLoading] = useState<boolean>(false);
   const [insightsLoading, setInsightsLoading] = useState<boolean>(false);
 
@@ -65,17 +73,19 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
     const load = async () => {
       try {
         setSummaryLoading(true);
-        const [s, u, txs, cats] = await Promise.all([
+        const [s, u, txs, cats, goals] = await Promise.all([
           getDashboardSummary(),
           getUserProfile(),
           getTransactions(),
           getCategories(),
+          getSavingsGoals(),
         ]);
         if (!mounted) return;
         setSummary(s);
         setUser(u);
         setTransactions(txs);
         setCategories(cats);
+        setSavingsGoals(goals);
         try {
           await categorizer.indexCategoryDocs(cats);
         } catch {}
@@ -87,12 +97,21 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
           totalExpenses: 0,
           totalBudget: 0,
           remainingBudget: 0,
+          incomeBaseline: 0,
+          incomeRemaining: 0,
+          actualIncome: 0,
+          monthlyIncome: null,
           categoryBreakdown: [],
+          totalSavingsPlanned: 0,
+          totalSavingsProgress: 0,
+          netIncomeAfterSavings: 0,
+          savingsGoals: [],
           recentTransactions: [],
         } as any);
         setUser(null);
         setTransactions([]);
         setCategories([]);
+        setSavingsGoals([]);
       } finally {
         if (mounted) setSummaryLoading(false);
       }
@@ -110,7 +129,13 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
     getUserProfile,
     getTransactions,
     getCategories,
+    getSavingsGoals,
   ]);
+
+  useEffect(() => {
+    if (!isInitialized) return;
+    getMonthlyIncome();
+  }, [isInitialized, getMonthlyIncome]);
 
   useEffect(() => {
     if (!isInitialized) return;
@@ -139,22 +164,31 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
     if (!isInitialized) return;
     setSummaryLoading(true);
     try {
-      const [s, u, txs, cats] = await Promise.all([
+      const [s, u, txs, cats, goals] = await Promise.all([
         getDashboardSummary(),
         getUserProfile(),
         getTransactions(),
         getCategories(),
+        getSavingsGoals(),
       ]);
       setSummary(s);
       setUser(u);
       setTransactions(txs);
       setCategories(cats);
+      setSavingsGoals(goals);
     } catch (e) {
       console.warn('Manual refresh failed:', e);
     } finally {
       setSummaryLoading(false);
     }
-  }, [isInitialized, getDashboardSummary, getUserProfile, getTransactions, getCategories]);
+  }, [
+    isInitialized,
+    getDashboardSummary,
+    getUserProfile,
+    getTransactions,
+    getCategories,
+    getSavingsGoals,
+  ]);
 
   const contextValue: AppDataContextType = useMemo(
     () => ({
@@ -163,11 +197,14 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
       user,
       transactions,
       categories,
+      savingsGoals,
+      monthlyIncome: summary?.monthlyIncome ?? contextMonthlyIncome ?? null,
       summaryLoading,
       insightsLoading,
       isAddModalOpen,
       setIsAddModalOpen,
       refreshAppData,
+      updateMonthlyIncome,
     }),
     [
       summary,
@@ -175,10 +212,13 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
       user,
       transactions,
       categories,
+      savingsGoals,
+      contextMonthlyIncome,
       summaryLoading,
       insightsLoading,
       isAddModalOpen,
       refreshAppData,
+      updateMonthlyIncome,
     ]
   );
 
@@ -268,6 +308,26 @@ function AppContent() {
               options={{
                 presentation: 'modal',
                 headerShown: false,
+                contentStyle: {
+                  backgroundColor: '#FFFFFF',
+                },
+              }}
+            />
+            <Stack.Screen
+              name="savings-goal-modal"
+              options={{
+                presentation: 'modal',
+                headerShown: true,
+                contentStyle: {
+                  backgroundColor: '#FFFFFF',
+                },
+              }}
+            />
+            <Stack.Screen
+              name="savings-fund-modal"
+              options={{
+                presentation: 'modal',
+                headerShown: true,
                 contentStyle: {
                   backgroundColor: '#FFFFFF',
                 },

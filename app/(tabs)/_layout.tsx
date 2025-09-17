@@ -34,6 +34,11 @@ export default function TabLayout() {
         <Label>Insights</Label>
         <Icon sf={{ default: 'apple.intelligence', selected: 'apple.intelligence' }} />
       </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="savings">
+        <Label>Savings</Label>
+        <Icon sf={{ default: 'chart.pie', selected: 'chart.pie.fill' }} />
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }

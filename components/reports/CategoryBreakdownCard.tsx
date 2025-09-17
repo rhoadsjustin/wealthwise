@@ -7,14 +7,21 @@ interface CategoryBreakdownItem {
   name: string;
   spent: number;
   color: string;
+  incomeShare?: number;
+  incomeWarning?: boolean;
 }
 
 interface CategoryBreakdownCardProps {
   categoryBreakdown: CategoryBreakdownItem[];
   totalExpenses: number;
+  incomeBaseline?: number;
 }
 
-export function CategoryBreakdownCard({ categoryBreakdown, totalExpenses }: CategoryBreakdownCardProps) {
+export function CategoryBreakdownCard({
+  categoryBreakdown,
+  totalExpenses,
+  incomeBaseline,
+}: CategoryBreakdownCardProps) {
   return (
     <Card className="card-mobile mb-6 bg-success-50 border-success-100">
       <CardContent className="p-4">
@@ -30,6 +37,11 @@ export function CategoryBreakdownCard({ categoryBreakdown, totalExpenses }: Cate
             .map((category) => {
               const percentage =
                 totalExpenses > 0 ? (category.spent / totalExpenses) * 100 : 0;
+              const incomeShare = category.incomeShare ??
+                (incomeBaseline && incomeBaseline > 0
+                  ? category.spent / incomeBaseline
+                  : 0);
+              const incomeWarning = Boolean(category.incomeWarning) || incomeShare >= 0.3;
 
               return (
                 <View key={category.id} className="flex-row items-center justify-between">
@@ -43,8 +55,13 @@ export function CategoryBreakdownCard({ categoryBreakdown, totalExpenses }: Cate
                         {category.name}
                       </Text>
                       <Text className="text-xs text-gray-600">
-                        {percentage.toFixed(1)}% of total
+                        {percentage.toFixed(1)}% of spending · {(incomeShare * 100).toFixed(1)}% of income
                       </Text>
+                      {incomeWarning && (
+                        <Text className="mt-1 text-xs font-semibold text-red-600">
+                          High income usage
+                        </Text>
+                      )}
                     </View>
                   </View>
                   <Text className="ml-3 text-sm font-semibold text-gray-900">

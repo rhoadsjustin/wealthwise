@@ -9,11 +9,16 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { showToast } from './Toast';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useData } from '@/context/DataContext';
 
 const { height } = Dimensions.get('window');
 
 interface OnboardingFlowProps {
-  onComplete: (userData: { username: string; hasBiometrics: boolean }) => void;
+  onComplete: (userData: {
+    username: string;
+    hasBiometrics: boolean;
+    monthlyIncome: number | null;
+  }) => void;
 }
 
 interface FeatureSlide {
@@ -67,13 +72,23 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [biometricsSupported, setBiometricsSupported] = useState(false);
   const [biometricsEnabled, setBiometricsEnabled] = useState(false);
+  const [incomeInput, setIncomeInput] = useState('');
+  const [incomeError, setIncomeError] = useState<string | null>(null);
+  const [monthlyIncomeValue, setMonthlyIncomeValue] = useState<number | null>(null);
   // Features + Account Setup + Biometrics Setup (budget moved to separate flow)
-  const totalSteps = useMemo(() => features.length + 2, []);
+  const totalSteps = useMemo(() => features.length + 3, []);
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
   // Progress is animated within <Progress />
 
   const { top, bottom } = useSafeAreaInsets();
+  const { updateMonthlyIncome, monthlyIncome } = useData();
+  useEffect(() => {
+    if (monthlyIncome != null && monthlyIncomeValue === null) {
+      setMonthlyIncomeValue(monthlyIncome);
+      setIncomeInput(String(monthlyIncome));
+    }
+  }, [monthlyIncome, monthlyIncomeValue]);
   useEffect(() => {
     // Check if biometrics are supported
     checkBiometricsSupport();
@@ -153,10 +168,30 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     handleNext();
   };
 
+  const handleIncomeSetup = async () => {
+    const cleaned = incomeInput.replace(/[^0-9.]/g, '');
+    const parsed = parseFloat(cleaned);
+    if (!cleaned || Number.isNaN(parsed) || parsed <= 0) {
+      setIncomeError('Enter a valid monthly amount to continue');
+      return;
+    }
+
+    try {
+      setIncomeError(null);
+      setMonthlyIncomeValue(parsed);
+      await updateMonthlyIncome(parsed);
+      handleNext();
+    } catch (error) {
+      console.error('Failed to store monthly income during onboarding', error);
+      setIncomeError('Unable to save income. Please try again.');
+    }
+  };
+
   const handleComplete = () => {
     onComplete({
       username: username.trim(),
       hasBiometrics: biometricsEnabled,
+      monthlyIncome: monthlyIncomeValue,
     });
   };
 
@@ -205,6 +240,39 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               {username.length}/20 characters
             </Text>
           ) : null}
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderIncomeSetup = () => (
+    <View className="items-center gap-6 p-8">
+      <View className="h-24 w-24 items-center justify-center rounded-full bg-gray-100 shadow-md">
+        <Ionicons name="cash-outline" size={48} color="#000000" />
+      </View>
+      <View className="max-w-xs items-center gap-4">
+        <Text className="text-center text-2xl font-bold text-black">Monthly Household Income</Text>
+        <Text className="max-w-xs text-center text-lg leading-7 text-gray-700">
+          This helps us benchmark your budgets and flag categories that use too much of your
+          income.
+        </Text>
+        <View className="w-full gap-3">
+          <Text className="self-start text-base font-medium text-black">Monthly income</Text>
+          <Input
+            value={incomeInput}
+            onChangeText={(text) => {
+              setIncomeInput(text);
+              if (incomeError) setIncomeError(null);
+            }}
+            keyboardType="numeric"
+            placeholder="e.g. 5500"
+            className="w-full rounded-md border-gray-400 px-3 text-base"
+            style={{ color: 'black' }}
+            helperText="Enter totals for your household after taxes"
+            errorText={incomeError || undefined}
+            maxLength={12}
+            {...{ placeholderTextColor: '#9CA3AF', selectionColor: 'black' }}
+          />
         </View>
       </View>
     </View>
@@ -309,6 +377,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <Animated.View
                     entering={SlideInRight.duration(300)}
                     exiting={SlideOutLeft.duration(220)}>
+                    {renderIncomeSetup()}
+                  </Animated.View>
+                )}
+                {currentStep === features.length + 2 && (
+                  <Animated.View
+                    entering={SlideInRight.duration(300)}
+                    exiting={SlideOutLeft.duration(220)}>
                     {renderBiometricsSetup()}
                   </Animated.View>
                 )}
@@ -360,9 +435,18 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           )}
 
           {currentStep === features.length + 1 && (
+            <Button onPress={handleIncomeSetup} className="rounded bg-black px-6 py-3">
+              <View className="flex-row items-center gap-2">
+                <Text className="font-medium text-white">Save Income</Text>
+                <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
+              </View>
+            </Button>
+          )}
+
+          {currentStep === features.length + 2 && (
             <Button onPress={handleComplete} className="rounded bg-black px-6 py-3">
               <View className="flex-row items-center gap-2">
-                <Text className="font-medium text-white">Set Up Budget</Text>
+                <Text className="font-medium text-white">Finish Setup</Text>
                 <Ionicons name="wallet" size={16} color="#FFFFFF" />
               </View>
             </Button>

@@ -93,6 +93,38 @@ class LocalStorage {
         );
       `);
 
+      // Create savings goals table
+      this.db.execSync(`
+        CREATE TABLE IF NOT EXISTS savingsGoals (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId INTEGER NOT NULL,
+          name TEXT NOT NULL,
+          targetAmount TEXT NOT NULL,
+          currentAmount TEXT NOT NULL DEFAULT '0',
+          monthlyContribution TEXT,
+          startDate TEXT,
+          targetDate TEXT,
+          autoDeduct INTEGER DEFAULT 0,
+          notes TEXT,
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // Create savings contributions table
+      this.db.execSync(`
+        CREATE TABLE IF NOT EXISTS savingsContributions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          savingsGoalId INTEGER NOT NULL,
+          userId INTEGER NOT NULL,
+          amount TEXT NOT NULL,
+          contributedOn TEXT NOT NULL,
+          sourceTransactionId INTEGER,
+          notes TEXT,
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (savingsGoalId) REFERENCES savingsGoals(id)
+        );
+      `);
+
       // Create settings table for app configuration
       this.db.execSync(`
         CREATE TABLE IF NOT EXISTS settings (
