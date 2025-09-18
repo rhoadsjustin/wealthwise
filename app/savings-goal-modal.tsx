@@ -6,8 +6,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   Switch,
+  TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { Input } from '@/components/Input';
@@ -15,6 +16,7 @@ import { Button } from '@/components/Button';
 import { useSavings, SavingsGoal } from '@/context/DataContext';
 import { useToast } from '@/context/useToast';
 import { useAppData } from './_layout';
+import { Ionicons } from '@expo/vector-icons';
 
 interface SavingsGoalFormValues {
   name: string;
@@ -144,25 +146,53 @@ export default function SavingsGoalModal() {
 
   const modalTitle = goalIdParam ? 'Edit savings goal' : 'New savings goal';
 
+  const insets = useSafeAreaInsets();
+
+  const screenOptions = React.useMemo(() => ({ headerShown: false }), []);
+
   return (
-    <SafeAreaView className="flex-1 bg-app-background">
-      <Stack.Screen
-        options={{
-          title: modalTitle,
-          headerTitleAlign: 'center',
-        }}
-      />
+    <View className="flex-1 bg-app-background">
+      <Stack.Screen options={screenOptions} />
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
-        <ScrollView className="flex-1 px-4 pb-10">
-          <View className="mt-6 gap-6">
-            <Controller
-              control={control}
-              name="name"
-              rules={{ required: true }}
-              render={({ field: { onChange, value } }) => (
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="pb-28"
+          keyboardShouldPersistTaps="handled">
+          <View
+            className="px-5"
+            style={{ paddingTop: Math.max(insets.top + 8, 24) }}>
+            <View className="mb-4 flex-row items-center justify-between">
+              <View>
+                <Text className="text-xl font-semibold text-app-text">{modalTitle}</Text>
+                <Text className="mt-1 text-xs text-app-text-muted">
+                  {goalIdParam ? 'Update your savings target and cadence.' : 'Plan a new savings milestone.'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                accessibilityLabel="Close savings goal"
+                className="h-10 w-10 items-center justify-center rounded-full border border-app-border bg-app-surface shadow-xs">
+                <Ionicons name="close" size={18} color="#0F172A" />
+              </TouchableOpacity>
+            </View>
+
+            <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-sm">
+              <Text className="text-sm font-medium text-app-text-muted">Goal overview</Text>
+              <Text className="mt-2 text-base text-app-text-secondary">
+                Outline how much you want to save and how quickly you’ll get there.
+              </Text>
+            </View>
+
+            <View className="rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-sm">
+              <View className="space-y-6">
+                <Controller
+                  control={control}
+                  name="name"
+                  rules={{ required: true }}
+                  render={({ field: { onChange, value } }) => (
                 <Input
                   label="Goal name"
                   placeholder="Emergency fund"
@@ -222,17 +252,17 @@ export default function SavingsGoalModal() {
             <Controller
               control={control}
               name="autoDeduct"
-              render={({ field: { value, onChange } }) => (
-                <View className="flex-row items-center justify-between rounded-xl bg-app-surface px-4 py-3">
-                  <View className="flex-1 pr-4">
-                    <Text className="text-base font-medium text-foreground-primary">Auto-transfer</Text>
-                    <Text className="mt-1 text-sm text-foreground-muted">
-                      Reserve this amount from income before budgeting
-                    </Text>
-                  </View>
-                  <Switch
-                    value={value ?? true}
-                    onValueChange={onChange}
+                  render={({ field: { value, onChange } }) => (
+                    <View className="flex-row items-center justify-between rounded-xl bg-app-surface px-4 py-3">
+                      <View className="flex-1 pr-4">
+                        <Text className="text-base font-medium text-foreground-primary">Auto-transfer</Text>
+                        <Text className="mt-1 text-sm text-foreground-muted">
+                          Reserve this amount from income before budgeting
+                        </Text>
+                      </View>
+                      <Switch
+                        value={value ?? true}
+                        onValueChange={onChange}
                     thumbColor={value ? '#0EA5E9' : '#f4f3f4'}
                     trackColor={{ true: '#bae6fd', false: '#e5e7eb' }}
                   />
@@ -240,11 +270,11 @@ export default function SavingsGoalModal() {
               )}
             />
 
-            <Controller
-              control={control}
-              name="notes"
-              render={({ field: { onChange, value } }) => (
-                <Input
+                <Controller
+                  control={control}
+                  name="notes"
+                  render={({ field: { onChange, value } }) => (
+                    <Input
                   label="Notes"
                   placeholder="Any extra details"
                   multiline
@@ -253,20 +283,14 @@ export default function SavingsGoalModal() {
                   onChangeText={onChange}
                   helperText="Optional context for this savings goal"
                 />
-              )}
-            />
+                  )}
+                />
+              </View>
+            </View>
 
-            <View className="flex-row gap-3">
+            <View className="mt-6">
               <Button
-                variant="outline"
-                className="flex-1"
-                size="lg"
-                title="Cancel"
-                onPress={() => router.back()}
-                disabled={loading}
-              />
-              <Button
-                className="flex-1"
+                className="w-full"
                 size="lg"
                 title={goalIdParam ? 'Save changes' : 'Create goal'}
                 onPress={handleSubmit(onSubmit)}
@@ -277,6 +301,6 @@ export default function SavingsGoalModal() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }

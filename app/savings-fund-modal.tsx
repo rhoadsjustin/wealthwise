@@ -1,6 +1,13 @@
 import React from 'react';
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  View,
+  Text,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableOpacity,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { Input } from '@/components/Input';
@@ -9,6 +16,7 @@ import { useSavings, SavingsGoal } from '@/context/DataContext';
 import { useToast } from '@/context/useToast';
 import { useAppData } from './_layout';
 import { formatCurrency } from '@/lib/utils';
+import { Ionicons } from '@expo/vector-icons';
 
 interface FundGoalFormValues {
   amount: string;
@@ -85,89 +93,100 @@ export default function SavingsFundModal() {
     }
   };
 
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView className="flex-1 bg-app-background">
-      <Stack.Screen
-        options={{
-          title: goal ? `Fund ${goal.name}` : 'Fund savings goal',
-          headerTitleAlign: 'center',
-        }}
-      />
+    <View className="flex-1 bg-app-background">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
-        <ScrollView className="flex-1 px-4 pb-10">
-          <View className="mt-6 gap-6">
-            {goal ? (
-              <View className="rounded-xl bg-app-surface p-4">
-                <Text className="text-sm uppercase tracking-wide text-foreground-muted">
-                  Current balance
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="pb-24"
+          keyboardShouldPersistTaps="handled">
+          <View className="px-5" style={{ paddingTop: Math.max(insets.top + 8, 24) }}>
+            <View className="mb-4 flex-row items-center justify-between">
+              <View>
+                <Text className="text-xl font-semibold text-app-text">
+                  {goal ? `Fund ${goal.name}` : 'Fund savings goal'}
                 </Text>
-                <Text className="mt-1 text-2xl font-semibold text-foreground-primary">
+                <Text className="mt-1 text-xs text-app-text-muted">
+                  Log the contribution to keep your progress current.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                accessibilityLabel="Close fund modal"
+                className="h-10 w-10 items-center justify-center rounded-full border border-app-border bg-app-surface shadow-xs">
+                <Ionicons name="close" size={18} color="#0F172A" />
+              </TouchableOpacity>
+            </View>
+
+            {goal && (
+              <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-sm">
+                <Text className="text-sm font-medium text-app-text-muted">Current balance</Text>
+                <Text className="mt-1 text-2xl font-semibold text-app-text">
                   {formatCurrency(parseFloat(goal.currentAmount ?? '0'))}
                 </Text>
-                <Text className="mt-2 text-sm text-foreground-muted">
+                <Text className="mt-3 text-xs text-app-text-muted">
                   Target {formatCurrency(parseFloat(goal.targetAmount ?? '0'))}
                 </Text>
               </View>
-            ) : null}
+            )}
 
-            <Controller
-              control={control}
-              name="amount"
-              rules={{ required: true }}
-              render={({ field: { onChange, value } }) => (
-                <Input
-                  label="Contribution amount"
-                  placeholder="100"
-                  keyboardType="numeric"
-                  value={value}
-                  onChangeText={onChange}
-                  errorText={!value ? 'Amount is required' : undefined}
+            <View className="rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-sm">
+              <View className="space-y-6">
+                <Controller
+                  control={control}
+                  name="amount"
+                  rules={{ required: true }}
+                  render={({ field: { onChange, value } }) => (
+                    <Input
+                      label="Contribution amount"
+                      placeholder="100"
+                      keyboardType="numeric"
+                      value={value}
+                      onChangeText={onChange}
+                      errorText={!value ? 'Amount is required' : undefined}
+                    />
+                  )}
                 />
-              )}
-            />
 
-            <Controller
-              control={control}
-              name="contributedOn"
-              render={({ field: { onChange, value } }) => (
-                <Input
-                  label="Date"
-                  placeholder="2024-04-15"
-                  value={value || ''}
-                  onChangeText={onChange}
-                  helperText="Auto-filled with today"
+                <Controller
+                  control={control}
+                  name="contributedOn"
+                  render={({ field: { onChange, value } }) => (
+                    <Input
+                      label="Date"
+                      placeholder="2024-04-15"
+                      value={value || ''}
+                      onChangeText={onChange}
+                      helperText="Auto-filled with today"
+                    />
+                  )}
                 />
-              )}
-            />
 
-            <Controller
-              control={control}
-              name="notes"
-              render={({ field: { onChange, value } }) => (
-                <Input
-                  label="Notes"
-                  placeholder="Where did this money come from?"
-                  multiline
-                  numberOfLines={3}
-                  value={value || ''}
-                  onChangeText={onChange}
+                <Controller
+                  control={control}
+                  name="notes"
+                  render={({ field: { onChange, value } }) => (
+                    <Input
+                      label="Notes"
+                      placeholder="Where did this money come from?"
+                      multiline
+                      numberOfLines={3}
+                      value={value || ''}
+                      onChangeText={onChange}
+                    />
+                  )}
                 />
-              )}
-            />
+              </View>
+            </View>
 
-            <View className="flex-row gap-3">
+            <View className="mt-6">
               <Button
-                variant="outline"
-                className="flex-1"
-                title="Cancel"
-                onPress={() => router.back()}
-                disabled={submitting}
-              />
-              <Button
-                className="flex-1"
+                className="w-full"
                 title="Record contribution"
                 onPress={handleSubmit(onSubmit)}
                 loading={submitting}
@@ -177,6 +196,6 @@ export default function SavingsFundModal() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }

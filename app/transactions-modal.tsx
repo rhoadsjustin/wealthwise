@@ -10,6 +10,7 @@ import {
   LayoutAnimation,
   UIManager,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SwipeableRow from '@/components/SwipeableRow';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,6 +30,7 @@ export default function TransactionsModal() {
   const router = useRouter();
   const { transactions, categories } = useAppData();
   const { updateTransaction, deleteTransaction, getTransactions } = useTransactions();
+  const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<'all' | 'income' | 'expense' | 'uncategorized'>('all');
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -206,76 +208,100 @@ export default function TransactionsModal() {
 
   return (
     <View className="flex-1 bg-app-background">
-      {/* Header */}
-      <View className="bg-app-surface-alt border-b border-app-border px-4 pb-4 pt-12">
-        <View className="flex-row items-center justify-between">
+      <View
+        className="px-5"
+        style={{ paddingTop: Math.max(insets.top + 8, 24) }}>
+        <View className="mb-4 flex-row items-center justify-between">
           <View className="flex-row items-center">
             <TouchableOpacity
               onPress={handleClose}
-              className="mr-4 h-10 w-10 items-center justify-center rounded-full"
-              style={{ backgroundColor: '#00000010' }}>
-              <Ionicons name="close" size={24} color="#374151" />
+              accessibilityLabel="Close transactions"
+              className="mr-3 h-10 w-10 items-center justify-center rounded-full border border-app-border bg-app-surface shadow-xs">
+              <Ionicons name="close" size={20} color="#0F172A" />
             </TouchableOpacity>
-            <Text className="text-xl font-semibold text-app-text">All Transactions</Text>
+            <View>
+              <Text className="text-xl font-semibold text-app-text">All transactions</Text>
+              <Text className="mt-1 text-xs text-app-text-muted">
+                {filteredTransactions.length} item{filteredTransactions.length === 1 ? '' : 's'}
+              </Text>
+            </View>
           </View>
-          <View className="flex-row items-center gap-2">
-            <Text className="text-sm text-app-text-secondary">{filteredTransactions.length} items</Text>
+          <TouchableOpacity
+            onPress={() => router.push('/add-transaction')}
+            className="h-10 items-center justify-center rounded-full bg-primary-500 px-4"
+            accessibilityLabel="Add transaction">
+            <Text className="text-xs font-semibold text-white">Add</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-md">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 pr-3">
+              <Text className="text-sm font-medium text-app-text-muted">Quick filters</Text>
+              <Text className="mt-1 text-base font-semibold text-app-text">
+                Zero in on the transactions you need
+              </Text>
+            </View>
             <TouchableOpacity
               onPress={handleAutoCategorize}
               disabled={isAutoCategorizing}
-              className="rounded-full border border-app-border bg-app-surface px-3 py-1">
-              <Text className="text-xs font-medium text-app-text">
+              className={`rounded-full px-4 py-2 ${
+                isAutoCategorizing
+                  ? 'border border-app-border bg-app-surface opacity-60'
+                  : 'bg-primary-50'
+              }`}
+              accessibilityLabel="Auto categorize">
+              <Text className={`text-xs font-semibold ${isAutoCategorizing ? 'text-app-text-muted' : 'text-primary-700'}`}>
                 {isAutoCategorizing ? 'Categorizing…' : 'Auto-categorize'}
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
-
-        {/* Filter Buttons */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="mt-4"
-          contentContainerStyle={{ paddingHorizontal: 4 }}>
-          <View className="flex-row gap-2">
-            {filterButtons.map((button) => (
-              <TouchableOpacity
-                key={button.key}
-                onPress={() => setFilter(button.key as any)}
-                className={`rounded-full border px-4 py-2 ${
-                  filter === button.key
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-app-border bg-app-surface'
-                }`}>
-                <View className="flex-row items-center gap-1">
-                  <Text
-                    className={`text-sm font-medium ${
-                      filter === button.key ? 'text-blue-600' : 'text-app-text'
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="mt-4"
+            contentContainerStyle={{ paddingHorizontal: 2 }}>
+            <View className="flex-row gap-2">
+              {filterButtons.map((button) => {
+                const isActive = filter === button.key;
+                return (
+                  <TouchableOpacity
+                    key={button.key}
+                    onPress={() => setFilter(button.key as any)}
+                    className={`flex-row items-center gap-2 rounded-full border px-4 py-2 ${
+                      isActive ? 'border-primary-500 bg-primary-50' : 'border-app-border bg-app-surface-alt'
                     }`}>
-                    {button.label}
-                  </Text>
-                  {button.count > 0 && (
-                    <View
-                      className={`rounded-full px-1.5 py-0.5 ${
-                        filter === button.key ? 'bg-blue-100' : 'bg-app-border-muted'
+                    <Text
+                      className={`text-sm font-medium ${
+                        isActive ? 'text-primary-700' : 'text-app-text-secondary'
                       }`}>
-                      <Text
-                        className={`text-xs font-medium ${
-                          filter === button.key ? 'text-blue-600' : 'text-app-text-muted'
+                      {button.label}
+                    </Text>
+                    {button.count > 0 && (
+                      <View
+                        className={`rounded-full px-2 py-0.5 ${
+                          isActive ? 'bg-primary-100' : 'bg-app-border-muted'
                         }`}>
-                        {button.count}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
+                        <Text
+                          className={`text-xs font-semibold ${
+                            isActive ? 'text-primary-700' : 'text-app-text-muted'
+                          }`}>
+                          {button.count}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </View>
       </View>
 
       {/* Transactions List */}
-      <ScrollView className="flex-1 px-4 pt-4">
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="px-5 pt-2 pb-28">
         {filteredTransactions.length === 0 ? (
           <View className="items-center py-12">
             <Ionicons name="receipt-outline" size={48} color="#9CA3AF" />
@@ -414,59 +440,71 @@ export default function TransactionsModal() {
         presentationStyle="pageSheet"
         onRequestClose={handleCloseCategoryModal}>
         <View className="flex-1 bg-app-background">
-          <View className="border-b border-app-border bg-app-surface px-4 pb-4 pt-12">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-xl font-semibold text-app-text">Select Category</Text>
+          <View
+            className="px-5"
+            style={{ paddingTop: Math.max(insets.top + 8, 24) }}>
+            <View className="mb-4 flex-row items-center justify-between">
+              <View>
+                <Text className="text-xl font-semibold text-app-text">Select category</Text>
+                {selectedTransaction && (
+                  <Text className="mt-1 text-xs text-app-text-muted">
+                    ${Math.abs(parseFloat(selectedTransaction.amount)).toFixed(2)} •{' '}
+                    {formatDate(selectedTransaction.date)}
+                  </Text>
+                )}
+              </View>
               <TouchableOpacity
                 onPress={handleCloseCategoryModal}
-                className="h-8 w-8 items-center justify-center rounded-full"
-                style={{ backgroundColor: '#00000010' }}>
-                <Ionicons name="close" size={20} color="#374151" />
+                accessibilityLabel="Close category selector"
+                className="h-10 w-10 items-center justify-center rounded-full border border-app-border bg-app-surface shadow-xs">
+                <Ionicons name="close" size={20} color="#0F172A" />
               </TouchableOpacity>
             </View>
+
             {selectedTransaction && (
-              <View className="mt-3 rounded-lg bg-app-border-muted p-3">
+              <View className="mb-6 rounded-2xl border border-app-border bg-app-surface px-4 py-3">
                 <Text className="text-sm font-medium text-app-text">
                   {selectedTransaction.description}
                 </Text>
-                <Text className="text-xs text-app-text-secondary">
-                  ${Math.abs(parseFloat(selectedTransaction.amount)).toFixed(2)} •{' '}
-                  {formatDate(selectedTransaction.date)}
+                <Text className="mt-1 text-xs text-app-text-muted">
+                  Choose the best matching category below
                 </Text>
               </View>
             )}
           </View>
 
-          <ScrollView className="flex-1 px-4 pt-4">
-            <View className="space-y-1 pb-6">
+          <ScrollView
+            className="flex-1"
+            contentContainerClassName="px-5 pb-24">
+            <View className="space-y-3">
               {categories
-                .filter((cat: any) => parseFloat(cat.budget) > 0) // Only show categories with budgets for expenses
+                .filter((cat: any) => parseFloat(cat.budget) > 0)
                 .map((category: any) => (
                   <TouchableOpacity
                     key={category.id}
                     onPress={() => handleCategorySelect(category.id)}
                     disabled={updatingTransactions.size > 0}
-                    className={`rounded-lg border p-4 ${
+                    className={`flex-row items-center justify-between rounded-2xl border border-app-border bg-app-surface px-4 py-4 shadow-xs ${
                       updatingTransactions.size > 0 ? 'opacity-50' : ''
-                    } bg-app-surface-alt border-app-border`}>
+                    }`}>
                     <View className="flex-row items-center">
                       <View
-                        className="mr-3 h-10 w-10 items-center justify-center rounded-lg"
+                        className="mr-3 h-10 w-10 items-center justify-center rounded-xl"
                         style={{ backgroundColor: category.color + '20' }}>
                         <Text className="text-base">{category.icon}</Text>
                       </View>
-                      <View className="flex-1">
-                        <Text className="text-base font-medium text-app-text">{category.name}</Text>
-                        <Text className="text-sm text-app-text-secondary">
-                          Budget: ${parseFloat(category.budget).toFixed(2)}
+                      <View>
+                        <Text className="text-base font-semibold text-app-text">{category.name}</Text>
+                        <Text className="text-xs text-app-text-muted">
+                          Budget ${parseFloat(category.budget).toFixed(2)}
                         </Text>
                       </View>
-                      {updatingTransactions.size > 0 ? (
-                        <Text className="text-xs text-gray-400">Updating...</Text>
-                      ) : (
-                        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-                      )}
                     </View>
+                    {updatingTransactions.size > 0 ? (
+                      <Text className="text-xs text-app-text-muted">Updating…</Text>
+                    ) : (
+                      <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                    )}
                   </TouchableOpacity>
                 ))}
             </View>

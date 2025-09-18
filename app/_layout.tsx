@@ -317,7 +317,7 @@ function AppContent() {
               name="savings-goal-modal"
               options={{
                 presentation: 'modal',
-                headerShown: true,
+                headerShown: false,
                 contentStyle: {
                   backgroundColor: '#FFFFFF',
                 },
@@ -327,7 +327,7 @@ function AppContent() {
               name="savings-fund-modal"
               options={{
                 presentation: 'modal',
-                headerShown: true,
+                headerShown: false,
                 contentStyle: {
                   backgroundColor: '#FFFFFF',
                 },

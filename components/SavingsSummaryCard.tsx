@@ -39,14 +39,12 @@ export function SavingsSummaryCard({ summary }: SavingsSummaryCardProps) {
         </View>
         <View className="rounded-xl bg-background-primary p-4">
           <Text className="text-xs uppercase tracking-wide text-foreground-muted">Net Income After Savings</Text>
-          <View className="mt-1 flex-row items-end justify-between">
-            <Text className="text-2xl font-semibold text-foreground-primary">
-              {formatCurrency(summary.netIncomeAfterSavings || 0)}
-            </Text>
-            <Text className="text-sm text-foreground-muted">
-              Baseline {formatCurrency(summary.incomeBaseline || summary.totalIncome || 0)} minus monthly savings
-            </Text>
-          </View>
+          <Text className="mt-1 text-2xl font-semibold text-foreground-primary">
+            {formatCurrency(summary.netIncomeAfterSavings || 0)}
+          </Text>
+          <Text className="mt-1 text-xs leading-tight text-foreground-muted">
+            Baseline {formatCurrency(summary.incomeBaseline || summary.totalIncome || 0)} minus monthly savings
+          </Text>
         </View>
       </CardContent>
     </Card>

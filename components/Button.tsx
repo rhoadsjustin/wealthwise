@@ -68,17 +68,17 @@ const Button = React.forwardRef<View, ButtonProps>(
       switch (size) {
         case 'sm':
           return {
-            container: 'h-button-sm px-3 rounded-md',
+            container: 'h-button-sm px-4 rounded-full',
             text: 'text-sm font-medium',
           };
         case 'lg':
           return {
-            container: 'h-button-lg px-8 rounded-lg',
+            container: 'h-button-lg px-6 rounded-full',
             text: 'text-lg font-semibold',
           };
         default:
           return {
-            container: 'h-button-md px-6 rounded-lg',
+            container: 'h-button-md px-5 rounded-full',
             text: 'text-base font-medium',
           };
       }

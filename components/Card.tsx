@@ -14,13 +14,13 @@ const Card = React.forwardRef<Animated.View, CardProps>(
     const getVariantClasses = () => {
       switch (variant) {
         case 'outlined':
-          return 'bg-card-background border-2 border-border-strong';
+          return 'bg-app-surface border-2 border-app-border';
         case 'elevated':
-          return 'bg-card-background border border-card-border shadow-lg';
+          return 'bg-app-surface border border-app-border shadow-md';
         case 'filled':
-          return 'bg-background-secondary border border-border-muted';
+          return 'bg-app-surface-alt border border-app-border';
         default:
-          return 'bg-card-background border border-card-border shadow-sm';
+          return 'bg-app-surface border border-app-border shadow-sm';
       }
     };
 
@@ -40,7 +40,7 @@ const Card = React.forwardRef<Animated.View, CardProps>(
     const cardClasses = `
       ${getVariantClasses()}
       ${getPaddingClasses()}
-      rounded-xl
+      rounded-3xl
       ${className}
     `.trim();
 
