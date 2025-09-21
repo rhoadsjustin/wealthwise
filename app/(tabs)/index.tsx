@@ -160,45 +160,19 @@ export default function DashboardTab() {
 
   return (
     <View className="flex-1 bg-app-background">
-      <Stack.Screen
-        options={{
-          title: '',
-          headerTransparent: true,
-          headerShadowVisible: false,
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => router.push('/profile')}
-              accessibilityLabel="Open profile"
-              className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-app-surface shadow-xs">
-              <Ionicons name="menu-outline" size={20} color="#0F172A" />
-            </TouchableOpacity>
-          ),
-          headerRight: () => (
-            <View className="flex-row items-center gap-3 pr-3">
-              <TouchableOpacity
-                onPress={() => router.push('/(tabs)/insights')}
-                accessibilityLabel="Insights"
-                className="relative h-10 w-10 items-center justify-center rounded-full bg-app-surface shadow-xs">
-                <Ionicons name="chatbubble-ellipses-outline" size={20} color="#0F172A" />
-              </TouchableOpacity>
-              <HeaderProfileButton />
-            </View>
-          ),
-        }}
-      />
-
       <ScrollView
         className="flex-1"
         contentContainerClassName="pb-32"
+        contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
-        <View
-          className="px-5"
-          style={{ paddingTop: Math.max(insets.top + 8, 32) }}>
+        <View className="px-5" style={{ paddingTop: Math.max(insets.top + 8, 32) }}>
           <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-6 py-7 shadow-md">
             <View className="flex-row items-start justify-between">
               <View>
                 <Text className="text-sm font-medium text-app-text-muted">Available balance</Text>
-                <Text className="mt-1 text-4xl font-semibold text-app-text">{formatAccentCurrency(mainBalance)}</Text>
+                <Text className="mt-1 text-4xl font-semibold text-app-text">
+                  {formatAccentCurrency(mainBalance)}
+                </Text>
               </View>
               <View className="items-end">
                 <View className="rounded-full bg-primary-100 px-3 py-1">
@@ -206,13 +180,6 @@ export default function DashboardTab() {
                     {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                   </Text>
                 </View>
-                <TouchableOpacity
-                  onPress={handleRefresh}
-                  className="mt-3 flex-row items-center rounded-full bg-app-surface-alt px-3 py-1"
-                  accessibilityLabel="Refresh data">
-                  <Ionicons name="refresh-outline" size={14} color="#0EA5E9" />
-                  <Text className="ml-1 text-xs font-semibold text-primary-600">Sync now</Text>
-                </TouchableOpacity>
               </View>
             </View>
             <View className="mt-6 flex-row justify-between">
@@ -232,11 +199,14 @@ export default function DashboardTab() {
             </View>
             <View className="mt-6 flex-row items-center justify-between rounded-2xl bg-app-surface-alt px-4 py-3">
               <View>
-                <Text className="text-xs font-medium text-app-text-secondary">Savings progress</Text>
+                <Text className="text-xs font-medium text-app-text-secondary">
+                  Savings progress
+                </Text>
                 <Text className="mt-1 text-lg font-semibold text-success-600">
                   {formatAccentCurrency(progressSavings)}
                   <Text className="text-xs font-medium text-app-text-muted">
-                    {' '}/ {formatAccentCurrency(plannedSavings)}
+                    {' '}
+                    / {formatAccentCurrency(plannedSavings)}
                   </Text>
                 </Text>
               </View>
@@ -261,19 +231,24 @@ export default function DashboardTab() {
             {monthlyTrend.length === 0 ? (
               <View className="mt-8 h-32 items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-alt">
                 <Text className="text-sm font-medium text-app-text-muted">Chart coming soon</Text>
-                <Text className="mt-1 text-xs text-app-text-muted">Bring insights online to unlock dynamic visuals.</Text>
+                <Text className="mt-1 text-xs text-app-text-muted">
+                  Bring insights online to unlock dynamic visuals.
+                </Text>
               </View>
             ) : (
               <View className="mt-8 h-40 flex-row items-end justify-between">
                 {monthlyTrend.map((point) => {
-                  const height = maxTrendValue > 0 ? Math.max(12, (point.value / maxTrendValue) * 120) : 12;
+                  const height =
+                    maxTrendValue > 0 ? Math.max(12, (point.value / maxTrendValue) * 120) : 12;
                   return (
                     <View key={point.label} className="flex-1 items-center">
                       <View
                         className="w-9 rounded-2xl"
                         style={{ height, backgroundColor: 'rgba(14,165,233,0.9)' }}
                       />
-                      <Text className="mt-3 text-xs font-medium text-app-text-muted">{point.label}</Text>
+                      <Text className="mt-3 text-xs font-medium text-app-text-muted">
+                        {point.label}
+                      </Text>
                     </View>
                   );
                 })}
@@ -313,13 +288,22 @@ export default function DashboardTab() {
                       }}
                       className="rounded-3xl border border-transparent px-5 py-5 shadow-sm">
                       <Text className="text-2xl">{category.icon}</Text>
-                      <Text className="mt-3 text-sm font-semibold text-app-text">{category.name}</Text>
-                      <Text className="text-xs font-medium text-app-text-muted">{formatAccentCurrency(spent)} spent</Text>
+                      <Text className="mt-3 text-sm font-semibold text-app-text">
+                        {category.name}
+                      </Text>
+                      <Text className="text-xs font-medium text-app-text-muted">
+                        {formatAccentCurrency(spent)} spent
+                      </Text>
                       <View className="mt-3 h-2 w-full rounded-full bg-app-surface-alt">
-                        <View className="h-2 rounded-full bg-app-text" style={{ width: `${progress * 100}%` }} />
+                        <View
+                          className="h-2 rounded-full bg-app-text"
+                          style={{ width: `${progress * 100}%` }}
+                        />
                       </View>
                       <Text className="mt-1 text-[11px] text-app-text-muted">
-                        {budget > 0 ? `${Math.round(progress * 100)}% of $${budget.toLocaleString()}` : 'No budget set'}
+                        {budget > 0
+                          ? `${Math.round(progress * 100)}% of $${budget.toLocaleString()}`
+                          : 'No budget set'}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -341,29 +325,43 @@ export default function DashboardTab() {
             {recentTransactions.length === 0 ? (
               <View className="mt-8 items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4 py-8">
                 <Ionicons name="trail-sign-outline" size={24} color="#9CA3AF" />
-                <Text className="mt-3 text-sm font-medium text-app-text-muted">No transactions yet</Text>
-                <Text className="mt-1 text-xs text-app-text-muted">Start tracking by adding your first transaction.</Text>
+                <Text className="mt-3 text-sm font-medium text-app-text-muted">
+                  No transactions yet
+                </Text>
+                <Text className="mt-1 text-xs text-app-text-muted">
+                  Start tracking by adding your first transaction.
+                </Text>
               </View>
             ) : (
               <View className="mt-6 space-y-3">
                 {recentTransactions.map((transaction) => {
-                  const categoryMeta = safeCategories.find((cat) => cat.id === transaction.categoryId);
+                  const categoryMeta = safeCategories.find(
+                    (cat) => cat.id === transaction.categoryId
+                  );
                   const isExpense = transaction.type === 'expense';
                   return (
                     <TouchableOpacity
                       key={transaction.id}
                       onPress={() =>
-                        router.push({ pathname: '/transactions-modal', params: { highlightId: transaction.id } })
+                        router.push({
+                          pathname: '/transactions-modal',
+                          params: { highlightId: transaction.id },
+                        })
                       }
                       className="flex-row items-center justify-between rounded-2xl bg-app-surface-alt px-4 py-4">
                       <View className="flex-row items-center">
                         <View className="mr-4 h-12 w-12 items-center justify-center rounded-2xl bg-app-surface shadow-xs">
-                          <Text className="text-xl">{categoryMeta?.icon ?? (isExpense ? '🧾' : '💰')}</Text>
+                          <Text className="text-xl">
+                            {categoryMeta?.icon ?? (isExpense ? '🧾' : '💰')}
+                          </Text>
                         </View>
                         <View>
-                          <Text className="text-sm font-semibold text-app-text">{transaction.description}</Text>
+                          <Text className="text-sm font-semibold text-app-text">
+                            {transaction.description}
+                          </Text>
                           <Text className="mt-1 text-xs text-app-text-muted">
-                            {categoryMeta?.name ?? 'Uncategorized'} · {formatRelativeDate(transaction.date)}
+                            {categoryMeta?.name ?? 'Uncategorized'} ·{' '}
+                            {formatRelativeDate(transaction.date)}
                           </Text>
                         </View>
                       </View>

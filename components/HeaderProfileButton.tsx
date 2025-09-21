@@ -3,6 +3,10 @@ import { Platform, View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import {
+  HStack,
+  Image,
+  Label,
+  Text,
   ContextMenu as SwiftContextMenu,
   Host as SwiftHost,
   Button as SwiftUIButton,
@@ -11,6 +15,7 @@ import {
   ContextMenu as ComposeContextMenu,
   Button as ComposeButton,
 } from '@expo/ui/jetpack-compose';
+import { background, fixedSize, frame, padding, shadow } from '@expo/ui/swift-ui/modifiers';
 
 type MenuItem = {
   label: string;
@@ -21,16 +26,16 @@ type MenuItem = {
 
 const MENU_ITEMS: MenuItem[] = [
   {
-    label: 'Budget',
-    route: '/categories',
-    iosIcon: 'chart.pie',
-    androidIcon: 'pie_chart',
-  },
-  {
     label: 'Profile',
     route: '/profile',
     iosIcon: 'person.crop.circle',
     androidIcon: 'person',
+  },
+  {
+    label: 'Budget',
+    route: '/categories',
+    iosIcon: 'chart.pie',
+    androidIcon: 'pie_chart',
   },
   {
     label: 'Goals',
@@ -41,8 +46,19 @@ const MENU_ITEMS: MenuItem[] = [
 ];
 
 const TriggerIcon = () => (
-  <View className="h-11 w-11 items-center justify-center">
-    <Ionicons name="person-circle-outline" size={26} color="#0F172A" />
+  <View
+    style={{
+      flex: 1,
+      flexDirection: 'row',
+      width: 34,
+      height: 34,
+      justifyContent: 'center',
+      alignContent: 'center',
+      alignItems: 'center',
+      alignSelf: 'center',
+      padding: 4,
+    }}>
+    <Ionicons name="settings-sharp" size={26} color="#0F172A" />
   </View>
 );
 
@@ -60,7 +76,11 @@ export default function HeaderProfileButton() {
 
   if (Platform.OS === 'ios') {
     return (
-      <SwiftHost matchContents>
+      <SwiftHost
+        matchContents={{ horizontal: true, vertical: true }}
+        onLayoutContent={(event) => {
+          console.log('onLayoutContent', event.nativeEvent);
+        }}>
         <SwiftContextMenu activationMethod="singlePress">
           <SwiftContextMenu.Trigger>
             <TriggerIcon />

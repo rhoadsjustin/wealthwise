@@ -24,19 +24,19 @@ export default function TabLayout() {
   };
 
   return (
-    <NativeTabs minimizeBehavior="automatic">
+    <NativeTabs minimizeBehavior="onScrollDown">
       <NativeTabs.Trigger name="index">
-        <Label>Dashboard</Label>
+        <Label hidden>Dashboard</Label>
         <Icon sf={{ default: 'wallet.bifold', selected: 'wallet.bifold.fill' }} />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="insights">
-        <Label>Insights</Label>
+        <Label hidden>Insights</Label>
         <Icon sf={{ default: 'apple.intelligence', selected: 'apple.intelligence' }} />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="savings">
-        <Label>Savings</Label>
+        <Label hidden>Savings</Label>
         <Icon sf={{ default: 'chart.pie', selected: 'chart.pie.fill' }} />
       </NativeTabs.Trigger>
     </NativeTabs>

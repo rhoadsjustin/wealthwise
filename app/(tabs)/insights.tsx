@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
@@ -39,6 +40,7 @@ function InsightsTab() {
   const [isLoading, setIsLoading] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [isContinuing, setIsContinuing] = useState(false);
+  const [keyboardInset, setKeyboardInset] = useState(0);
 
   const messagesScrollRef = useRef<ScrollView | null>(null);
   const liveAssistantIndexRef = useRef<number | null>(null);
@@ -49,6 +51,23 @@ function InsightsTab() {
     llm: llm as any,
     preventLoad: !vectorStore || !llm || !isFocused,
   });
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardInset(event.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardInset(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (!isFocused && rag.isGenerating) {
@@ -169,16 +188,7 @@ function InsightsTab() {
     };
 
     loadFinancialData();
-  }, [
-    rag,
-    transactions,
-    categories,
-    summary,
-    insights,
-    user,
-    authUsername,
-    dataLoaded,
-  ]);
+  }, [rag, transactions, categories, summary, insights, user, authUsername, dataLoaded]);
 
   const looksTruncated = useCallback((text: string) => {
     if (!text) return false;
@@ -280,14 +290,7 @@ function InsightsTab() {
     } finally {
       setIsLoading(false);
     }
-  }, [
-    query,
-    vectorStore,
-    messages,
-    rag,
-    isContinuing,
-    looksTruncated,
-  ]);
+  }, [query, vectorStore, messages, rag, isContinuing, looksTruncated]);
 
   useEffect(() => {
     if (!rag.isGenerating) return;
@@ -336,10 +339,12 @@ function InsightsTab() {
     setTimeout(() => inputRef.current?.focus(), 50);
   }, []);
 
+  const hasUserMessages = messages.some((m) => m.role === 'user');
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 82 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 122 : 0}
       style={{ flex: 1 }}>
       <View className="flex-1 bg-app-background">
         <Stack.Screen
@@ -369,176 +374,222 @@ function InsightsTab() {
           }}
         />
 
-        <View
-          className="flex-1 px-5"
-          style={{ paddingTop: Math.max(insets.top + 8, 32), paddingBottom: Math.max(insets.bottom, 12) }}>
-          <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-6 py-7 shadow-md">
-            <View className="flex-row items-start justify-between">
-              <View className="max-w-[70%]">
-                <Text className="text-sm font-medium text-app-text-muted">Financial insights</Text>
-                <Text className="mt-1 text-3xl font-semibold text-app-text">{heroTitle}</Text>
-                <Text className="mt-2 text-xs text-app-text-muted">{heroSubtitle}</Text>
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingTop: Math.max(insets.top + 8, 32),
+            paddingBottom: Math.max(insets.bottom, 12) + keyboardInset,
+          }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
+          <View className="flex-1 px-5">
+            {!hasUserMessages ? (
+              <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-6 py-7 shadow-md">
+                <View className="flex-row items-start justify-between">
+                  <View className="max-w-[70%]">
+                    <Text className="text-sm font-medium text-app-text-muted">
+                      Financial insights
+                    </Text>
+                    <Text className="mt-1 text-3xl font-semibold text-app-text">{heroTitle}</Text>
+                    <Text className="mt-2 text-xs text-app-text-muted">{heroSubtitle}</Text>
+                  </View>
+                  <View className="items-end">
+                    <View className={`rounded-full px-3 py-1 ${statusBadgeBg}`}>
+                      <Text className={`text-xs font-semibold ${statusBadgeText}`}>
+                        {statusLabel}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {isSetupPending ? (
+                  <View className="mt-6 space-y-4">
+                    <View>
+                      <View className="flex-row items-center justify-between">
+                        <Text className="text-xs font-medium text-app-text-muted">Embeddings</Text>
+                        <Text className="text-xs font-semibold text-app-text">
+                          {embeddingsInstalled ? 'Installed' : `${embeddingsPercent}%`}
+                        </Text>
+                      </View>
+                      <View className="mt-2 h-2 w-full overflow-hidden rounded-full bg-app-border">
+                        <View
+                          className="h-2 rounded-full bg-primary-500"
+                          style={{ width: `${embeddingsPercent}%` }}
+                        />
+                      </View>
+                    </View>
+                    <View>
+                      <View className="flex-row items-center justify-between">
+                        <Text className="text-xs font-medium text-app-text-muted">
+                          Language model
+                        </Text>
+                        <Text className="text-xs font-semibold text-app-text">
+                          {llmInstalled ? 'Installed' : `${llmPercent}%`}
+                        </Text>
+                      </View>
+                      <View className="mt-2 h-2 w-full overflow-hidden rounded-full bg-app-border">
+                        <View
+                          className="h-2 rounded-full bg-primary-500"
+                          style={{ width: `${llmPercent}%` }}
+                        />
+                      </View>
+                    </View>
+                    <Text className="text-xs text-app-text-muted">
+                      Runs entirely on-device. First-time setup may take a minute.
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="mt-6 flex-row items-center justify-between rounded-2xl bg-app-surface-alt px-4 py-3">
+                    <View className="flex-1 pr-4">
+                      <Text className="text-xs font-medium text-app-text-secondary">Quick tip</Text>
+                      <Text className="mt-1 text-sm text-app-text-muted">
+                        {insights && insights.length > 0
+                          ? insights[0].description
+                          : 'Try “How much have I spent on groceries this month?”'}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={quickPrompt}
+                      className="rounded-full bg-primary-500 px-4 py-2">
+                      <Text className="text-xs font-semibold text-white">Use prompt</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
-              <View className="items-end">
+            ) : (
+              <View className="mb-4 flex-row items-center justify-between rounded-2xl border border-app-border bg-app-surface px-4 py-3 shadow-sm">
+                <View className="flex-1 pr-3">
+                  <Text className="text-xs font-medium text-app-text-muted">
+                    Financial insights
+                  </Text>
+                  <Text className="mt-1 text-base font-semibold text-app-text">{heroTitle}</Text>
+                  <Text className="mt-1 text-xs text-app-text-muted">{heroSubtitle}</Text>
+                </View>
                 <View className={`rounded-full px-3 py-1 ${statusBadgeBg}`}>
                   <Text className={`text-xs font-semibold ${statusBadgeText}`}>{statusLabel}</Text>
                 </View>
               </View>
-            </View>
+            )}
 
-            {isSetupPending ? (
-              <View className="mt-6 space-y-4">
-                <View>
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-xs font-medium text-app-text-muted">Embeddings</Text>
-                    <Text className="text-xs font-semibold text-app-text">
-                      {embeddingsInstalled ? 'Installed' : `${embeddingsPercent}%`}
-                    </Text>
-                  </View>
-                  <View className="mt-2 h-2 w-full overflow-hidden rounded-full bg-app-border">
-                    <View
-                      className="h-2 rounded-full bg-primary-500"
-                      style={{ width: `${embeddingsPercent}%` }}
-                    />
-                  </View>
-                </View>
-                <View>
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-xs font-medium text-app-text-muted">Language model</Text>
-                    <Text className="text-xs font-semibold text-app-text">
-                      {llmInstalled ? 'Installed' : `${llmPercent}%`}
-                    </Text>
-                  </View>
-                  <View className="mt-2 h-2 w-full overflow-hidden rounded-full bg-app-border">
-                    <View className="h-2 rounded-full bg-primary-500" style={{ width: `${llmPercent}%` }} />
-                  </View>
-                </View>
-                <Text className="text-xs text-app-text-muted">
-                  Runs entirely on-device. First-time setup may take a minute.
+            <View className="flex-1 rounded-3xl border border-app-border bg-app-surface px-4 py-5 shadow-sm">
+              <View className="mb-4 flex-row items-center justify-between">
+                <Text className="text-base font-semibold text-app-text">
+                  Financial AI assistant
                 </Text>
+                {isLoading && !isSetupPending && (
+                  <View className="flex-row items-center rounded-full bg-app-surface-alt px-3 py-1">
+                    <ActivityIndicator size="small" color="#0EA5E9" />
+                    <Text className="ml-2 text-xs font-medium text-app-text-muted">Analyzing…</Text>
+                  </View>
+                )}
               </View>
-            ) : (
-              <View className="mt-6 flex-row items-center justify-between rounded-2xl bg-app-surface-alt px-4 py-3">
-                <View className="flex-1 pr-4">
-                  <Text className="text-xs font-medium text-app-text-secondary">Quick tip</Text>
-                  <Text className="mt-1 text-sm text-app-text-muted">
-                    {insights && insights.length > 0
-                      ? insights[0].description
-                      : 'Try “How much have I spent on groceries this month?”'}
+
+              {isSetupPending ? (
+                <View className="flex-1 items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4">
+                  <Text className="text-sm font-medium text-app-text">
+                    We’re getting things ready
+                  </Text>
+                  <Text className="mt-2 text-xs text-app-text-muted">
+                    Chat will unlock once downloads finish.
                   </Text>
                 </View>
-                <TouchableOpacity onPress={quickPrompt} className="rounded-full bg-primary-500 px-4 py-2">
-                  <Text className="text-xs font-semibold text-white">Use prompt</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          <View className="flex-1 rounded-3xl border border-app-border bg-app-surface px-4 py-5 shadow-sm">
-            <View className="mb-4 flex-row items-center justify-between">
-              <Text className="text-base font-semibold text-app-text">Financial AI assistant</Text>
-              {isLoading && !isSetupPending && (
-                <View className="flex-row items-center rounded-full bg-app-surface-alt px-3 py-1">
-                  <ActivityIndicator size="small" color="#0EA5E9" />
-                  <Text className="ml-2 text-xs font-medium text-app-text-muted">Analyzing…</Text>
+              ) : isAssistantLoading ? (
+                <View className="flex-1 items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4">
+                  <ActivityIndicator size="large" color="#0EA5E9" />
+                  <Text className="mt-3 text-sm font-medium text-app-text-muted">
+                    Analyzing your financial data…
+                  </Text>
                 </View>
-              )}
-            </View>
-
-            {isSetupPending ? (
-              <View className="flex-1 items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4">
-                <Text className="text-sm font-medium text-app-text">We’re getting things ready</Text>
-                <Text className="mt-2 text-xs text-app-text-muted">
-                  Chat will unlock once downloads finish.
-                </Text>
-              </View>
-            ) : isAssistantLoading ? (
-              <View className="flex-1 items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4">
-                <ActivityIndicator size="large" color="#0EA5E9" />
-                <Text className="mt-3 text-sm font-medium text-app-text-muted">
-                  Analyzing your financial data…
-                </Text>
-              </View>
-            ) : (
-              <ScrollView
-                ref={(r) => (messagesScrollRef.current = r)}
-                className="flex-1"
-                contentContainerStyle={{ paddingBottom: 16 }}
-                keyboardShouldPersistTaps="handled"
-                onContentSizeChange={() => messagesScrollRef.current?.scrollToEnd({ animated: true })}>
-                {messages
-                  .filter((m) => m.role !== 'system')
-                  .map((message, index) => (
-                    <View
-                      key={index}
-                      className={`mt-2 max-w-[85%] rounded-3xl px-4 py-3 shadow-sm ${
-                        message.role === 'user'
-                          ? 'self-end bg-primary-500'
-                          : 'self-start border border-app-border bg-app-surface-alt'
-                      }`}>
-                      <Text
-                        className={`text-sm leading-relaxed ${
-                          message.role === 'user' ? 'text-white' : 'text-app-text'
+              ) : (
+                <ScrollView
+                  nestedScrollEnabled
+                  ref={(r) => (messagesScrollRef.current = r)}
+                  className="flex-1"
+                  contentContainerStyle={{ paddingBottom: 16 }}
+                  keyboardShouldPersistTaps="handled"
+                  onContentSizeChange={() =>
+                    messagesScrollRef.current?.scrollToEnd({ animated: true })
+                  }>
+                  {messages
+                    .filter((m) => m.role !== 'system')
+                    .map((message, index) => (
+                      <View
+                        key={index}
+                        className={`mt-2 max-w-[85%] rounded-3xl px-4 py-3 shadow-sm ${
+                          message.role === 'user'
+                            ? 'self-end bg-primary-500'
+                            : 'self-start border border-app-border bg-app-surface-alt'
                         }`}>
-                        {message.content}
-                      </Text>
+                        <Text
+                          className={`text-sm leading-relaxed ${
+                            message.role === 'user' ? 'text-white' : 'text-app-text'
+                          }`}>
+                          {message.content}
+                        </Text>
+                      </View>
+                    ))}
+
+                  {messages.filter((m) => m.role !== 'system').length === 0 &&
+                    !rag.isGenerating && (
+                      <View className="mt-6 self-start rounded-3xl border border-dashed border-app-border bg-app-surface-alt px-4 py-3">
+                        <Text className="text-sm font-medium text-app-text">
+                          Ask something like:
+                        </Text>
+                        <Text className="mt-2 text-xs text-app-text-muted">
+                          • Where did most of my money go this month?
+                        </Text>
+                        <Text className="mt-1 text-xs text-app-text-muted">
+                          • Am I on track with my savings goals?
+                        </Text>
+                        <Text className="mt-1 text-xs text-app-text-muted">
+                          • How much did I spend on dining last week?
+                        </Text>
+                      </View>
+                    )}
+
+                  {rag.isGenerating && (
+                    <View className="mt-3 flex-row items-center self-start rounded-3xl bg-app-surface-alt px-4 py-3">
+                      <ActivityIndicator size="small" color="#0EA5E9" />
+                      <Text className="ml-2 text-xs text-app-text-muted">Generating response…</Text>
                     </View>
-                  ))}
-
-                {messages.filter((m) => m.role !== 'system').length === 0 && !rag.isGenerating && (
-                  <View className="mt-6 self-start rounded-3xl border border-dashed border-app-border bg-app-surface-alt px-4 py-3">
-                    <Text className="text-sm font-medium text-app-text">Ask something like:</Text>
-                    <Text className="mt-2 text-xs text-app-text-muted">
-                      • Where did most of my money go this month?
-                    </Text>
-                    <Text className="mt-1 text-xs text-app-text-muted">
-                      • Am I on track with my savings goals?
-                    </Text>
-                    <Text className="mt-1 text-xs text-app-text-muted">
-                      • How much did I spend on dining last week?
-                    </Text>
-                  </View>
-                )}
-
-                {rag.isGenerating && (
-                  <View className="mt-3 flex-row items-center self-start rounded-3xl bg-app-surface-alt px-4 py-3">
-                    <ActivityIndicator size="small" color="#0EA5E9" />
-                    <Text className="ml-2 text-xs text-app-text-muted">Generating response…</Text>
-                  </View>
-                )}
-              </ScrollView>
-            )}
-
-            <SafeAreaView edges={['bottom']}>
-              <View className="mt-4 flex-row items-center rounded-full border border-app-border bg-app-surface px-4 py-2 shadow-xs">
-                <TextInput
-                  ref={inputRef}
-                  className="flex-1 text-sm text-app-text"
-                  value={query}
-                  onChangeText={setQuery}
-                  placeholder="Ask anything about your money..."
-                  placeholderTextColor="#94A3B8"
-                  editable={!isSetupPending && !isAssistantLoading && !isLoading}
-                  maxLength={200}
-                  returnKeyType="send"
-                  onSubmitEditing={handleSubmitQuery}
-                />
-                <TouchableOpacity
-                  onPress={handleSubmitQuery}
-                  disabled={!query.trim() || isSetupPending || isAssistantLoading || isLoading}
-                  className={`ml-3 h-10 w-10 items-center justify-center rounded-full bg-primary-500 ${
-                    !query.trim() || isSetupPending || isAssistantLoading || isLoading ? 'opacity-40' : ''
-                  }`}>
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Ionicons name="send" size={18} color="#FFFFFF" />
                   )}
-                </TouchableOpacity>
-              </View>
-            </SafeAreaView>
+                </ScrollView>
+              )}
+
+              <SafeAreaView edges={['bottom']}>
+                <View className="mt-4 flex-row items-center rounded-full border border-app-border bg-app-surface px-4 py-2 shadow-xs">
+                  <TextInput
+                    ref={inputRef}
+                    className="flex-1 text-sm text-app-text"
+                    value={query}
+                    onChangeText={setQuery}
+                    placeholder="Ask anything about your money..."
+                    placeholderTextColor="#94A3B8"
+                    editable={!isSetupPending && !isAssistantLoading && !isLoading}
+                    maxLength={200}
+                    returnKeyType="send"
+                    onSubmitEditing={handleSubmitQuery}
+                  />
+                  <TouchableOpacity
+                    onPress={handleSubmitQuery}
+                    disabled={!query.trim() || isSetupPending || isAssistantLoading || isLoading}
+                    className={`ml-3 h-10 w-10 items-center justify-center rounded-full bg-primary-500 ${
+                      !query.trim() || isSetupPending || isAssistantLoading || isLoading
+                        ? 'opacity-40'
+                        : ''
+                    }`}>
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Ionicons name="send" size={18} color="#FFFFFF" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </SafeAreaView>
+            </View>
           </View>
-        </View>
+        </ScrollView>
       </View>
     </KeyboardAvoidingView>
   );

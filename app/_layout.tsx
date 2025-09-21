@@ -1,6 +1,6 @@
 import '../global.css';
 import { Stack, useRouter, usePathname } from 'expo-router';
-import { Platform, StatusBar, View } from 'react-native';
+import { Platform, StatusBar, View, Text } from 'react-native';
 import { AuthProvider, useAuth } from '../context/useAuth';
 import { DataProvider, useData } from '../context/DataContext';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -11,6 +11,10 @@ import { VectorStoreProvider } from '@/context/RAGContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import HeaderProfileButton from '@/components/HeaderProfileButton';
 import categorizer from '@/lib/ai/categorizer';
+import { Ionicons } from '@expo/vector-icons';
+import { vexo } from 'vexo-analytics';
+
+vexo('7eeb416e-f5a5-4742-b75d-31939f29182d');
 
 // Create context for sharing data across tabs
 interface AppDataContextType {
@@ -252,19 +256,9 @@ function AppContent() {
             <Stack.Screen
               name="(tabs)"
               options={{
-                headerRight: () => (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignContent: 'center',
-                      alignItems: 'center',
-                      paddingHorizontal: 8,
-                      paddingBottom: 2,
-                    }}>
-                    <HeaderProfileButton />
-                  </View>
-                ),
-                title: 'Wealth Wise',
+                title: 'WealthWise',
+                headerLeft: () => <HeaderProfileButton />,
+                headerShadowVisible: true,
                 headerBackVisible: false,
               }}
             />

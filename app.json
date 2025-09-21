@@ -39,6 +39,7 @@
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
+      "icon": "./assets/WealthWise.icon",
       "supportsTablet": true,
       "bundleIdentifier": "com.rhoadsjustin.budgetapp",
       "infoPlist": {
