@@ -1448,6 +1448,24 @@ export function DataProvider({
         autoPay: autoPayValue,
       });
 
+      if (existing.categoryId) {
+        const expenseTransaction = {
+          description: `${existing.name} bill`,
+          amount,
+          type: 'expense' as const,
+          categoryId: existing.categoryId,
+          userId: currentUserId,
+          date: paidOn,
+          createdAt: new Date().toISOString(),
+        };
+
+        try {
+          await localStorage.saveItem('transactions', expenseTransaction);
+        } catch (error) {
+          console.warn('Failed to record bill payment transaction', error);
+        }
+      }
+
       bumpVersion();
       return normalizeBill({ ...updatedRecord, autoPay: autoPayValue });
     },
@@ -1588,11 +1606,13 @@ export function DataProvider({
       );
       const newBalance = Math.max(currentBalanceValue - amountValue, 0);
 
+      const paymentDate = payment.paidOn ?? new Date().toISOString().split('T')[0];
+
       await localStorage.saveItem('debtPayments', {
         debtId,
         userId: currentUserId,
         amount: payment.amount,
-        paidOn: payment.paidOn ?? new Date().toISOString().split('T')[0],
+        paidOn: paymentDate,
         notes: payment.notes ?? null,
         categoryId: payment.categoryId ?? null,
       });
@@ -1603,6 +1623,22 @@ export function DataProvider({
       };
 
       await localStorage.saveItem('debts', updatedRecord);
+
+      const expenseTransaction = {
+        description: `${existing.name} payment`,
+        amount: payment.amount,
+        type: 'expense' as const,
+        categoryId: payment.categoryId ?? null,
+        userId: currentUserId,
+        date: paymentDate,
+        createdAt: new Date().toISOString(),
+      };
+      try {
+        await localStorage.saveItem('transactions', expenseTransaction);
+      } catch (error) {
+        console.warn('Failed to record debt payment transaction', error);
+      }
+
       bumpVersion();
       return normalizeDebt(updatedRecord);
     },

@@ -105,32 +105,15 @@ export default function DebtsTab() {
           className="px-5"
           style={{ paddingTop: Math.max(insets.top + 8, 32), paddingBottom: insets.bottom + 96 }}>
           <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-6 py-7 shadow-md">
-            <Text className="text-sm font-medium text-app-text-muted">Debt payoff overview</Text>
-            <Text className="mt-1 text-3xl font-semibold text-app-text">
-              {hasDebts
-                ? `${localDebts.length} active payoff plan${localDebts.length === 1 ? '' : 's'}`
-                : 'No debts tracked'}
+            <Text className="text-sm font-medium text-app-text-muted">Outstanding balance</Text>
+            <Text className="mt-1 text-4xl font-semibold text-app-text">
+              {formatCurrency(totals.outstanding)}
             </Text>
-            {hasDebts ? (
-              <View className="mt-5 space-y-2">
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-sm text-app-text-muted">Outstanding balance</Text>
-                  <Text className="text-base font-semibold text-app-text">
-                    {formatCurrency(totals.outstanding)}
-                  </Text>
-                </View>
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-sm text-app-text-muted">Paid off so far</Text>
-                  <Text className="text-base font-semibold text-success-600">
-                    {formatCurrency(totals.paidOff)}
-                  </Text>
-                </View>
-              </View>
-            ) : (
-              <Text className="mt-2 text-sm text-app-text-muted">
-                Capture credit cards, loans, or informal debts to see progress and stay on schedule.
-              </Text>
-            )}
+            <Text className="mt-2 text-sm text-app-text-muted">
+              {hasDebts
+                ? `Paid off ${formatCurrency(totals.paidOff)} so far`
+                : 'Capture credit cards, loans, or informal debts to keep payoff progress in view.'}
+            </Text>
             <Button
               variant="secondary"
               size="sm"
