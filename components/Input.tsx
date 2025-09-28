@@ -97,21 +97,21 @@ const Input = React.forwardRef<TextInput, InputProps>(
         case 'sm':
           return {
             container: 'h-input-sm',
-            input: 'text-sm px-3 py-2',
+            input: 'text-sm px-3',
             label: 'text-sm font-medium mb-1',
             helper: 'text-xs mt-1',
           };
         case 'lg':
           return {
             container: 'h-input-lg',
-            input: 'text-lg px-4 py-3',
+            input: 'text-lg px-4',
             label: 'text-base font-medium mb-2',
             helper: 'text-sm mt-2',
           };
         default:
           return {
             container: multiline ? 'min-h-input-md' : 'h-input-md',
-            input: 'text-base px-3 py-3',
+            input: 'text-base px-3',
             label: 'text-sm font-medium mb-2',
             helper: 'text-sm mt-2',
           };

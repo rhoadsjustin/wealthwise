@@ -125,6 +125,54 @@ export interface BankAccount {
   createdAt: string;
 }
 
+export interface Bill {
+  id: number;
+  userId: number;
+  categoryId: number | null;
+  name: string;
+  amount: string;
+  dueDay: number | null;
+  autoPay: boolean;
+  notes?: string | null;
+  lastPaidOn?: string | null;
+  createdAt: string;
+}
+
+export interface BillPayment {
+  id: number;
+  billId: number;
+  userId: number;
+  amount: string;
+  paidOn: string;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface Debt {
+  id: number;
+  userId: number;
+  name: string;
+  totalAmount: string;
+  currentBalance: string;
+  interestRate?: string | null;
+  minimumPayment?: string | null;
+  dueDay?: number | null;
+  categoryId?: number | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface DebtPayment {
+  id: number;
+  debtId: number;
+  userId: number;
+  amount: string;
+  paidOn: string;
+  notes?: string | null;
+  categoryId?: number | null;
+  createdAt: string;
+}
+
 interface DataContextType {
   // Data state
   isLoading: boolean;
@@ -148,9 +196,7 @@ interface DataContextType {
   createCategory: (data: Omit<Category, 'id' | 'userId'>) => Promise<Category>;
   updateCategory: (id: number, updates: Partial<Category>) => Promise<Category>;
   deleteCategory: (id: number) => Promise<{ success: boolean }>;
-  updateCategoriesBudgets: (
-    budgetCategories: { name: string; budget: string }[]
-  ) => Promise<void>;
+  updateCategoriesBudgets: (budgetCategories: { name: string; budget: string }[]) => Promise<void>;
 
   // Savings goals
   getSavingsGoals: () => Promise<SavingsGoal[]>;
@@ -200,6 +246,53 @@ interface DataContextType {
   updateBankAccount: (id: number, updates: Partial<BankAccount>) => Promise<BankAccount>;
   deleteBankAccount: (id: number) => Promise<{ success: boolean }>;
 
+  // Bills
+  getBills: () => Promise<Bill[]>;
+  createBill: (data: {
+    name: string;
+    amount: string;
+    categoryId: number;
+    dueDay?: number | null;
+    autoPay?: boolean;
+    notes?: string | null;
+  }) => Promise<Bill>;
+  updateBill: (id: number, updates: Partial<Bill>) => Promise<Bill>;
+  deleteBill: (id: number) => Promise<{ success: boolean }>;
+  markBillPaid: (
+    id: number,
+    payment?: {
+      amount?: string;
+      paidOn?: string;
+      notes?: string | null;
+    }
+  ) => Promise<Bill>;
+  getBillPayments: (billId: number) => Promise<BillPayment[]>;
+
+  // Debts
+  getDebts: () => Promise<Debt[]>;
+  createDebt: (data: {
+    name: string;
+    totalAmount: string;
+    currentBalance?: string;
+    interestRate?: string | null;
+    minimumPayment?: string | null;
+    dueDay?: number | null;
+    categoryId?: number | null;
+    notes?: string | null;
+  }) => Promise<Debt>;
+  updateDebt: (id: number, updates: Partial<Debt>) => Promise<Debt>;
+  deleteDebt: (id: number) => Promise<{ success: boolean }>;
+  recordDebtPayment: (
+    debtId: number,
+    payment: {
+      amount: string;
+      paidOn?: string;
+      notes?: string | null;
+      categoryId?: number | null;
+    }
+  ) => Promise<Debt>;
+  getDebtPayments: (debtId: number) => Promise<DebtPayment[]>;
+
   // Utility methods
   refreshAllData: () => Promise<void>;
   clearAllData: () => Promise<void>;
@@ -230,7 +323,8 @@ export function DataProvider({
   const DEVELOPMENT_MODE =
     (typeof process !== 'undefined' &&
       typeof process.env !== 'undefined' &&
-      (process.env.EXPO_PUBLIC_SEED_DEMO === 'true' || process.env.EXPO_PUBLIC_SEED_DEMO === '1')) ||
+      (process.env.EXPO_PUBLIC_SEED_DEMO === 'true' ||
+        process.env.EXPO_PUBLIC_SEED_DEMO === '1')) ||
     false;
 
   const normalizeSavingsGoal = useCallback((goal: any): SavingsGoal => {
@@ -253,28 +347,103 @@ export function DataProvider({
     };
   }, []);
 
-  const normalizeSavingsContribution = useCallback(
-    (contribution: any): SavingsContribution => {
-      if (!contribution) {
-        throw new Error('Invalid savings contribution record');
-      }
+  const normalizeSavingsContribution = useCallback((contribution: any): SavingsContribution => {
+    if (!contribution) {
+      throw new Error('Invalid savings contribution record');
+    }
 
-      return {
-        id: contribution.id,
-        savingsGoalId: contribution.savingsGoalId,
-        userId: contribution.userId,
-        amount: contribution.amount,
-        contributedOn: contribution.contributedOn,
-        sourceTransactionId:
-          contribution.sourceTransactionId === null || contribution.sourceTransactionId === undefined
-            ? null
-            : contribution.sourceTransactionId,
-        notes: contribution.notes ?? null,
-        createdAt: contribution.createdAt ?? new Date().toISOString(),
-      };
-    },
-    []
-  );
+    return {
+      id: contribution.id,
+      savingsGoalId: contribution.savingsGoalId,
+      userId: contribution.userId,
+      amount: contribution.amount,
+      contributedOn: contribution.contributedOn,
+      sourceTransactionId:
+        contribution.sourceTransactionId === null || contribution.sourceTransactionId === undefined
+          ? null
+          : contribution.sourceTransactionId,
+      notes: contribution.notes ?? null,
+      createdAt: contribution.createdAt ?? new Date().toISOString(),
+    };
+  }, []);
+
+  const normalizeBill = useCallback((bill: any): Bill => {
+    if (!bill) {
+      throw new Error('Invalid bill record');
+    }
+
+    const dueDayValue =
+      bill.dueDay === null || bill.dueDay === undefined ? null : Number(bill.dueDay);
+
+    return {
+      id: bill.id,
+      userId: bill.userId,
+      categoryId: bill.categoryId ?? null,
+      name: bill.name,
+      amount: bill.amount,
+      dueDay: Number.isFinite(dueDayValue) ? dueDayValue : null,
+      autoPay: bill.autoPay === 1 || bill.autoPay === true,
+      notes: bill.notes ?? null,
+      lastPaidOn: bill.lastPaidOn ?? null,
+      createdAt: bill.createdAt ?? new Date().toISOString(),
+    };
+  }, []);
+
+  const normalizeBillPayment = useCallback((payment: any): BillPayment => {
+    if (!payment) {
+      throw new Error('Invalid bill payment record');
+    }
+
+    return {
+      id: payment.id,
+      billId: payment.billId,
+      userId: payment.userId,
+      amount: payment.amount,
+      paidOn: payment.paidOn,
+      notes: payment.notes ?? null,
+      createdAt: payment.createdAt ?? new Date().toISOString(),
+    };
+  }, []);
+
+  const normalizeDebt = useCallback((debt: any): Debt => {
+    if (!debt) {
+      throw new Error('Invalid debt record');
+    }
+
+    const dueDayValue =
+      debt.dueDay === null || debt.dueDay === undefined ? null : Number(debt.dueDay);
+
+    return {
+      id: debt.id,
+      userId: debt.userId,
+      name: debt.name,
+      totalAmount: debt.totalAmount,
+      currentBalance: debt.currentBalance ?? debt.totalAmount,
+      interestRate: debt.interestRate ?? null,
+      minimumPayment: debt.minimumPayment ?? null,
+      dueDay: Number.isFinite(dueDayValue) ? dueDayValue : null,
+      categoryId: debt.categoryId ?? null,
+      notes: debt.notes ?? null,
+      createdAt: debt.createdAt ?? new Date().toISOString(),
+    };
+  }, []);
+
+  const normalizeDebtPayment = useCallback((payment: any): DebtPayment => {
+    if (!payment) {
+      throw new Error('Invalid debt payment record');
+    }
+
+    return {
+      id: payment.id,
+      debtId: payment.debtId,
+      userId: payment.userId,
+      amount: payment.amount,
+      paidOn: payment.paidOn,
+      notes: payment.notes ?? null,
+      categoryId: payment.categoryId ?? null,
+      createdAt: payment.createdAt ?? new Date().toISOString(),
+    };
+  }, []);
 
   // Initialize local storage on mount
   useEffect(() => {
@@ -332,6 +501,9 @@ export function DataProvider({
       // Verify categories were saved
       const savedCategories = await localStorage.getItems<Category>('categories', currentUserId);
       console.log('🔍 Verified saved categories:', savedCategories.length);
+      const categoryLookup = new Map(
+        savedCategories.map((category) => [category.name, category.id])
+      );
 
       // Also check all categories in the table (debug)
       const allCategories = await localStorage.getAllItems<Category>('categories');
@@ -468,6 +640,120 @@ export function DataProvider({
 
       const savedGoals = await localStorage.getItems('savingsGoals', currentUserId);
       console.log('💰 Demo savings goals created:', savedGoals.length);
+
+      const demoBills = [
+        {
+          name: 'Rent',
+          amount: '1500',
+          categoryName: 'Housing',
+          dueDay: 1,
+          autoPay: true,
+          notes: 'Auto-draft on the 1st.',
+        },
+        {
+          name: 'Electric',
+          amount: '120.45',
+          categoryName: 'Utilities',
+          dueDay: 12,
+          autoPay: false,
+          notes: 'Average monthly bill.',
+        },
+      ];
+
+      for (const bill of demoBills) {
+        await localStorage.saveItem('bills', {
+          userId: currentUserId,
+          name: bill.name,
+          amount: bill.amount,
+          categoryId: categoryLookup.get(bill.categoryName) ?? null,
+          dueDay: bill.dueDay,
+          autoPay: bill.autoPay ? 1 : 0,
+          notes: bill.notes,
+          lastPaidOn: null,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      const savedBills = await localStorage.getItems('bills', currentUserId);
+      console.log('📄 Demo bills created:', savedBills.length);
+
+      if (savedBills.length > 0) {
+        const firstBill = savedBills[0];
+        const paidOn = new Date().toISOString().split('T')[0];
+        await localStorage.saveItem('billPayments', {
+          billId: firstBill.id,
+          userId: currentUserId,
+          amount: firstBill.amount,
+          paidOn,
+          notes: 'Demo payment entry',
+        });
+        const seededAutoPay = firstBill.autoPay === 1 || firstBill.autoPay === true ? 1 : 0;
+        await localStorage.saveItem('bills', {
+          ...firstBill,
+          lastPaidOn: paidOn,
+          autoPay: seededAutoPay,
+        });
+      }
+
+      const demoDebts = [
+        {
+          name: 'Credit Card',
+          totalAmount: '2400',
+          currentBalance: '1800',
+          interestRate: '19.99',
+          minimumPayment: '80',
+          dueDay: 21,
+          categoryName: 'Insurance',
+          notes: 'Focus on paying down aggressively.',
+        },
+        {
+          name: 'Student Loan',
+          totalAmount: '15000',
+          currentBalance: '12500',
+          interestRate: '4.25',
+          minimumPayment: '150',
+          dueDay: 5,
+          categoryName: 'Gas',
+          notes: 'Eligible for autopay discount.',
+        },
+      ];
+
+      for (const debt of demoDebts) {
+        await localStorage.saveItem('debts', {
+          userId: currentUserId,
+          name: debt.name,
+          totalAmount: debt.totalAmount,
+          currentBalance: debt.currentBalance,
+          interestRate: debt.interestRate,
+          minimumPayment: debt.minimumPayment,
+          dueDay: debt.dueDay,
+          categoryId: categoryLookup.get(debt.categoryName) ?? null,
+          notes: debt.notes,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      const savedDebts = await localStorage.getItems('debts', currentUserId);
+      console.log('📉 Demo debts created:', savedDebts.length);
+
+      if (savedDebts.length > 0) {
+        const firstDebt = savedDebts[0];
+        const paidOn = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        await localStorage.saveItem('debtPayments', {
+          debtId: firstDebt.id,
+          userId: currentUserId,
+          amount: '200',
+          paidOn,
+          notes: 'Demo payment',
+          categoryId: firstDebt.categoryId ?? null,
+        });
+        const reducedBalance = Math.max(parseFloat(firstDebt.currentBalance) - 200, 0).toFixed(2);
+        await localStorage.saveItem('debts', {
+          ...firstDebt,
+          currentBalance: reducedBalance,
+        });
+      }
+
       console.log('🎉 All demo data initialization complete!');
     };
     // Seed only starter categories (no transactions/accounts) for production/real users
@@ -521,6 +807,10 @@ export function DataProvider({
             localStorage.clearStore('bankAccounts'),
             localStorage.clearStore('savingsGoals'),
             localStorage.clearStore('savingsContributions'),
+            localStorage.clearStore('bills'),
+            localStorage.clearStore('billPayments'),
+            localStorage.clearStore('debts'),
+            localStorage.clearStore('debtPayments'),
           ]);
 
           // No query cache to clear (react-query removed)
@@ -804,11 +1094,35 @@ export function DataProvider({
     [bumpVersion]
   );
 
-  const deleteCategory = useCallback(async (id: number): Promise<{ success: boolean }> => {
-    await localStorage.deleteItem('categories', id);
-    bumpVersion();
-    return { success: true };
-  }, [bumpVersion]);
+  const deleteCategory = useCallback(
+    async (id: number): Promise<{ success: boolean }> => {
+      const bills = await localStorage.getItems<any>('bills', currentUserId);
+      const debts = await localStorage.getItems<any>('debts', currentUserId);
+
+      for (const bill of bills) {
+        if (bill.categoryId === id) {
+          await localStorage.saveItem('bills', {
+            ...bill,
+            categoryId: null,
+          });
+        }
+      }
+
+      for (const debt of debts) {
+        if (debt.categoryId === id) {
+          await localStorage.saveItem('debts', {
+            ...debt,
+            categoryId: null,
+          });
+        }
+      }
+
+      await localStorage.deleteItem('categories', id);
+      bumpVersion();
+      return { success: true };
+    },
+    [bumpVersion, currentUserId]
+  );
 
   const updateCategoriesBudgets = useCallback(
     async (budgetCategories: { name: string; budget: string }[]): Promise<void> => {
@@ -1008,6 +1322,304 @@ export function DataProvider({
     [currentUserId, normalizeSavingsContribution]
   );
 
+  // Bill methods
+  const getBills = useCallback(async (): Promise<Bill[]> => {
+    const records = await localStorage.getItems<any>('bills', currentUserId);
+    return records
+      .map((record) => normalizeBill(record))
+      .sort((a, b) => {
+        const aValue = a.dueDay ?? 32;
+        const bValue = b.dueDay ?? 32;
+        return aValue - bValue;
+      });
+  }, [currentUserId, normalizeBill]);
+
+  const createBill = useCallback(
+    async (data: {
+      name: string;
+      amount: string;
+      categoryId: number;
+      dueDay?: number | null;
+      autoPay?: boolean;
+      notes?: string | null;
+    }): Promise<Bill> => {
+      const normalizedDueDay =
+        data.dueDay === undefined || data.dueDay === null
+          ? null
+          : Math.min(Math.max(Math.round(data.dueDay), 1), 31);
+
+      const newBill = {
+        userId: currentUserId,
+        name: data.name,
+        amount: data.amount,
+        categoryId: data.categoryId ?? null,
+        dueDay: normalizedDueDay,
+        autoPay: data.autoPay ? 1 : 0,
+        notes: data.notes ?? null,
+        lastPaidOn: null,
+        createdAt: new Date().toISOString(),
+      };
+
+      const saved = await localStorage.saveItem('bills', newBill);
+      bumpVersion();
+      return normalizeBill(saved);
+    },
+    [bumpVersion, currentUserId, normalizeBill]
+  );
+
+  const updateBill = useCallback(
+    async (id: number, updates: Partial<Bill>): Promise<Bill> => {
+      const existing = await localStorage.getItem<any>('bills', id);
+      if (!existing) {
+        throw new Error('Bill not found');
+      }
+
+      const normalizedDueDay =
+        updates.dueDay === undefined || updates.dueDay === null
+          ? existing.dueDay
+          : Math.min(Math.max(Math.round(updates.dueDay), 1), 31);
+
+      const updatedRecord = {
+        ...existing,
+        ...updates,
+        dueDay: normalizedDueDay,
+        autoPay: updates.autoPay === undefined ? existing.autoPay : updates.autoPay ? 1 : 0,
+        notes: updates.notes === undefined ? existing.notes : updates.notes,
+      };
+
+      const saved = await localStorage.saveItem('bills', updatedRecord);
+      bumpVersion();
+      return normalizeBill(saved);
+    },
+    [bumpVersion, normalizeBill]
+  );
+
+  const deleteBill = useCallback(
+    async (id: number): Promise<{ success: boolean }> => {
+      const payments = await localStorage.getItems<any>('billPayments', currentUserId);
+      const related = payments.filter((payment) => payment.billId === id);
+      for (const payment of related) {
+        if (payment.id) {
+          await localStorage.deleteItem('billPayments', payment.id);
+        }
+      }
+
+      await localStorage.deleteItem('bills', id);
+      bumpVersion();
+      return { success: true };
+    },
+    [bumpVersion, currentUserId]
+  );
+
+  const markBillPaid = useCallback(
+    async (
+      id: number,
+      payment?: {
+        amount?: string;
+        paidOn?: string;
+        notes?: string | null;
+      }
+    ): Promise<Bill> => {
+      const existing = await localStorage.getItem<any>('bills', id);
+      if (!existing) {
+        throw new Error('Bill not found');
+      }
+
+      const amount = payment?.amount ?? existing.amount;
+      const paidOn = payment?.paidOn ?? new Date().toISOString().split('T')[0];
+
+      await localStorage.saveItem('billPayments', {
+        billId: id,
+        userId: currentUserId,
+        amount,
+        paidOn,
+        notes: payment?.notes ?? null,
+      });
+
+      const updatedRecord = {
+        ...existing,
+        lastPaidOn: paidOn,
+      };
+
+      const autoPayValue = existing.autoPay === 1 || existing.autoPay === true ? 1 : 0;
+
+      await localStorage.saveItem('bills', {
+        ...updatedRecord,
+        autoPay: autoPayValue,
+      });
+
+      bumpVersion();
+      return normalizeBill({ ...updatedRecord, autoPay: autoPayValue });
+    },
+    [bumpVersion, currentUserId, normalizeBill]
+  );
+
+  const getBillPayments = useCallback(
+    async (billId: number): Promise<BillPayment[]> => {
+      const results = await localStorage.getItems<any>('billPayments', currentUserId);
+      return results
+        .filter((item) => item.billId === billId)
+        .map((item) => normalizeBillPayment(item))
+        .sort((a, b) => new Date(b.paidOn).getTime() - new Date(a.paidOn).getTime());
+    },
+    [currentUserId, normalizeBillPayment]
+  );
+
+  // Debt methods
+  const getDebts = useCallback(async (): Promise<Debt[]> => {
+    const records = await localStorage.getItems<any>('debts', currentUserId);
+    return records
+      .map((record) => normalizeDebt(record))
+      .sort((a, b) => {
+        const aBalance = parseFloat(a.currentBalance ?? '0');
+        const bBalance = parseFloat(b.currentBalance ?? '0');
+        return bBalance - aBalance;
+      });
+  }, [currentUserId, normalizeDebt]);
+
+  const createDebt = useCallback(
+    async (data: {
+      name: string;
+      totalAmount: string;
+      currentBalance?: string;
+      interestRate?: string | null;
+      minimumPayment?: string | null;
+      dueDay?: number | null;
+      categoryId?: number | null;
+      notes?: string | null;
+    }): Promise<Debt> => {
+      const normalizedDueDay =
+        data.dueDay === undefined || data.dueDay === null
+          ? null
+          : Math.min(Math.max(Math.round(data.dueDay), 1), 31);
+
+      const currentBalance = data.currentBalance ?? data.totalAmount;
+
+      const newDebt = {
+        userId: currentUserId,
+        name: data.name,
+        totalAmount: data.totalAmount,
+        currentBalance,
+        interestRate: data.interestRate ?? null,
+        minimumPayment: data.minimumPayment ?? null,
+        dueDay: normalizedDueDay,
+        categoryId: data.categoryId ?? null,
+        notes: data.notes ?? null,
+        createdAt: new Date().toISOString(),
+      };
+
+      const saved = await localStorage.saveItem('debts', newDebt);
+      bumpVersion();
+      return normalizeDebt(saved);
+    },
+    [bumpVersion, currentUserId, normalizeDebt]
+  );
+
+  const updateDebt = useCallback(
+    async (id: number, updates: Partial<Debt>): Promise<Debt> => {
+      const existing = await localStorage.getItem<any>('debts', id);
+      if (!existing) {
+        throw new Error('Debt not found');
+      }
+
+      const normalizedDueDay =
+        updates.dueDay === undefined || updates.dueDay === null
+          ? existing.dueDay
+          : Math.min(Math.max(Math.round(updates.dueDay), 1), 31);
+
+      const updatedRecord = {
+        ...existing,
+        ...updates,
+        dueDay: normalizedDueDay,
+        interestRate:
+          updates.interestRate === undefined ? existing.interestRate : updates.interestRate,
+        minimumPayment:
+          updates.minimumPayment === undefined ? existing.minimumPayment : updates.minimumPayment,
+        categoryId: updates.categoryId === undefined ? existing.categoryId : updates.categoryId,
+        notes: updates.notes === undefined ? existing.notes : updates.notes,
+      };
+
+      const saved = await localStorage.saveItem('debts', updatedRecord);
+      bumpVersion();
+      return normalizeDebt(saved);
+    },
+    [bumpVersion, normalizeDebt]
+  );
+
+  const deleteDebt = useCallback(
+    async (id: number): Promise<{ success: boolean }> => {
+      const payments = await localStorage.getItems<any>('debtPayments', currentUserId);
+      const related = payments.filter((payment) => payment.debtId === id);
+      for (const payment of related) {
+        if (payment.id) {
+          await localStorage.deleteItem('debtPayments', payment.id);
+        }
+      }
+
+      await localStorage.deleteItem('debts', id);
+      bumpVersion();
+      return { success: true };
+    },
+    [bumpVersion, currentUserId]
+  );
+
+  const recordDebtPayment = useCallback(
+    async (
+      debtId: number,
+      payment: {
+        amount: string;
+        paidOn?: string;
+        notes?: string | null;
+        categoryId?: number | null;
+      }
+    ): Promise<Debt> => {
+      const existing = await localStorage.getItem<any>('debts', debtId);
+      if (!existing) {
+        throw new Error('Debt not found');
+      }
+
+      const amountValue = parseFloat(payment.amount);
+      if (!Number.isFinite(amountValue) || amountValue <= 0) {
+        throw new Error('Payment amount must be greater than zero');
+      }
+
+      const currentBalanceValue = parseFloat(
+        existing.currentBalance ?? existing.totalAmount ?? '0'
+      );
+      const newBalance = Math.max(currentBalanceValue - amountValue, 0);
+
+      await localStorage.saveItem('debtPayments', {
+        debtId,
+        userId: currentUserId,
+        amount: payment.amount,
+        paidOn: payment.paidOn ?? new Date().toISOString().split('T')[0],
+        notes: payment.notes ?? null,
+        categoryId: payment.categoryId ?? null,
+      });
+
+      const updatedRecord = {
+        ...existing,
+        currentBalance: newBalance.toFixed(2),
+      };
+
+      await localStorage.saveItem('debts', updatedRecord);
+      bumpVersion();
+      return normalizeDebt(updatedRecord);
+    },
+    [bumpVersion, currentUserId, normalizeDebt]
+  );
+
+  const getDebtPayments = useCallback(
+    async (debtId: number): Promise<DebtPayment[]> => {
+      const results = await localStorage.getItems<any>('debtPayments', currentUserId);
+      return results
+        .filter((item) => item.debtId === debtId)
+        .map((item) => normalizeDebtPayment(item))
+        .sort((a, b) => new Date(b.paidOn).getTime() - new Date(a.paidOn).getTime());
+    },
+    [currentUserId, normalizeDebtPayment]
+  );
+
   // Transaction methods
   const getTransactions = useCallback(async (): Promise<Transaction[]> => {
     console.log('💰 getTransactions called for userId:', currentUserId);
@@ -1085,11 +1697,14 @@ export function DataProvider({
     [bumpVersion]
   );
 
-  const deleteTransaction = useCallback(async (id: number): Promise<{ success: boolean }> => {
-    await localStorage.deleteItem('transactions', id);
-    bumpVersion();
-    return { success: true };
-  }, [bumpVersion]);
+  const deleteTransaction = useCallback(
+    async (id: number): Promise<{ success: boolean }> => {
+      await localStorage.deleteItem('transactions', id);
+      bumpVersion();
+      return { success: true };
+    },
+    [bumpVersion]
+  );
 
   // Insight methods
   const getInsights = useCallback(async (): Promise<Insight[]> => {
@@ -1270,11 +1885,14 @@ export function DataProvider({
     [bumpVersion]
   );
 
-  const deleteBankAccount = useCallback(async (id: number): Promise<{ success: boolean }> => {
-    await localStorage.deleteItem('bankAccounts', id);
-    bumpVersion();
-    return { success: true };
-  }, [bumpVersion]);
+  const deleteBankAccount = useCallback(
+    async (id: number): Promise<{ success: boolean }> => {
+      await localStorage.deleteItem('bankAccounts', id);
+      bumpVersion();
+      return { success: true };
+    },
+    [bumpVersion]
+  );
 
   // Utility methods
   const refreshAllData = useCallback(async (): Promise<void> => {
@@ -1290,6 +1908,10 @@ export function DataProvider({
       localStorage.clearStore('bankAccounts'),
       localStorage.clearStore('savingsGoals'),
       localStorage.clearStore('savingsContributions'),
+      localStorage.clearStore('bills'),
+      localStorage.clearStore('billPayments'),
+      localStorage.clearStore('debts'),
+      localStorage.clearStore('debtPayments'),
     ]);
     await localStorage.setSetting('monthlyIncome', null);
     setMonthlyIncome(null);
@@ -1326,6 +1948,18 @@ export function DataProvider({
         createBankAccount,
         updateBankAccount,
         deleteBankAccount,
+        getBills,
+        createBill,
+        updateBill,
+        deleteBill,
+        markBillPaid,
+        getBillPayments,
+        getDebts,
+        createDebt,
+        updateDebt,
+        deleteDebt,
+        recordDebtPayment,
+        getDebtPayments,
         refreshAllData,
         clearAllData,
       });
@@ -1357,6 +1991,18 @@ export function DataProvider({
     createBankAccount,
     updateBankAccount,
     deleteBankAccount,
+    getBills,
+    createBill,
+    updateBill,
+    deleteBill,
+    markBillPaid,
+    getBillPayments,
+    getDebts,
+    createDebt,
+    updateDebt,
+    deleteDebt,
+    recordDebtPayment,
+    getDebtPayments,
     refreshAllData,
     refreshDashboard,
     clearAllData,
@@ -1409,6 +2055,22 @@ export function DataProvider({
     createBankAccount,
     updateBankAccount,
     deleteBankAccount,
+
+    // Bills
+    getBills,
+    createBill,
+    updateBill,
+    deleteBill,
+    markBillPaid,
+    getBillPayments,
+
+    // Debts
+    getDebts,
+    createDebt,
+    updateDebt,
+    deleteDebt,
+    recordDebtPayment,
+    getDebtPayments,
 
     // Utility methods
     refreshAllData,
@@ -1493,5 +2155,32 @@ export function useSavings() {
     deleteSavingsGoal,
     recordSavingsContribution,
     getSavingsContributions,
+  };
+}
+
+export function useBills() {
+  const { getBills, createBill, updateBill, deleteBill, markBillPaid, getBillPayments } = useData();
+
+  return {
+    getBills,
+    createBill,
+    updateBill,
+    deleteBill,
+    markBillPaid,
+    getBillPayments,
+  };
+}
+
+export function useDebts() {
+  const { getDebts, createDebt, updateDebt, deleteDebt, recordDebtPayment, getDebtPayments } =
+    useData();
+
+  return {
+    getDebts,
+    createDebt,
+    updateDebt,
+    deleteDebt,
+    recordDebtPayment,
+    getDebtPayments,
   };
 }

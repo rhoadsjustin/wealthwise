@@ -2,7 +2,7 @@ import '../global.css';
 import { Stack, useRouter, usePathname } from 'expo-router';
 import { Platform, StatusBar, View, Text } from 'react-native';
 import { AuthProvider, useAuth } from '../context/useAuth';
-import { DataProvider, useData } from '../context/DataContext';
+import { DataProvider, useData, Bill, Debt } from '../context/DataContext';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AddTransactionModal from '../components/AddTransactionModal';
 import { ToastProvider } from '../components/Toast';
@@ -24,6 +24,8 @@ interface AppDataContextType {
   transactions: any;
   categories: any;
   savingsGoals: any;
+  bills: Bill[];
+  debts: Debt[];
   monthlyIncome: number | null;
   summaryLoading: boolean;
   insightsLoading: boolean;
@@ -55,6 +57,8 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
     getTransactions,
     getCategories,
     getSavingsGoals,
+    getBills,
+    getDebts,
     monthlyIncome: contextMonthlyIncome,
     updateMonthlyIncome,
     getMonthlyIncome,
@@ -66,6 +70,8 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<any[]>([]);
+  const [bills, setBills] = useState<Bill[]>([]);
+  const [debts, setDebts] = useState<Debt[]>([]);
   const [summaryLoading, setSummaryLoading] = useState<boolean>(false);
   const [insightsLoading, setInsightsLoading] = useState<boolean>(false);
 
@@ -77,12 +83,14 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
     const load = async () => {
       try {
         setSummaryLoading(true);
-        const [s, u, txs, cats, goals] = await Promise.all([
+        const [s, u, txs, cats, goals, billList, debtList] = await Promise.all([
           getDashboardSummary(),
           getUserProfile(),
           getTransactions(),
           getCategories(),
           getSavingsGoals(),
+          getBills(),
+          getDebts(),
         ]);
         if (!mounted) return;
         setSummary(s);
@@ -90,6 +98,8 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
         setTransactions(txs);
         setCategories(cats);
         setSavingsGoals(goals);
+        setBills(billList);
+        setDebts(debtList);
         try {
           await categorizer.indexCategoryDocs(cats);
         } catch {}
@@ -116,6 +126,8 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
         setTransactions([]);
         setCategories([]);
         setSavingsGoals([]);
+        setBills([]);
+        setDebts([]);
       } finally {
         if (mounted) setSummaryLoading(false);
       }
@@ -134,6 +146,8 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
     getTransactions,
     getCategories,
     getSavingsGoals,
+    getBills,
+    getDebts,
   ]);
 
   useEffect(() => {
@@ -168,18 +182,22 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
     if (!isInitialized) return;
     setSummaryLoading(true);
     try {
-      const [s, u, txs, cats, goals] = await Promise.all([
+      const [s, u, txs, cats, goals, billList, debtList] = await Promise.all([
         getDashboardSummary(),
         getUserProfile(),
         getTransactions(),
         getCategories(),
         getSavingsGoals(),
+        getBills(),
+        getDebts(),
       ]);
       setSummary(s);
       setUser(u);
       setTransactions(txs);
       setCategories(cats);
       setSavingsGoals(goals);
+      setBills(billList);
+      setDebts(debtList);
     } catch (e) {
       console.warn('Manual refresh failed:', e);
     } finally {
@@ -192,6 +210,8 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
     getTransactions,
     getCategories,
     getSavingsGoals,
+    getBills,
+    getDebts,
   ]);
 
   const contextValue: AppDataContextType = useMemo(
@@ -202,6 +222,8 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
       transactions,
       categories,
       savingsGoals,
+      bills,
+      debts,
       monthlyIncome: summary?.monthlyIncome ?? contextMonthlyIncome ?? null,
       summaryLoading,
       insightsLoading,
@@ -217,6 +239,8 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
       transactions,
       categories,
       savingsGoals,
+      bills,
+      debts,
       contextMonthlyIncome,
       summaryLoading,
       insightsLoading,
@@ -285,6 +309,18 @@ function AppContent() {
             />
             <Stack.Screen
               name="categories"
+              options={{ headerShown: false, presentation: 'modal' }}
+            />
+            <Stack.Screen
+              name="bill-modal"
+              options={{ headerShown: false, presentation: 'modal' }}
+            />
+            <Stack.Screen
+              name="debt-modal"
+              options={{ headerShown: false, presentation: 'modal' }}
+            />
+            <Stack.Screen
+              name="debt-payment-modal"
               options={{ headerShown: false, presentation: 'modal' }}
             />
             <Stack.Screen

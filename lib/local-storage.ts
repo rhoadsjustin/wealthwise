@@ -133,6 +133,68 @@ class LocalStorage {
         );
       `);
 
+      // Create bills table
+      this.db.execSync(`
+        CREATE TABLE IF NOT EXISTS bills (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId INTEGER NOT NULL,
+          categoryId INTEGER,
+          name TEXT NOT NULL,
+          amount TEXT NOT NULL,
+          dueDay INTEGER,
+          autoPay INTEGER DEFAULT 0,
+          notes TEXT,
+          lastPaidOn TEXT,
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // Create bill payments table
+      this.db.execSync(`
+        CREATE TABLE IF NOT EXISTS billPayments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          billId INTEGER NOT NULL,
+          userId INTEGER NOT NULL,
+          amount TEXT NOT NULL,
+          paidOn TEXT NOT NULL,
+          notes TEXT,
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (billId) REFERENCES bills(id)
+        );
+      `);
+
+      // Create debts table
+      this.db.execSync(`
+        CREATE TABLE IF NOT EXISTS debts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId INTEGER NOT NULL,
+          name TEXT NOT NULL,
+          totalAmount TEXT NOT NULL,
+          currentBalance TEXT NOT NULL,
+          interestRate TEXT,
+          minimumPayment TEXT,
+          dueDay INTEGER,
+          categoryId INTEGER,
+          notes TEXT,
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // Create debt payments table
+      this.db.execSync(`
+        CREATE TABLE IF NOT EXISTS debtPayments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          debtId INTEGER NOT NULL,
+          userId INTEGER NOT NULL,
+          amount TEXT NOT NULL,
+          paidOn TEXT NOT NULL,
+          notes TEXT,
+          categoryId INTEGER,
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (debtId) REFERENCES debts(id)
+        );
+      `);
+
       console.log('✅ All database tables created successfully');
     } catch (error) {
       console.error('Failed to create tables:', error);
@@ -144,20 +206,17 @@ class LocalStorage {
   async saveItem<T>(table: string, item: T & { id?: number }): Promise<T & { id: number }> {
     if (!this.db) throw new Error('Database not initialized');
 
-    const keys = Object.keys(item as object).filter(key => key !== 'id');
-    const values = keys.map(key => (item as any)[key]);
+    const keys = Object.keys(item as object).filter((key) => key !== 'id');
+    const values = keys.map((key) => (item as any)[key]);
     const placeholders = keys.map(() => '?').join(', ');
 
     console.log(`💾 Saving to ${table}:`, { keys, values });
 
     if (item.id) {
       // Update existing item
-      const setClause = keys.map(key => `${key} = ?`).join(', ');
+      const setClause = keys.map((key) => `${key} = ?`).join(', ');
       try {
-        this.db.runSync(
-          `UPDATE ${table} SET ${setClause} WHERE id = ?`,
-          [...values, item.id]
-        );
+        this.db.runSync(`UPDATE ${table} SET ${setClause} WHERE id = ?`, [...values, item.id]);
         console.log(`✅ Updated ${table} item with ID:`, item.id);
         return item as T & { id: number };
       } catch (error) {
@@ -175,7 +234,10 @@ class LocalStorage {
         return { ...item, id: result.lastInsertRowId } as T & { id: number };
       } catch (error) {
         console.error(`❌ Error inserting into ${table}:`, error);
-        console.error(`❌ SQL:`, `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`);
+        console.error(
+          `❌ SQL:`,
+          `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`
+        );
         console.error(`❌ Values:`, values);
         throw error;
       }
@@ -251,10 +313,10 @@ class LocalStorage {
     if (!this.db) throw new Error('Database not initialized');
 
     const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-    this.db.runSync(
-      'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
-      [key, stringValue]
-    );
+    this.db.runSync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [
+      key,
+      stringValue,
+    ]);
   }
 
   // Custom query method

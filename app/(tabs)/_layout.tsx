@@ -30,14 +30,24 @@ export default function TabLayout() {
         <Icon sf={{ default: 'wallet.bifold', selected: 'wallet.bifold.fill' }} />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="insights">
-        <Label hidden>Insights</Label>
-        <Icon sf={{ default: 'apple.intelligence', selected: 'apple.intelligence' }} />
+      <NativeTabs.Trigger name="bills">
+        <Label hidden>Bills</Label>
+        <Icon sf={{ default: 'calendar.badge.clock', selected: 'calendar.badge.clock' }} />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="debts">
+        <Label hidden>Debts</Label>
+        <Icon sf={{ default: 'creditcard', selected: 'creditcard.fill' }} />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="savings">
         <Label hidden>Savings</Label>
         <Icon sf={{ default: 'chart.pie', selected: 'chart.pie.fill' }} />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="insights">
+        <Label hidden>Insights</Label>
+        <Icon sf={{ default: 'apple.intelligence', selected: 'apple.intelligence' }} />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

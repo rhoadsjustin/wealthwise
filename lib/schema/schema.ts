@@ -63,6 +63,54 @@ export interface SavingsContribution {
   createdAt?: string;
 }
 
+export interface Bill {
+  id?: number;
+  userId: number;
+  categoryId?: number | null;
+  name: string;
+  amount: string; // Stored as TEXT for decimal support
+  dueDay?: number | null; // Day of month 1-31
+  autoPay?: boolean;
+  notes?: string | null;
+  lastPaidOn?: string | null;
+  createdAt?: string;
+}
+
+export interface BillPayment {
+  id?: number;
+  billId: number;
+  userId: number;
+  amount: string;
+  paidOn: string;
+  notes?: string | null;
+  createdAt?: string;
+}
+
+export interface Debt {
+  id?: number;
+  userId: number;
+  name: string;
+  totalAmount: string; // Stored as TEXT for decimal support
+  currentBalance: string; // Stored as TEXT for decimal support
+  interestRate?: string | null; // Percentage as TEXT for precision
+  minimumPayment?: string | null;
+  dueDay?: number | null;
+  categoryId?: number | null;
+  notes?: string | null;
+  createdAt?: string;
+}
+
+export interface DebtPayment {
+  id?: number;
+  debtId: number;
+  userId: number;
+  amount: string;
+  paidOn: string;
+  notes?: string | null;
+  categoryId?: number | null;
+  createdAt?: string;
+}
+
 export interface Insight {
   id?: number;
   userId: number;
@@ -193,6 +241,46 @@ export interface InsertSavingsContribution {
   notes?: string | null;
 }
 
+export interface InsertBill {
+  userId: number;
+  name: string;
+  amount: string;
+  categoryId?: number | null;
+  dueDay?: number | null;
+  autoPay?: boolean;
+  notes?: string | null;
+  lastPaidOn?: string | null;
+}
+
+export interface InsertBillPayment {
+  billId: number;
+  userId: number;
+  amount: string;
+  paidOn: string;
+  notes?: string | null;
+}
+
+export interface InsertDebt {
+  userId: number;
+  name: string;
+  totalAmount: string;
+  currentBalance?: string;
+  interestRate?: string | null;
+  minimumPayment?: string | null;
+  dueDay?: number | null;
+  categoryId?: number | null;
+  notes?: string | null;
+}
+
+export interface InsertDebtPayment {
+  debtId: number;
+  userId: number;
+  amount: string;
+  paidOn: string;
+  notes?: string | null;
+  categoryId?: number | null;
+}
+
 export interface InsertInsight {
   userId: number;
   type: 'alert' | 'suggestion' | 'trend';
@@ -282,7 +370,13 @@ export type TableName =
   | 'insights'
   | 'bankAccounts'
   | 'user'
-  | 'settings';
+  | 'settings'
+  | 'savingsGoals'
+  | 'savingsContributions'
+  | 'bills'
+  | 'billPayments'
+  | 'debts'
+  | 'debtPayments';
 
 // Helper type for transaction types
 export type TransactionType = 'income' | 'expense';
