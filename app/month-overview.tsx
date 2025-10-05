@@ -105,6 +105,7 @@ export default function MonthOverviewModal() {
     debts,
     savingsGoals,
     refreshAppData,
+    monthlyIncome,
   } = useAppData();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -140,9 +141,12 @@ export default function MonthOverviewModal() {
 
   // Calculate monthly totals
   const monthlyStats = useMemo(() => {
-    const income = monthTransactions
+    // Use baseline monthly income (user's set income) instead of transaction income
+    const actualIncomeFromTransactions = monthTransactions
       .filter((t: Transaction) => t.type === 'income')
       .reduce((sum: number, t: Transaction) => sum + parseFloat(t.amount), 0);
+    
+    const income = monthlyIncome ?? actualIncomeFromTransactions;
 
     const expenses = monthTransactions
       .filter((t: Transaction) => t.type === 'expense')
@@ -164,7 +168,7 @@ export default function MonthOverviewModal() {
       netBalance,
       transactionCount: monthTransactions.length,
     };
-  }, [monthTransactions, monthBills]);
+  }, [monthTransactions, monthBills, monthlyIncome]);
 
   // Category breakdown for the month
   const categoryBreakdown = useMemo(() => {

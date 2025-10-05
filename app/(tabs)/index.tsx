@@ -76,33 +76,76 @@ export default function DashboardTab() {
   );
 
   const monthlyTrend = React.useMemo(() => {
-    if (!safeTransactions.length) return [] as { label: string; value: number }[];
-    const bucket = new Map<string, number>();
-    safeTransactions
-      .filter((tx) => tx.type === 'expense')
-      .forEach((tx) => {
-        const date = new Date(tx.date);
-        if (Number.isNaN(date.getTime())) return;
-        const key = `${date.getFullYear()}-${date.getMonth()}`;
-        const current = bucket.get(key) ?? 0;
-        bucket.set(key, current + parseFloat(tx.amount));
-      });
-    return Array.from(bucket.entries())
-      .sort((a, b) => {
-        const [aYear, aMonth] = a[0].split('-').map(Number);
-        const [bYear, bMonth] = b[0].split('-').map(Number);
-        return aYear === bYear ? aMonth - bMonth : aYear - bYear;
-      })
-      .slice(-6)
-      .map(([key, value]) => {
-        const [year, month] = key.split('-').map(Number);
-        const labelDate = new Date(year, month, 1);
-        return {
-          label: labelDate.toLocaleDateString('en-US', { month: 'short' }),
-          value,
-        };
-      });
-  }, [safeTransactions]);
+    if (!safeTransactions.length || !safeSummary) return null;
+    
+    // Use the baseline income from summary (which uses monthlyIncome if set, or actual income as fallback)
+    const baselineIncome = safeSummary.incomeBaseline || 0;
+    
+    if (baselineIncome <= 0) return null;
+    
+    // Calculate current month totals
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
+    
+    let totalExpenses = 0;
+    let totalSavings = 0;
+    let totalBills = 0;
+    let totalDebt = 0;
+    
+    safeTransactions.forEach((tx) => {
+      const date = new Date(tx.date);
+      if (Number.isNaN(date.getTime())) return;
+      
+      // Only include current month transactions
+      if (date.getFullYear() === currentYear && date.getMonth() === currentMonth) {
+        if (tx.type === 'expense') {
+          const amount = parseFloat(tx.amount);
+          const description = tx.description.toLowerCase();
+          
+          // Categorize expenses
+          if (description.includes('savings') || 
+              description.includes('investment') ||
+              description.includes('emergency fund') ||
+              description.includes('401k') ||
+              description.includes('ira')) {
+            totalSavings += amount;
+          } else if (description.includes('rent') || 
+                     description.includes('mortgage') ||
+                     description.includes('utility') ||
+                     description.includes('electric') ||
+                     description.includes('gas bill') ||
+                     description.includes('water') ||
+                     description.includes('internet') ||
+                     description.includes('phone bill')) {
+            totalBills += amount;
+          } else if (description.includes('loan') || 
+                     description.includes('credit card') ||
+                     description.includes('debt') ||
+                     description.includes('payment')) {
+            totalDebt += amount;
+          } else {
+            totalExpenses += amount;
+          }
+        }
+      }
+    });
+    
+    // Calculate remaining income after all allocations
+    const totalAllocated = totalExpenses + totalSavings + totalBills + totalDebt;
+    const remainingIncome = Math.max(0, baselineIncome - totalAllocated);
+    
+    return {
+      totalIncome: baselineIncome, // Use baseline income (monthly income setting)
+      categories: [
+        { name: 'Available', value: remainingIncome, color: '#10B981', icon: '💰' },
+        { name: 'Expenses', value: totalExpenses, color: '#EF4444', icon: '🛒' },
+        { name: 'Savings', value: totalSavings, color: '#0EA5E9', icon: '🏦' },
+        { name: 'Bills', value: totalBills, color: '#F59E0B', icon: '🧾' },
+        { name: 'Debt', value: totalDebt, color: '#8B5CF6', icon: '💳' },
+      ].filter(cat => cat.value > 0), // Only show categories with values
+    };
+  }, [safeTransactions, safeSummary]);
 
   const topCategories = React.useMemo(() => {
     const breakdown = safeSummary?.categoryBreakdown ?? [];
@@ -128,8 +171,8 @@ export default function DashboardTab() {
   }, [safeSummary, safeTransactions]);
 
   const maxTrendValue = React.useMemo(() => {
-    if (!monthlyTrend.length) return 0;
-    return Math.max(...monthlyTrend.map((point) => point.value));
+    if (!monthlyTrend?.totalIncome) return 0;
+    return monthlyTrend.totalIncome;
   }, [monthlyTrend]);
 
   const handleRefresh = React.useCallback(async () => {
@@ -236,30 +279,136 @@ export default function DashboardTab() {
                 <Text className="ml-2 text-xs font-semibold text-primary-600">See details</Text>
               </TouchableOpacity>
             </View>
-            {monthlyTrend.length === 0 ? (
+            {!monthlyTrend || monthlyTrend.categories.length === 0 ? (
               <View className="mt-8 h-32 items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-alt">
-                <Text className="text-sm font-medium text-app-text-muted">Chart coming soon</Text>
+                <Ionicons name="analytics-outline" size={32} color="#9CA3AF" />
+                <Text className="mt-3 text-sm font-medium text-app-text-muted">No data yet</Text>
                 <Text className="mt-1 text-xs text-app-text-muted">
-                  Bring insights online to unlock dynamic visuals.
+                  Add transactions to see your financial breakdown
                 </Text>
               </View>
             ) : (
-              <View className="mt-8 h-40 flex-row items-end justify-between">
-                {monthlyTrend.map((point) => {
-                  const height =
-                    maxTrendValue > 0 ? Math.max(12, (point.value / maxTrendValue) * 120) : 12;
-                  return (
-                    <View key={point.label} className="flex-1 items-center">
-                      <View
-                        className="w-9 rounded-2xl"
-                        style={{ height, backgroundColor: 'rgba(14,165,233,0.9)' }}
-                      />
-                      <Text className="mt-3 text-xs font-medium text-app-text-muted">
-                        {point.label}
+              <View className="mt-8">
+                {/* Pie Chart */}
+                <View className="items-center">
+                  <TouchableOpacity
+                    onPress={openCurrentMonth}
+                    className="relative h-48 w-48 items-center justify-center">
+                    
+                    {/* Pie Chart Segments */}
+                    <View className="absolute h-48 w-48 rounded-full border-8 border-app-surface-alt bg-app-surface">
+                      {monthlyTrend.categories.map((category, index) => {
+                        const percentage = monthlyTrend.totalIncome > 0 ? (category.value / monthlyTrend.totalIncome) * 100 : 0;
+                        const previousPercentages = monthlyTrend.categories.slice(0, index).reduce((sum, cat) => {
+                          return sum + (monthlyTrend.totalIncome > 0 ? (cat.value / monthlyTrend.totalIncome) * 100 : 0);
+                        }, 0);
+                        
+                        // Calculate rotation for this segment
+                        const rotation = (previousPercentages / 100) * 360;
+                        const segmentAngle = (percentage / 100) * 360;
+                        
+                        if (percentage < 2) return null; // Don't show very small segments
+                        
+                        return (
+                          <View
+                            key={category.name}
+                            className="absolute h-48 w-48 rounded-full"
+                            style={{
+                              backgroundColor: `${category.color}40`,
+                              borderColor: category.color,
+                              borderWidth: 3,
+                              transform: [{ rotate: `${rotation}deg` }],
+                              borderTopWidth: segmentAngle > 180 ? 3 : 0,
+                              borderRightWidth: segmentAngle > 90 && segmentAngle < 270 ? 3 : 0,
+                              borderBottomWidth: segmentAngle > 180 ? 3 : 0,
+                              borderLeftWidth: segmentAngle > 270 || segmentAngle < 90 ? 3 : 0,
+                            }}
+                          />
+                        );
+                      })}
+                    </View>
+                    
+                    {/* Center Content */}
+                    <View className="items-center justify-center rounded-full bg-app-surface px-4 py-2 shadow-sm border border-app-border">
+                      <Text className="text-xs font-medium text-app-text-muted">Total Income</Text>
+                      <Text className="text-lg font-bold text-app-text">
+                        {formatAccentCurrency(monthlyTrend.totalIncome)}
                       </Text>
                     </View>
-                  );
-                })}
+                  </TouchableOpacity>
+                </View>
+                
+                {/* Legend */}
+                <View className="mt-8 space-y-3">
+                  {monthlyTrend.categories.map((category) => {
+                    const percentage = monthlyTrend.totalIncome > 0 ? (category.value / monthlyTrend.totalIncome) * 100 : 0;
+                    
+                    return (
+                      <TouchableOpacity
+                        key={category.name}
+                        onPress={openCurrentMonth}
+                        className="flex-row items-center justify-between rounded-2xl bg-app-surface-alt px-4 py-3">
+                        <View className="flex-row items-center flex-1">
+                          <View className="mr-3 flex-row items-center">
+                            <View
+                              className="mr-2 h-4 w-4 rounded-full"
+                              style={{ backgroundColor: category.color }}
+                            />
+                            <Text className="text-xl">{category.icon}</Text>
+                          </View>
+                          <View className="flex-1">
+                            <Text className="text-sm font-semibold text-app-text">
+                              {category.name}
+                            </Text>
+                            <Text className="text-xs text-app-text-muted">
+                              {percentage.toFixed(1)}% of income
+                            </Text>
+                          </View>
+                        </View>
+                        <View className="items-end">
+                          <Text className="text-sm font-bold text-app-text">
+                            {formatAccentCurrency(category.value)}
+                          </Text>
+                          <View className="mt-1 h-1 w-16 rounded-full bg-app-surface">
+                            <View
+                              className="h-1 rounded-full"
+                              style={{
+                                backgroundColor: category.color,
+                                width: `${Math.min(percentage, 100)}%`,
+                              }}
+                            />
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                
+                {/* Summary Stats */}
+                <View className="mt-6 rounded-2xl bg-app-surface-alt px-4 py-4">
+                  <View className="flex-row justify-between">
+                    <View className="items-center">
+                      <Text className="text-xs text-app-text-muted">Total Allocated</Text>
+                      <Text className="text-sm font-semibold text-app-text">
+                        {formatAccentCurrency(monthlyTrend.categories.reduce((sum, cat) => sum + cat.value, 0))}
+                      </Text>
+                    </View>
+                    <View className="items-center">
+                      <Text className="text-xs text-app-text-muted">Allocation Rate</Text>
+                      <Text className="text-sm font-semibold text-primary-600">
+                        {monthlyTrend.totalIncome > 0 
+                          ? ((monthlyTrend.categories.reduce((sum, cat) => sum + cat.value, 0) / monthlyTrend.totalIncome) * 100).toFixed(1)
+                          : 0}%
+                      </Text>
+                    </View>
+                    <View className="items-center">
+                      <Text className="text-xs text-app-text-muted">This Month</Text>
+                      <Text className="text-sm font-semibold text-app-text">
+                        {new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
               </View>
             )}
           </View>
