@@ -368,6 +368,8 @@ function AppContent() {
               options={{
                 presentation: 'modal',
                 headerShown: false,
+                sheetGrabberVisible: true,
+                sheetAllowedDetents: 'fitToContents',
                 contentStyle: {
                   backgroundColor: '#FFFFFF',
                 },

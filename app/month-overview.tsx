@@ -251,12 +251,6 @@ export default function MonthOverviewModal() {
 
   return (
     <View className="flex-1 bg-app-background">     
-      <ScrollView
-        className="flex-1"
-        contentContainerClassName="pb-8"
-        contentInsetAdjustmentBehavior="automatic"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
-        
         {/* Month Navigation */}
         <View className="mx-5 mt-4 mb-6 flex-row items-center justify-between rounded-3xl border border-app-border bg-app-surface px-6 py-4 shadow-sm">
           <TouchableOpacity onPress={handlePrevMonth} className="rounded-full bg-app-surface-alt p-3">
@@ -274,6 +268,12 @@ export default function MonthOverviewModal() {
             <Ionicons name="chevron-forward" size={20} color="#0EA5E9" />
           </TouchableOpacity>
         </View>
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="pb-8"
+        contentInsetAdjustmentBehavior="automatic"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
+        
 
         <View className="px-5 space-y-6">
           {/* Monthly Summary Card */}
