@@ -17,6 +17,7 @@ import HeaderProfileButton from '@/components/HeaderProfileButton';
 import FAB from '@/components/FAB';
 import { Skeleton } from '@/components/Skeleton';
 import { useAppData } from '../_layout';
+import { useMonthOverview } from '@/lib/useMonthOverview';
 import type { Category, Transaction } from '@/context/DataContext';
 
 const formatCurrency = (value: number) => {
@@ -51,6 +52,7 @@ export default function DashboardTab() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { summary, transactions, categories, summaryLoading, refreshAppData } = useAppData();
+  const { openCurrentMonth } = useMonthOverview();
   const [refreshing, setRefreshing] = React.useState(false);
 
   React.useEffect(() => {
@@ -166,7 +168,9 @@ export default function DashboardTab() {
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
         <View className="px-5" style={{ paddingTop: Math.max(insets.top + 8, 32) }}>
-          <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-6 py-7 shadow-md">
+          <TouchableOpacity
+            onPress={openCurrentMonth}
+            className="mb-6 rounded-3xl border border-app-border bg-app-surface px-6 py-7 shadow-md">
             <View className="flex-row items-start justify-between">
               <View>
                 <Text className="text-sm font-medium text-app-text-muted">Available balance</Text>
@@ -179,6 +183,10 @@ export default function DashboardTab() {
                   <Text className="text-xs font-medium text-primary-700">
                     {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                   </Text>
+                </View>
+                <View className="mt-2 flex-row items-center rounded-full bg-app-surface-alt px-2 py-1">
+                  <Text className="mr-1 text-xs font-medium text-primary-600">View details</Text>
+                  <Ionicons name="chevron-forward" size={12} color="#0EA5E9" />
                 </View>
               </View>
             </View>
@@ -216,13 +224,13 @@ export default function DashboardTab() {
                 <Text className="text-xs font-semibold text-success-700">Boost savings</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </TouchableOpacity>
 
           <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-5 py-6 shadow-sm">
             <View className="flex-row items-center justify-between">
               <Text className="text-base font-semibold text-app-text">Spending trend</Text>
               <TouchableOpacity
-                onPress={() => router.push('/(tabs)/reports')}
+                onPress={openCurrentMonth}
                 className="flex-row items-center rounded-full bg-app-surface-alt px-3 py-1">
                 <Ionicons name="trending-up-outline" size={16} color="#0EA5E9" />
                 <Text className="ml-2 text-xs font-semibold text-primary-600">See details</Text>

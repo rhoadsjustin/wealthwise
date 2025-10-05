@@ -363,6 +363,16 @@ function AppContent() {
                 },
               }}
             />
+            <Stack.Screen
+              name="month-overview"
+              options={{
+                presentation: 'modal',
+                headerShown: false,
+                contentStyle: {
+                  backgroundColor: '#FFFFFF',
+                },
+              }}
+            />
           </Stack>
         </AppDataProvider>
       </DataProvider>
