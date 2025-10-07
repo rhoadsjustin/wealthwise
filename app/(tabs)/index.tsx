@@ -12,6 +12,7 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PieChart } from 'react-native-gifted-charts';
 
 import HeaderProfileButton from '@/components/HeaderProfileButton';
 import FAB from '@/components/FAB';
@@ -291,57 +292,71 @@ export default function DashboardTab() {
               <View className="mt-8">
                 {/* Pie Chart */}
                 <View className="items-center">
-                  <TouchableOpacity
-                    onPress={openCurrentMonth}
-                    className="relative h-48 w-48 items-center justify-center">
-                    
-                    {/* Pie Chart Segments */}
-                    <View className="absolute h-48 w-48 rounded-full border-8 border-app-surface-alt bg-app-surface">
-                      {monthlyTrend.categories.map((category, index) => {
-                        const percentage = monthlyTrend.totalIncome > 0 ? (category.value / monthlyTrend.totalIncome) * 100 : 0;
-                        const previousPercentages = monthlyTrend.categories.slice(0, index).reduce((sum, cat) => {
-                          return sum + (monthlyTrend.totalIncome > 0 ? (cat.value / monthlyTrend.totalIncome) * 100 : 0);
-                        }, 0);
-                        
-                        // Calculate rotation for this segment
-                        const rotation = (previousPercentages / 100) * 360;
-                        const segmentAngle = (percentage / 100) * 360;
-                        
-                        if (percentage < 2) return null; // Don't show very small segments
-                        
-                        return (
-                          <View
-                            key={category.name}
-                            className="absolute h-48 w-48 rounded-full"
-                            style={{
-                              backgroundColor: `${category.color}40`,
-                              borderColor: category.color,
-                              borderWidth: 3,
-                              transform: [{ rotate: `${rotation}deg` }],
-                              borderTopWidth: segmentAngle > 180 ? 3 : 0,
-                              borderRightWidth: segmentAngle > 90 && segmentAngle < 270 ? 3 : 0,
-                              borderBottomWidth: segmentAngle > 180 ? 3 : 0,
-                              borderLeftWidth: segmentAngle > 270 || segmentAngle < 90 ? 3 : 0,
-                            }}
-                          />
-                        );
-                      })}
-                    </View>
-                    
-                    {/* Center Content */}
-                    <View className="items-center justify-center rounded-full bg-app-surface px-4 py-2 shadow-sm border border-app-border">
-                      <Text className="text-xs font-medium text-app-text-muted">Total Income</Text>
-                      <Text className="text-lg font-bold text-app-text">
-                        {formatAccentCurrency(monthlyTrend.totalIncome)}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
+                  <PieChart
+                    data={monthlyTrend.categories.map((category) => {
+                      const percentage = monthlyTrend.totalIncome > 0 ? (category.value / monthlyTrend.totalIncome) * 100 : 0;
+                      
+                      // Calculate dynamic thickness based on percentage
+                      const minThickness = 8;
+                      const maxThickness = 24;
+                      const thicknessRange = maxThickness - minThickness;
+                      const normalizedPercentage = Math.min(percentage / 50, 1);
+                      const segmentThickness = Math.round(minThickness + (thicknessRange * normalizedPercentage));
+                      
+                      return {
+                        value: category.value,
+                        color: category.color,
+                        // text: `${percentage.toFixed(1)}%`,
+                        textColor: '#FFFFFF',
+                        textSize: 12,
+                        // strokeWidth: segmentThickness,
+                        strokeColor: category.color,
+                        // shiftX: percentage > 25 ? 5 : 0, // Slightly separate large segments
+                        // shiftY: percentage > 25 ? 5 : 0,
+                        onPress: () => openCurrentMonth(),
+                        // tooltipText: `${category.name}: ${formatAccentCurrency(category.value)} (${percentage.toFixed(1)}%)`,
+                      };
+                    })}
+                    radius={96}
+                    donut
+                    innerRadius={50}
+                    innerCircleColor="#FFFFFF"
+                    innerCircleBorderWidth={2}
+                    innerCircleBorderColor="#E5E7EB"
+                    centerLabelComponent={() => (
+                      <TouchableOpacity onPress={openCurrentMonth} className="items-center">
+                        <Text className="text-xs font-medium text-app-text-muted">Total Income</Text>
+                        <Text className="text-sm font-bold text-app-text">
+                          {formatAccentCurrency(monthlyTrend.totalIncome)}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    showText={true}
+                    textSize={10}
+                    showTooltip={true}
+                    focusOnPress={true}
+                    toggleFocusOnPress={true}
+                    extraRadius={8}
+                    labelsPosition="mid"
+                    strokeWidth={1}
+                    strokeColor="#FFFFFF"
+                  />
                 </View>
                 
                 {/* Legend */}
                 <View className="mt-8 space-y-3">
                   {monthlyTrend.categories.map((category) => {
                     const percentage = monthlyTrend.totalIncome > 0 ? (category.value / monthlyTrend.totalIncome) * 100 : 0;
+                    
+                    // Calculate same thickness as pie chart segment
+                    const minThickness = 8;
+                    const maxThickness = 24;
+                    const thicknessRange = maxThickness - minThickness;
+                    const normalizedPercentage = Math.min(percentage / 50, 1);
+                    const segmentThickness = Math.round(minThickness + (thicknessRange * normalizedPercentage));
+                    
+                    // Scale for legend display (make smaller)
+                    const legendSize = 10 + Math.round(segmentThickness / 3);
                     
                     return (
                       <TouchableOpacity
@@ -351,8 +366,12 @@ export default function DashboardTab() {
                         <View className="flex-row items-center flex-1">
                           <View className="mr-3 flex-row items-center">
                             <View
-                              className="mr-2 h-4 w-4 rounded-full"
-                              style={{ backgroundColor: category.color }}
+                              className="mr-2 rounded-full"
+                              style={{ 
+                                backgroundColor: category.color,
+                                width: legendSize,
+                                height: legendSize,
+                              }}
                             />
                             <Text className="text-xl">{category.icon}</Text>
                           </View>
