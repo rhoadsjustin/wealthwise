@@ -51,7 +51,7 @@ function InsightsTab() {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [isContinuing, setIsContinuing] = useState(false);
   const [keyboardInset, setKeyboardInset] = useState(0);
-  const [insightsMode, setInsightsMode] = useState<'assistant' | 'apple'>('assistant');
+  const [insightsMode, setInsightsMode] = useState<'assistant' | 'apple'>('apple');
   const [appleResult, setAppleResult] = useState<BudgetInsightsPayload | null>(null);
   const [appleLoading, setAppleLoading] = useState(false);
   const [appleError, setAppleError] = useState<string | null>(null);
@@ -710,18 +710,8 @@ function InsightsTab() {
             ),
           }}
         />
-
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingTop: Math.max(insets.top + 8, 32),
-            paddingBottom: Math.max(insets.bottom, 12) + keyboardInset,
-          }}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
-          <View className="flex-1 px-5">
-            <View className="mb-5 flex-row rounded-full bg-app-surface-alt p-1">
+        <View className="flex-1 px-5">
+          {/*<View className="mb-5 flex-row rounded-full bg-app-surface-alt p-1">
               <Button
                 size="sm"
                 variant={isAssistantMode ? 'default' : 'ghost'}
@@ -736,238 +726,16 @@ function InsightsTab() {
                 title="Apple coach"
                 onPress={() => setInsightsMode('apple')}
               />
-            </View>
+            </View>*/}
 
-            {isAssistantMode ? (
-              <>
-                {!hasUserMessages ? (
-                  <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-6 py-7 shadow-md">
-                    <View className="flex-row items-start justify-between">
-                      <View className="max-w-[70%]">
-                        <Text className="text-sm font-medium text-app-text-muted">
-                          Financial insights
-                        </Text>
-                        <Text className="mt-1 text-3xl font-semibold text-app-text">
-                          {heroTitle}
-                        </Text>
-                        <Text className="mt-2 text-xs text-app-text-muted">{heroSubtitle}</Text>
-                      </View>
-                      <View className="items-end">
-                        <View className={`rounded-full px-3 py-1 ${statusBadgeBg}`}>
-                          <Text className={`text-xs font-semibold ${statusBadgeText}`}>
-                            {statusLabel}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    {isSetupPending ? (
-                      <View className="mt-6 space-y-4">
-                        <View>
-                          <View className="flex-row items-center justify-between">
-                            <Text className="text-xs font-medium text-app-text-muted">
-                              Embeddings
-                            </Text>
-                            <Text className="text-xs font-semibold text-app-text">
-                              {embeddingsInstalled ? 'Installed' : `${embeddingsPercent}%`}
-                            </Text>
-                          </View>
-                          <View className="mt-2 h-2 w-full overflow-hidden rounded-full bg-app-border">
-                            <View
-                              className="h-2 rounded-full bg-primary-500"
-                              style={{ width: `${embeddingsPercent}%` }}
-                            />
-                          </View>
-                        </View>
-                        <View>
-                          <View className="flex-row items-center justify-between">
-                            <Text className="text-xs font-medium text-app-text-muted">
-                              Language model
-                            </Text>
-                            <Text className="text-xs font-semibold text-app-text">
-                              {llmInstalled ? 'Installed' : `${llmPercent}%`}
-                            </Text>
-                          </View>
-                          <View className="mt-2 h-2 w-full overflow-hidden rounded-full bg-app-border">
-                            <View
-                              className="h-2 rounded-full bg-primary-500"
-                              style={{ width: `${llmPercent}%` }}
-                            />
-                          </View>
-                        </View>
-                        <Text className="text-xs text-app-text-muted">
-                          Runs entirely on-device. First-time setup may take a minute.
-                        </Text>
-                      </View>
-                    ) : (
-                      <View className="mt-6 flex-row items-center justify-between rounded-2xl bg-app-surface-alt px-4 py-3">
-                        <View className="flex-1 pr-4">
-                          <Text className="text-xs font-medium text-app-text-secondary">
-                            Quick tip
-                          </Text>
-                          <Text className="mt-1 text-sm text-app-text-muted">
-                            {insights && insights.length > 0
-                              ? insights[0].description
-                              : 'Try “How much have I spent on groceries this month?”'}
-                          </Text>
-                        </View>
-                        <TouchableOpacity
-                          onPress={quickPrompt}
-                          className="rounded-full bg-primary-500 px-4 py-2">
-                          <Text className="text-xs font-semibold text-white">Use prompt</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  </View>
-                ) : (
-                  <View className="mb-4 flex-row items-center justify-between rounded-2xl border border-app-border bg-app-surface px-4 py-3 shadow-sm">
-                    <View className="flex-1 pr-3">
-                      <Text className="text-xs font-medium text-app-text-muted">
-                        Financial insights
-                      </Text>
-                      <Text className="mt-1 text-base font-semibold text-app-text">
-                        {heroTitle}
-                      </Text>
-                      <Text className="mt-1 text-xs text-app-text-muted">{heroSubtitle}</Text>
-                    </View>
-                    <View className={`rounded-full px-3 py-1 ${statusBadgeBg}`}>
-                      <Text className={`text-xs font-semibold ${statusBadgeText}`}>
-                        {statusLabel}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-
-                <View className="flex-1 rounded-3xl border border-app-border bg-app-surface px-4 py-5 shadow-sm">
-                  <View className="mb-4 flex-row items-center justify-between">
-                    <Text className="text-base font-semibold text-app-text">
-                      Financial AI assistant
-                    </Text>
-                    {isLoading && !isSetupPending && (
-                      <View className="flex-row items-center rounded-full bg-app-surface-alt px-3 py-1">
-                        <ActivityIndicator size="small" color="#0EA5E9" />
-                        <Text className="ml-2 text-xs font-medium text-app-text-muted">
-                          Analyzing…
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-
-                  {isSetupPending ? (
-                    <View className="flex-1 items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4">
-                      <Text className="text-sm font-medium text-app-text">
-                        We’re getting things ready
-                      </Text>
-                      <Text className="mt-2 text-xs text-app-text-muted">
-                        Chat will unlock once downloads finish.
-                      </Text>
-                    </View>
-                  ) : isAssistantLoading ? (
-                    <View className="flex-1 items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4">
-                      <ActivityIndicator size="large" color="#0EA5E9" />
-                      <Text className="mt-3 text-sm font-medium text-app-text-muted">
-                        Analyzing your financial data…
-                      </Text>
-                    </View>
-                  ) : (
-                    <ScrollView
-                      nestedScrollEnabled
-                      ref={(r) => (messagesScrollRef.current = r)}
-                      className="flex-1"
-                      contentContainerStyle={{ paddingBottom: 16 }}
-                      keyboardShouldPersistTaps="handled"
-                      onContentSizeChange={() =>
-                        messagesScrollRef.current?.scrollToEnd({ animated: true })
-                      }>
-                      {messages
-                        .filter((m) => m.role !== 'system')
-                        .map((message, index) => (
-                          <View
-                            key={index}
-                            className={`mt-2 max-w-[85%] rounded-3xl px-4 py-3 shadow-sm ${
-                              message.role === 'user'
-                                ? 'self-end bg-primary-500'
-                                : 'self-start border border-app-border bg-app-surface-alt'
-                            }`}>
-                            <Text
-                              className={`text-sm leading-relaxed ${
-                                message.role === 'user' ? 'text-white' : 'text-app-text'
-                              }`}>
-                              {message.content}
-                            </Text>
-                          </View>
-                        ))}
-
-                      {messages.filter((m) => m.role !== 'system').length === 0 &&
-                        !rag.isGenerating && (
-                          <View className="mt-6 self-start rounded-3xl border border-dashed border-app-border bg-app-surface-alt px-4 py-3">
-                            <Text className="text-sm font-medium text-app-text">
-                              Ask something like:
-                            </Text>
-                            <Text className="mt-2 text-xs text-app-text-muted">
-                              • Where did most of my money go this month?
-                            </Text>
-                            <Text className="mt-1 text-xs text-app-text-muted">
-                              • Am I on track with my savings goals?
-                            </Text>
-                            <Text className="mt-1 text-xs text-app-text-muted">
-                              • How much did I spend on dining last week?
-                            </Text>
-                          </View>
-                        )}
-
-                      {rag.isGenerating && (
-                        <View className="mt-3 flex-row items-center self-start rounded-3xl bg-app-surface-alt px-4 py-3">
-                          <ActivityIndicator size="small" color="#0EA5E9" />
-                          <Text className="ml-2 text-xs text-app-text-muted">
-                            Generating response…
-                          </Text>
-                        </View>
-                      )}
-                    </ScrollView>
-                  )}
-
-                  <SafeAreaView edges={['bottom']}>
-                    <View className="mt-4 flex-row items-center rounded-full border border-app-border bg-app-surface px-4 py-2 shadow-xs">
-                      <TextInput
-                        ref={inputRef}
-                        className="flex-1 text-sm text-app-text"
-                        value={query}
-                        onChangeText={setQuery}
-                        placeholder="Ask anything about your money..."
-                        placeholderTextColor="#94A3B8"
-                        editable={!isSetupPending && !isAssistantLoading && !isLoading}
-                        maxLength={200}
-                        returnKeyType="send"
-                        onSubmitEditing={handleSubmitQuery}
-                      />
-                      <TouchableOpacity
-                        onPress={handleSubmitQuery}
-                        disabled={
-                          !query.trim() || isSetupPending || isAssistantLoading || isLoading
-                        }
-                        className={`ml-3 h-10 w-10 items-center justify-center rounded-full bg-primary-500 ${
-                          !query.trim() || isSetupPending || isAssistantLoading || isLoading
-                            ? 'opacity-40'
-                            : ''
-                        }`}>
-                        {isLoading ? (
-                          <ActivityIndicator size="small" color="#FFFFFF" />
-                        ) : (
-                          <Ionicons name="send" size={18} color="#FFFFFF" />
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  </SafeAreaView>
-                </View>
-              </>
-            ) : (
-              <>
+          {isAssistantMode ? (
+            <>
+              {!hasUserMessages ? (
                 <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-6 py-7 shadow-md">
                   <View className="flex-row items-start justify-between">
-                    <View className="max-w-[72%]">
+                    <View className="max-w-[70%]">
                       <Text className="text-sm font-medium text-app-text-muted">
-                        Apple budget coach
+                        Financial insights
                       </Text>
                       <Text className="mt-1 text-3xl font-semibold text-app-text">{heroTitle}</Text>
                       <Text className="mt-2 text-xs text-app-text-muted">{heroSubtitle}</Text>
@@ -981,292 +749,302 @@ function InsightsTab() {
                     </View>
                   </View>
 
-                  <View className="mt-6 flex-row flex-wrap items-start gap-4">
-                    <View>
-                      <Text className="text-xs font-medium text-app-text-muted">
-                        Training window
-                      </Text>
-                      <Text className="mt-1 text-sm font-semibold text-app-text">
-                        {appleMonthsWindow
-                          ? `${formatMonthLabel(appleMonthsWindow.first)} – ${formatMonthLabel(appleMonthsWindow.last)}`
-                          : 'Not enough data'}
-                      </Text>
-                    </View>
-                    <View>
-                      <Text className="text-xs font-medium text-app-text-muted">Snapshots</Text>
-                      <Text className="mt-1 text-sm font-semibold text-app-text">
-                        {appleSnapshots.length}
-                      </Text>
-                    </View>
-                    <View>
-                      <Text className="text-xs font-medium text-app-text-muted">Sample count</Text>
-                      <Text className="mt-1 text-sm font-semibold text-app-text">
-                        {appleResult?.metadata?.sampleCount ?? appleSnapshots.length}
-                      </Text>
-                    </View>
-                    <View>
-                      <Text className="text-xs font-medium text-app-text-muted">Accuracy</Text>
-                      <Text className="mt-1 text-sm font-semibold text-app-text">
-                        {appleResult?.metadata?.trainingAccuracy != null
-                          ? `${Math.round(appleResult.metadata.trainingAccuracy * 100)}%`
-                          : appleHasResult
-                            ? '—'
-                            : 'Pending'}
-                      </Text>
-                    </View>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="mt-1"
-                      title="Retrain"
-                      onPress={handleRetrain}
-                      disabled={appleLoading || !appleSnapshots.length}
-                      loading={appleLoading}
-                    />
-                  </View>
-
-                  {appleError && (
-                    <View className="mt-5 rounded-2xl border border-error-200 bg-error-50 px-4 py-3">
-                      <Text className="text-xs font-medium text-error-700">{appleError}</Text>
-                    </View>
-                  )}
-
-                  {appleLoading && !appleError && (
-                    <View className="mt-5 flex-row items-center rounded-2xl bg-app-surface-alt px-4 py-3">
-                      <ActivityIndicator size="small" color="#0EA5E9" />
-                      <Text className="ml-2 text-xs text-app-text-muted">Training on-device…</Text>
-                    </View>
-                  )}
-                </View>
-
-                {/*<View className="rounded-3xl border border-app-border bg-app-surface px-4 py-5 shadow-sm">
-                  <View className="mb-4 flex-row items-center justify-between">
-                    <Text className="text-base font-semibold text-app-text">
-                      Latest category status
-                    </Text>
-                    {appleLatestMonth && (
-                      <Text className="text-xs font-medium text-app-text-muted">
-                        {formatMonthLabel(appleLatestMonth)}
-                      </Text>
-                    )}
-                  </View>
-
-                  {classificationList.length === 0 && !appleLoading ? (
-                    <View className="rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4 py-3">
+                  {isSetupPending ? (
+                    <View className="mt-6 space-y-4">
+                      <View>
+                        <View className="flex-row items-center justify-between">
+                          <Text className="text-xs font-medium text-app-text-muted">
+                            Embeddings
+                          </Text>
+                          <Text className="text-xs font-semibold text-app-text">
+                            {embeddingsInstalled ? 'Installed' : `${embeddingsPercent}%`}
+                          </Text>
+                        </View>
+                        <View className="mt-2 h-2 w-full overflow-hidden rounded-full bg-app-border">
+                          <View
+                            className="h-2 rounded-full bg-primary-500"
+                            style={{ width: `${embeddingsPercent}%` }}
+                          />
+                        </View>
+                      </View>
+                      <View>
+                        <View className="flex-row items-center justify-between">
+                          <Text className="text-xs font-medium text-app-text-muted">
+                            Language model
+                          </Text>
+                          <Text className="text-xs font-semibold text-app-text">
+                            {llmInstalled ? 'Installed' : `${llmPercent}%`}
+                          </Text>
+                        </View>
+                        <View className="mt-2 h-2 w-full overflow-hidden rounded-full bg-app-border">
+                          <View
+                            className="h-2 rounded-full bg-primary-500"
+                            style={{ width: `${llmPercent}%` }}
+                          />
+                        </View>
+                      </View>
                       <Text className="text-xs text-app-text-muted">
-                        Train the coach with more budget history to see per-category
-                        classifications.
+                        Runs entirely on-device. First-time setup may take a minute.
                       </Text>
                     </View>
                   ) : (
-                    classificationList.map((item) => {
-                      const snapshotKey = `${item.categoryId}:${item.month}`;
-                      const snapshot = appleSnapshotMap.get(snapshotKey);
-                      const budgetValue = snapshot?.budget ?? 0;
-                      const spentValue = snapshot?.spent ?? 0;
-                      const varianceValue = item.variance ?? 0;
-                      const varianceLabel = `${varianceValue >= 0 ? '+' : ''}${currencyFormatter.format(varianceValue)}`;
-                      const predictedStyles = getStatusStyles(item.predictedStatus);
-                      const actualStyles = getStatusStyles(item.actualStatus);
-                      const icon = (item.metadata as any)?.icon ?? snapshot?.metadata?.icon;
-                      const confidencePercent = Math.round((item.confidence ?? 0) * 100);
-
-                      return (
-                        <View
-                          key={`${item.categoryId}-${item.month}`}
-                          className="mb-3 rounded-2xl border border-app-border bg-app-surface-alt px-4 py-3">
-                          <View className="flex-row items-center justify-between">
-                            <View className="flex-row items-center gap-2">
-                              {icon ? <Text className="text-lg leading-none">{icon}</Text> : null}
-                              <Text className="text-sm font-semibold text-app-text">
-                                {item.categoryName}
-                              </Text>
-                            </View>
-                            <View className={`rounded-full px-3 py-1 ${predictedStyles.bg}`}>
-                              <Text className={`text-xs font-semibold ${predictedStyles.text}`}>
-                                {predictedStyles.label}
-                              </Text>
-                            </View>
-                          </View>
-
-                          <Text className="mt-3 text-xs text-app-text-muted">
-                            Spent {currencyFormatter.format(spentValue)} of{' '}
-                            {currencyFormatter.format(budgetValue)} · Variance {varianceLabel} ·
-                            Confidence {confidencePercent}%
-                          </Text>
-
-                          {item.actualStatus !== item.predictedStatus && (
-                            <View
-                              className={`mt-2 inline-flex rounded-full px-2 py-1 ${actualStyles.bg}`}>
-                              <Text className={`text-[10px] font-semibold ${actualStyles.text}`}>
-                                Actual: {actualStyles.label}
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                      );
-                    })
-                  )}
-                </View>
-
-                <View className="mt-4 rounded-3xl border border-app-border bg-app-surface px-4 py-5 shadow-sm">
-                  <View className="mb-4 flex-row items-center justify-between">
-                    <Text className="text-base font-semibold text-app-text">
-                      Suggested adjustments
-                    </Text>
-                    {appleLatestMonth && (
-                      <Text className="text-xs font-medium text-app-text-muted">
-                        {formatMonthLabel(appleLatestMonth)}
-                      </Text>
-                    )}
-                  </View>
-
-                  {recommendations.length === 0 ? (
-                    <View className="rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4 py-3">
-                      <Text className="text-xs text-app-text-muted">
-                        Retrain after capturing more budget activity to unlock tailored
-                        recommendations.
-                      </Text>
-                    </View>
-                  ) : (
-                    recommendations.slice(0, 5).map((rec) => {
-                      const classification =
-                        rec.categoryId != null
-                          ? classificationByCategoryId.get(rec.categoryId)
-                          : undefined;
-                      const snapshot =
-                        rec.categoryId != null
-                          ? appleSnapshotMap.get(
-                              `${rec.categoryId}:${classification?.month ?? appleLatestMonth ?? ''}`
-                            )
-                          : undefined;
-                      const spentValue = snapshot?.spent ?? 0;
-                      const budgetValue = snapshot?.budget ?? 0;
-                      const scoreLabel = Number.isFinite(rec.score) ? rec.score.toFixed(2) : '—';
-                      const guidance = buildRecommendationCopy(classification, snapshot);
-
-                      return (
-                        <View
-                          key={`${rec.categoryName}-${rec.categoryId ?? 'unknown'}`}
-                          className="mb-3 rounded-2xl border border-app-border bg-app-surface-alt px-4 py-3">
-                          <View className="flex-row items-center justify-between">
-                            <Text className="text-sm font-semibold text-app-text">
-                              {rec.categoryName}
-                            </Text>
-                            <Text className="text-xs font-semibold text-app-text-muted">
-                              Score {scoreLabel}
-                            </Text>
-                          </View>
-                          <Text className="mt-2 text-xs text-app-text-muted">
-                            Spent {currencyFormatter.format(spentValue)} of{' '}
-                            {currencyFormatter.format(budgetValue)}. {guidance}
-                          </Text>
-                        </View>
-                      );
-                    })
-                  )}
-                </View>*/}
-                <View className="my-6 rounded-3xl border border-app-border bg-app-surface px-4 py-5 shadow-sm">
-                  <View className="mb-4 flex-row items-center justify-between">
-                    <Text className="text-base font-semibold text-app-text">
-                      Apple budget Q&amp;A
-                    </Text>
-                    {appleChatLoading && Platform.OS === 'ios' && (
-                      <View className="flex-row items-center rounded-full bg-app-surface-alt px-3 py-1">
-                        <ActivityIndicator size="small" color="#0EA5E9" />
-                        <Text className="ml-2 text-xs font-medium text-app-text-muted">
-                          Thinking…
+                    <View className="mt-6 flex-row items-center justify-between rounded-2xl bg-app-surface-alt px-4 py-3">
+                      <View className="flex-1 pr-4">
+                        <Text className="text-xs font-medium text-app-text-secondary">
+                          Quick tip
+                        </Text>
+                        <Text className="mt-1 text-sm text-app-text-muted">
+                          {insights && insights.length > 0
+                            ? insights[0].description
+                            : 'Try “How much have I spent on groceries this month?”'}
                         </Text>
                       </View>
-                    )}
+                      <TouchableOpacity
+                        onPress={quickPrompt}
+                        className="rounded-full bg-primary-500 px-4 py-2">
+                        <Text className="text-xs font-semibold text-white">Use prompt</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <View className="mb-4 flex-row items-center justify-between rounded-2xl border border-app-border bg-app-surface px-4 py-3 shadow-sm">
+                  <View className="flex-1 pr-3">
+                    <Text className="text-xs font-medium text-app-text-muted">
+                      Financial insights
+                    </Text>
+                    <Text className="mt-1 text-base font-semibold text-app-text">{heroTitle}</Text>
+                    <Text className="mt-1 text-xs text-app-text-muted">{heroSubtitle}</Text>
                   </View>
+                  <View className={`rounded-full px-3 py-1 ${statusBadgeBg}`}>
+                    <Text className={`text-xs font-semibold ${statusBadgeText}`}>
+                      {statusLabel}
+                    </Text>
+                  </View>
+                </View>
+              )}
 
-                  {Platform.OS !== 'ios' ? (
-                    <View className="rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4 py-3">
-                      <Text className="text-xs text-app-text-muted">
-                        Apple budget chat is only available on iOS devices.
+              <View className="flex-1 rounded-3xl border border-app-border bg-app-surface px-4 py-5 shadow-sm">
+                <View className="mb-4 flex-row items-center justify-between">
+                  <Text className="text-base font-semibold text-app-text">
+                    Financial AI assistant
+                  </Text>
+                  {isLoading && !isSetupPending && (
+                    <View className="flex-row items-center rounded-full bg-app-surface-alt px-3 py-1">
+                      <ActivityIndicator size="small" color="#0EA5E9" />
+                      <Text className="ml-2 text-xs font-medium text-app-text-muted">
+                        Analyzing…
                       </Text>
                     </View>
-                  ) : (
-                    <>
-                      <ScrollView
-                        ref={(ref) => {
-                          appleChatScrollRef.current = ref;
-                        }}
-                        className="max-h-80"
-                        contentContainerStyle={{ paddingBottom: 16 }}
-                        keyboardShouldPersistTaps="handled"
-                        onContentSizeChange={() =>
-                          appleChatScrollRef.current?.scrollToEnd({ animated: true })
-                        }>
-                        {appleChatMessages
-                          .filter((message) => message.role !== 'system')
-                          .map((message, index) => {
-                            const baseClasses =
-                              message.role === 'user'
-                                ? 'self-end bg-primary-500'
-                                : message.role === 'tool'
-                                  ? 'self-start border border-dashed border-app-border bg-app-surface'
-                                  : 'self-start border border-app-border bg-app-surface-alt';
-                            const textClasses =
-                              message.role === 'user'
-                                ? 'text-white'
-                                : message.role === 'tool'
-                                  ? 'text-xs text-app-text-muted'
-                                  : 'text-sm text-app-text';
-                            return (
-                              <View
-                                key={`apple-chat-${index}-${message.role}`}
-                                className={`mt-2 max-w-[85%] rounded-3xl px-4 py-3 shadow-sm ${baseClasses}`}>
-                                <Text className={textClasses}>{message.content}</Text>
-                              </View>
-                            );
-                          })}
-                      </ScrollView>
+                  )}
+                </View>
 
-                      {appleChatError && (
-                        <View className="mt-3 rounded-2xl border border-warning-200 bg-warning-50 px-4 py-2">
-                          <Text className="text-xs font-medium text-warning-700">
-                            {appleChatError}
+                {isSetupPending ? (
+                  <View className="flex-1 items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4">
+                    <Text className="text-sm font-medium text-app-text">
+                      We’re getting things ready
+                    </Text>
+                    <Text className="mt-2 text-xs text-app-text-muted">
+                      Chat will unlock once downloads finish.
+                    </Text>
+                  </View>
+                ) : isAssistantLoading ? (
+                  <View className="flex-1 items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4">
+                    <ActivityIndicator size="large" color="#0EA5E9" />
+                    <Text className="mt-3 text-sm font-medium text-app-text-muted">
+                      Analyzing your financial data…
+                    </Text>
+                  </View>
+                ) : (
+                  <ScrollView
+                    nestedScrollEnabled
+                    ref={(r) => (messagesScrollRef.current = r)}
+                    className="flex-1"
+                    contentContainerStyle={{ paddingBottom: 16 }}
+                    keyboardShouldPersistTaps="handled"
+                    onContentSizeChange={() =>
+                      messagesScrollRef.current?.scrollToEnd({ animated: true })
+                    }>
+                    {messages
+                      .filter((m) => m.role !== 'system')
+                      .map((message, index) => (
+                        <View
+                          key={index}
+                          className={`mt-2 max-w-[85%] rounded-3xl px-4 py-3 shadow-sm ${
+                            message.role === 'user'
+                              ? 'self-end bg-primary-500'
+                              : 'self-start border border-app-border bg-app-surface-alt'
+                          }`}>
+                          <Text
+                            className={`text-sm leading-relaxed ${
+                              message.role === 'user' ? 'text-white' : 'text-app-text'
+                            }`}>
+                            {message.content}
+                          </Text>
+                        </View>
+                      ))}
+
+                    {messages.filter((m) => m.role !== 'system').length === 0 &&
+                      !rag.isGenerating && (
+                        <View className="mt-6 self-start rounded-3xl border border-dashed border-app-border bg-app-surface-alt px-4 py-3">
+                          <Text className="text-sm font-medium text-app-text">
+                            Ask something like:
+                          </Text>
+                          <Text className="mt-2 text-xs text-app-text-muted">
+                            • Where did most of my money go this month?
+                          </Text>
+                          <Text className="mt-1 text-xs text-app-text-muted">
+                            • Am I on track with my savings goals?
+                          </Text>
+                          <Text className="mt-1 text-xs text-app-text-muted">
+                            • How much did I spend on dining last week?
                           </Text>
                         </View>
                       )}
 
-                      <View className="mt-4 flex-row items-end rounded-2xl border border-app-border bg-app-surface-alt px-3 py-2">
-                        <TextInput
-                          value={appleChatInput}
-                          onChangeText={setAppleChatInput}
-                          placeholder="Ask the Apple advisor…"
-                          placeholderTextColor="#64748B"
-                          className="max-h-32 flex-1 text-sm text-app-text"
-                          multiline
-                          editable={!appleChatLoading}
-                          returnKeyType="send"
-                          onSubmitEditing={() => {
-                            if (!appleChatLoading) handleAppleChatSubmit();
-                          }}
-                        />
-                        <TouchableOpacity
-                          onPress={handleAppleChatSubmit}
-                          disabled={appleChatLoading || !appleChatInput.trim()}
-                          accessibilityLabel="Send Apple advisor question"
-                          className={`ml-2 h-9 w-9 items-center justify-center rounded-full bg-primary-500 ${
-                            appleChatLoading || !appleChatInput.trim() ? 'opacity-40' : ''
-                          }`}>
-                          {appleChatLoading ? (
-                            <ActivityIndicator size="small" color="#FFFFFF" />
-                          ) : (
-                            <Ionicons name="send" size={18} color="#FFFFFF" />
-                          )}
-                        </TouchableOpacity>
+                    {rag.isGenerating && (
+                      <View className="mt-3 flex-row items-center self-start rounded-3xl bg-app-surface-alt px-4 py-3">
+                        <ActivityIndicator size="small" color="#0EA5E9" />
+                        <Text className="ml-2 text-xs text-app-text-muted">
+                          Generating response…
+                        </Text>
                       </View>
-                    </>
+                    )}
+                  </ScrollView>
+                )}
+
+                <SafeAreaView edges={['bottom']}>
+                  <View className="mt-4 flex-row items-center rounded-full border border-app-border bg-app-surface px-4 py-2 shadow-xs">
+                    <TextInput
+                      ref={inputRef}
+                      className="flex-1 text-sm text-app-text"
+                      value={query}
+                      onChangeText={setQuery}
+                      placeholder="Ask anything about your money..."
+                      placeholderTextColor="#94A3B8"
+                      editable={!isSetupPending && !isAssistantLoading && !isLoading}
+                      maxLength={200}
+                      returnKeyType="send"
+                      onSubmitEditing={handleSubmitQuery}
+                    />
+                    <TouchableOpacity
+                      onPress={handleSubmitQuery}
+                      disabled={!query.trim() || isSetupPending || isAssistantLoading || isLoading}
+                      className={`ml-3 h-10 w-10 items-center justify-center rounded-full bg-primary-500 ${
+                        !query.trim() || isSetupPending || isAssistantLoading || isLoading
+                          ? 'opacity-40'
+                          : ''
+                      }`}>
+                      {isLoading ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Ionicons name="send" size={18} color="#FFFFFF" />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </SafeAreaView>
+              </View>
+            </>
+          ) : (
+            <>
+              <View className="my-6 rounded-3xl border border-app-border bg-app-surface px-4 py-5 shadow-sm">
+                <View className="mb-4 flex-row items-center justify-between">
+                  <Text className="text-base font-semibold text-app-text">Budget Assistant</Text>
+                  {appleChatLoading && Platform.OS === 'ios' && (
+                    <View className="flex-row items-center rounded-full bg-app-surface-alt px-3 py-1">
+                      <ActivityIndicator size="small" color="#0EA5E9" />
+                      <Text className="ml-2 text-xs font-medium text-app-text-muted">
+                        Thinking…
+                      </Text>
+                    </View>
                   )}
                 </View>
-              </>
-            )}
-          </View>
-        </ScrollView>
+
+                {Platform.OS !== 'ios' ? (
+                  <View className="rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4 py-3">
+                    <Text className="text-xs text-app-text-muted">
+                      Apple budget chat is only available on iOS devices.
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    <ScrollView
+                      ref={(ref) => {
+                        appleChatScrollRef.current = ref;
+                      }}
+                      className="max-h-screen-safe-offset-4"
+                      contentContainerStyle={{ paddingBottom: 16 }}
+                      keyboardShouldPersistTaps="handled"
+                      onContentSizeChange={() =>
+                        appleChatScrollRef.current?.scrollToEnd({ animated: true })
+                      }>
+                      {appleChatMessages
+                        .filter((message) => message.role !== 'system')
+                        .map((message, index) => {
+                          const baseClasses =
+                            message.role === 'user'
+                              ? 'self-end bg-primary-500'
+                              : message.role === 'tool'
+                                ? 'self-start border border-dashed border-app-border bg-app-surface'
+                                : 'self-start border border-app-border bg-app-surface-alt';
+                          const textClasses =
+                            message.role === 'user'
+                              ? 'text-white'
+                              : message.role === 'tool'
+                                ? 'text-xs text-app-text-muted'
+                                : 'text-sm text-app-text';
+                          return (
+                            <View
+                              key={`apple-chat-${index}-${message.role}`}
+                              className={`mt-2 max-w-[85%] rounded-3xl px-4 py-3 shadow-sm ${baseClasses}`}>
+                              <Text className={textClasses}>{message.content}</Text>
+                            </View>
+                          );
+                        })}
+                    </ScrollView>
+
+                    {appleChatError && (
+                      <View className="mt-3 rounded-2xl border border-warning-200 bg-warning-50 px-4 py-2">
+                        <Text className="text-xs font-medium text-warning-700">
+                          {appleChatError}
+                        </Text>
+                      </View>
+                    )}
+
+                    <View className="mt-4 flex-row items-end rounded-2xl border border-app-border bg-app-surface-alt px-3 py-2">
+                      <TextInput
+                        value={appleChatInput}
+                        onChangeText={setAppleChatInput}
+                        placeholder="Ask the Apple advisor…"
+                        placeholderTextColor="#64748B"
+                        className="max-h-32 flex-1 align-middle text-sm text-app-text"
+                        multiline
+                        editable={!appleChatLoading}
+                        returnKeyType="send"
+                        onSubmitEditing={() => {
+                          if (!appleChatLoading) handleAppleChatSubmit();
+                        }}
+                      />
+                      <TouchableOpacity
+                        onPress={handleAppleChatSubmit}
+                        disabled={appleChatLoading || !appleChatInput.trim()}
+                        accessibilityLabel="Send Apple advisor question"
+                        className={`ml-2 h-9 w-9 items-center justify-center rounded-full bg-primary-500 ${
+                          appleChatLoading || !appleChatInput.trim() ? 'opacity-40' : ''
+                        }`}>
+                        {appleChatLoading ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <Ionicons name="send" size={18} color="#FFFFFF" />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+              </View>
+            </>
+          )}
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
