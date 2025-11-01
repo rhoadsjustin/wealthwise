@@ -39,14 +39,22 @@ interface AddTransactionModalProps {
   initialTransaction?: Tx | null;
 }
 
-export default function AddTransactionModal({ onClose, mode = 'create', initialTransaction = null }: AddTransactionModalProps) {
+export default function AddTransactionModal({
+  onClose,
+  mode = 'create',
+  initialTransaction = null,
+}: AddTransactionModalProps) {
   const { toast } = useToast();
   const { createTransaction, updateTransaction, getCategories } = useData();
   const { refreshAppData } = useAppData();
   const [submitting, setSubmitting] = React.useState(false);
   const [categories, setCategories] = React.useState<any[]>([]);
   const [showCreateCategory, setShowCreateCategory] = React.useState(false);
-  const [suggestion, setSuggestion] = React.useState<{ id: number; name: string; confidence: number } | null>(null);
+  const [suggestion, setSuggestion] = React.useState<{
+    id: number;
+    name: string;
+    confidence: number;
+  } | null>(null);
 
   // Load categories on component mount
   const loadCategories = React.useCallback(async () => {
@@ -113,7 +121,8 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
         type: initialTransaction.type,
         description: initialTransaction.description || '',
         amount: initialTransaction.amount || '',
-        categoryId: initialTransaction.type === 'income' ? null : (initialTransaction.categoryId ?? null),
+        categoryId:
+          initialTransaction.type === 'income' ? null : (initialTransaction.categoryId ?? null),
         date: initialTransaction.date,
       });
     } else {
@@ -157,7 +166,10 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
         amount: data.amount,
         type: data.type,
         categoryId: data.type === 'income' ? null : data.categoryId || null,
-        date: data.date || (mode === 'edit' && initialTransaction?.date) || new Date().toISOString().split('T')[0],
+        date:
+          data.date ||
+          (mode === 'edit' && initialTransaction?.date) ||
+          new Date().toISOString().split('T')[0],
       } as const;
 
       if (mode === 'edit' && initialTransaction?.id != null) {
@@ -171,7 +183,9 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
       toast({
         title: mode === 'edit' ? 'Transaction Updated' : 'Transaction Added',
         description:
-          mode === 'edit' ? 'Your changes have been saved.' : 'Your transaction has been successfully added.',
+          mode === 'edit'
+            ? 'Your changes have been saved.'
+            : 'Your transaction has been successfully added.',
       });
       reset();
       onClose();
@@ -232,7 +246,9 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
                 className="mb-3 h-1.5 w-12 rounded-full bg-border-default"
                 accessibilityElementsHidden
               />
-              <Text className="text-lg font-semibold text-foreground-primary">{mode === 'edit' ? 'Edit Transaction' : 'Add Transaction'}</Text>
+              <Text className="text-lg font-semibold text-foreground-primary">
+                {mode === 'edit' ? 'Edit Transaction' : 'Add Transaction'}
+              </Text>
             </View>
           </View>
         </SafeAreaView>
@@ -326,7 +342,7 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
                     onChangeText={(value) => {
                       // Keep only digits and a single decimal point, and limit to two decimals
                       const cleaned = value.replace(/[^0-9.]/g, '');
-                      const firstDot = cleaned.indexOf('.')
+                      const firstDot = cleaned.indexOf('.');
                       let normalized = cleaned;
                       if (firstDot !== -1) {
                         const before = cleaned.slice(0, firstDot + 1);
@@ -334,7 +350,8 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
                         normalized = before + after;
                       }
                       const [intPart, decPart] = normalized.split('.');
-                      const limited = decPart !== undefined ? `${intPart}.${decPart.slice(0, 2)}` : intPart;
+                      const limited =
+                        decPart !== undefined ? `${intPart}.${decPart.slice(0, 2)}` : intPart;
                       setValue('amount', limited, { shouldDirty: true });
                     }}
                     placeholder="$0.00"
@@ -344,7 +361,9 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
                       setAmountFocused(true);
                     }}
                     onBlur={() => setAmountFocused(false)}
-                    onSubmitEditing={handleSubmit(onSubmit)}
+                    onSubmitEditing={() => {
+                      void handleSubmit(onSubmit)();
+                    }}
                   />
                   {errors.amount && (
                     <Text className="mt-1 text-xs text-error-600">
@@ -361,10 +380,13 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
                     {suggestion && !selectedCategoryId && (
                       <View className="mb-2">
                         <TouchableOpacity
-                          onPress={() => setValue('categoryId', suggestion.id, { shouldDirty: true })}
+                          onPress={() =>
+                            setValue('categoryId', suggestion.id, { shouldDirty: true })
+                          }
                           className="self-start rounded-full border border-info-100 bg-info-50 px-3 py-1">
                           <Text className="text-xs font-medium text-info-700">
-                            Suggested: {suggestion.name} ({Math.round(suggestion.confidence * 100)}%) — Tap to apply
+                            Suggested: {suggestion.name} ({Math.round(suggestion.confidence * 100)}
+                            %) — Tap to apply
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -420,7 +442,9 @@ export default function AddTransactionModal({ onClose, mode = 'create', initialT
                           return (
                             <TouchableOpacity
                               key={category.id}
-                              onPress={() => setValue('categoryId', category.id, { shouldDirty: true })}
+                              onPress={() =>
+                                setValue('categoryId', category.id, { shouldDirty: true })
+                              }
                               activeOpacity={0.7}
                               className={`flex-row items-center px-3 py-3 ${
                                 isSelected ? 'bg-blue-50' : 'bg-transparent'

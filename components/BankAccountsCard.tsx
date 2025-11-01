@@ -5,17 +5,8 @@ import { Card, CardContent } from './Card';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import ConnectBankModal from './ConnectBankModal';
-import { useData } from '../context/DataContext';
-
-interface BankAccount {
-  id: number;
-  institutionName: string;
-  accountName: string;
-  accountType: string;
-  mask: string | null;
-  isActive: boolean;
-  lastSyncAt: string | null;
-}
+import { useData } from '@/context/DataContext';
+import type { BankAccount } from '@/context/DataContext';
 
 export default function BankAccountsCard() {
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
@@ -59,7 +50,7 @@ export default function BankAccountsCard() {
     }
   };
 
-  const formatLastSync = (lastSyncAt: string | null) => {
+  const formatLastSync = (lastSyncAt?: string | null) => {
     if (!lastSyncAt) return 'Not synced';
     const date = new Date(lastSyncAt);
     const now = new Date();
@@ -83,15 +74,15 @@ export default function BankAccountsCard() {
 
   if (isLoading) {
     return (
-      <Card className="card-mobile">
+      <Card className="w-full">
         <CardContent className="p-4">
           <View className="mb-4 flex-row items-center gap-2">
-            <MaterialIcons name="account-balance" size={20} color="#111827" />
-            <Text className="text-lg font-semibold text-gray-900">Bank Accounts</Text>
+            <MaterialIcons name="account-balance" size={20} color="#0F172A" />
+            <Text className="text-lg font-semibold text-app-text">Bank accounts</Text>
           </View>
           <View className="space-y-3">
-            <View className="h-12 rounded bg-gray-200" />
-            <View className="h-12 rounded bg-gray-200" />
+            <View className="h-12 rounded-2xl bg-app-surface-alt" />
+            <View className="h-12 rounded-2xl bg-app-surface-alt" />
           </View>
         </CardContent>
       </Card>
@@ -100,19 +91,22 @@ export default function BankAccountsCard() {
 
   if (error) {
     return (
-      <Card className="card-mobile">
+      <Card className="w-full">
         <CardContent className="p-4">
           <View className="mb-4 flex-row items-center gap-2">
-            <MaterialIcons name="account-balance" size={20} color="#111827" />
-            <Text className="text-lg font-semibold text-gray-900">Bank Accounts</Text>
+            <MaterialIcons name="account-balance" size={20} color="#0F172A" />
+            <Text className="text-lg font-semibold text-app-text">Bank accounts</Text>
           </View>
           <View className="items-center py-4">
-            <Text className="mb-3 text-center text-sm text-gray-600">
+            <Text className="mb-3 text-center text-sm text-app-text-muted">
               Bank services temporarily unavailable
             </Text>
-            <Button onPress={() => setIsBankModalOpen(true)} variant="outline" size="sm">
-              Try Again
-            </Button>
+            <Button
+              onPress={() => setIsBankModalOpen(true)}
+              variant="outline"
+              size="sm"
+              title="Try again"
+            />
           </View>
         </CardContent>
       </Card>
@@ -120,13 +114,13 @@ export default function BankAccountsCard() {
   }
 
   return (
-    <View className="flex-row gap-3 py-4">
-      <Card className="card-mobile">
+    <View className="w-full py-4">
+      <Card className="w-full">
         <CardContent className="p-4">
           <View className="mb-4 flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
-              <MaterialIcons name="account-balance" size={20} color="#111827" />
-              <Text className="text-lg font-semibold text-gray-900">Bank Accounts</Text>
+              <MaterialIcons name="account-balance" size={20} color="#0F172A" />
+              <Text className="text-lg font-semibold text-app-text">Bank accounts</Text>
             </View>
             <Button
               size="sm"
@@ -134,42 +128,41 @@ export default function BankAccountsCard() {
               onPress={() => setIsBankModalOpen(true)}
               className="h-8 px-3">
               <View className="flex-row items-center">
-                <MaterialIcons name="add" size={16} color="#374151" />
-                <Text className="ml-1 text-sm font-medium text-gray-700">Connect</Text>
+                <MaterialIcons name="add" size={16} color="#0F172A" />
+                <Text className="ml-1 text-sm font-medium text-app-text">Connect</Text>
               </View>
             </Button>
           </View>
 
           <View className="space-y-3">
             {bankAccounts.length === 0 ? (
-              <View className="items-center py-6">
-                <MaterialIcons name="account-balance" size={48} color="#9CA3AF" />
-                <Text className="mb-2 mt-3 text-center font-medium text-gray-600">
+              <View className="items-center rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4 py-6">
+                <MaterialIcons name="account-balance" size={48} color="#94A3B8" />
+                <Text className="mb-2 mt-3 text-center font-medium text-app-text">
                   No banks connected
                 </Text>
-                <Text className="mb-4 px-4 text-center text-sm text-gray-500">
-                  Connect your bank to automatically import transactions
+                <Text className="mb-4 px-4 text-center text-sm text-app-text-muted">
+                  Connect your bank to automatically import transactions.
                 </Text>
-                <Button onPress={() => setIsBankModalOpen(true)} className="w-full">
-                  <View className="flex-row items-center">
-                    <MaterialIcons name="account-balance" size={16} color="#FFFFFF" />
-                    <Text className="ml-2 font-medium text-white">Connect Bank Account</Text>
-                  </View>
-                </Button>
+                <Button
+                  onPress={() => setIsBankModalOpen(true)}
+                  className="w-full"
+                  title="Connect bank account"
+                />
               </View>
             ) : (
-              bankAccounts.map((account: BankAccount) => (
+              bankAccounts.map((account) => (
                 <View
                   key={account.id}
-                  className="flex-row items-center justify-between rounded-lg border border-gray-200 p-3">
+                  className="flex-row items-center justify-between rounded-2xl border border-app-border bg-app-surface-alt px-3 py-3">
                   <View className="flex-1 flex-row items-center gap-3">
                     {getAccountIcon(account.accountType)}
                     <View className="min-w-0 flex-1">
-                      <Text className="font-medium text-gray-900" numberOfLines={1}>
-                        {account.accountName} {account.mask && `••••${account.mask}`}
+                      <Text className="font-medium text-app-text" numberOfLines={1}>
+                        {account.accountName} {account.mask ? `••••${account.mask}` : ''}
                       </Text>
                       <View className="mt-1 flex-row items-center gap-2">
-                        <Text className="flex-shrink text-sm text-gray-600" numberOfLines={1}>
+                        <Text className="flex-shrink text-sm text-app-text-muted" numberOfLines={1}>
                           {account.institutionName}
                         </Text>
                         <Badge
@@ -178,7 +171,7 @@ export default function BankAccountsCard() {
                           {account.isActive ? 'Active' : 'Inactive'}
                         </Badge>
                       </View>
-                      <Text className="mt-1 text-xs text-gray-500">
+                      <Text className="mt-1 text-xs text-app-text-muted">
                         {formatLastSync(account.lastSyncAt)}
                       </Text>
                     </View>
@@ -186,9 +179,11 @@ export default function BankAccountsCard() {
 
                   <TouchableOpacity
                     onPress={() => handleRefreshAccount(account.id)}
-                    className="h-8 w-8 items-center justify-center rounded"
+                    className="h-8 w-8 items-center justify-center rounded-full bg-app-surface"
+                    accessibilityRole="button"
+                    accessibilityLabel="Refresh account"
                     activeOpacity={0.7}>
-                    <MaterialIcons name="refresh" size={16} color="#6B7280" />
+                    <MaterialIcons name="refresh" size={16} color="#0F172A" />
                   </TouchableOpacity>
                 </View>
               ))

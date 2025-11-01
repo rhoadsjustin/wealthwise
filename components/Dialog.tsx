@@ -79,8 +79,17 @@ const DialogTrigger: React.FC<DialogTriggerProps> = ({ children, asChild = false
   const { setOpen } = useDialog();
 
   if (asChild) {
-    return React.cloneElement(children as React.ReactElement, {
-      onPress: () => setOpen(true),
+    if (!React.isValidElement(children)) {
+      return null;
+    }
+
+    const child = children as React.ReactElement<{ onPress?: (...args: any[]) => void }>;
+
+    return React.cloneElement(child, {
+      onPress: (...args: any[]) => {
+        child.props?.onPress?.(...args);
+        setOpen(true);
+      },
     });
   }
 
@@ -110,8 +119,17 @@ const DialogClose: React.FC<DialogCloseProps> = ({ children, asChild = false, on
   };
 
   if (asChild) {
-    return React.cloneElement(children as React.ReactElement, {
-      onPress: handlePress,
+    if (!React.isValidElement(children)) {
+      return null;
+    }
+
+    const child = children as React.ReactElement<{ onPress?: (...args: any[]) => void }>;
+
+    return React.cloneElement(child, {
+      onPress: (...args: any[]) => {
+        child.props?.onPress?.(...args);
+        handlePress();
+      },
     });
   }
 

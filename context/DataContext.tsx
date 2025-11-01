@@ -674,7 +674,8 @@ export function DataProvider({
         });
       }
 
-      const savedBills = await localStorage.getItems('bills', currentUserId);
+      type StoredBillRecord = Omit<Bill, 'autoPay'> & { autoPay: number | boolean };
+      const savedBills = await localStorage.getItems<StoredBillRecord>('bills', currentUserId);
       console.log('📄 Demo bills created:', savedBills.length);
 
       if (savedBills.length > 0) {
@@ -733,7 +734,8 @@ export function DataProvider({
         });
       }
 
-      const savedDebts = await localStorage.getItems('debts', currentUserId);
+      type StoredDebtRecord = Debt & { categoryId?: number | null };
+      const savedDebts = await localStorage.getItems<StoredDebtRecord>('debts', currentUserId);
       console.log('📉 Demo debts created:', savedDebts.length);
 
       if (savedDebts.length > 0) {

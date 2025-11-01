@@ -130,7 +130,7 @@ export default function ConnectBankModal({ isOpen, onClose }: ConnectBankModalPr
     }
   };
 
-  const formatLastSync = (lastSyncAt: string | null) => {
+  const formatLastSync = (lastSyncAt?: string | null) => {
     if (!lastSyncAt) return 'Never synced';
     const date = new Date(lastSyncAt);
     const now = new Date();

@@ -1,8 +1,10 @@
-import { forwardRef } from 'react';
-import { Pressable, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { forwardRef, type ElementRef } from 'react';
+import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export const HeaderButton = forwardRef<TouchableOpacity, { onPress?: () => void }>(
+type HeaderButtonRef = ElementRef<typeof TouchableOpacity>;
+
+export const HeaderButton = forwardRef<HeaderButtonRef, { onPress?: () => void }>(
   ({ onPress }, ref) => {
     return (
       <TouchableOpacity

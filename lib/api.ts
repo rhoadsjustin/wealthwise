@@ -319,7 +319,8 @@ export async function apiRequest(method: string, url: string, data?: unknown): P
     });
   } catch (error) {
     console.error('API request failed:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : 'Unexpected error';
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       statusText: 'Internal Server Error',
       headers: { 'Content-Type': 'application/json' },

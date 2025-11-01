@@ -1,205 +1,223 @@
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { View, Text, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { Label } from '@/components/Label';
 import { useToast } from '@/context/useToast';
+import { useAuth } from '@/context/useAuth';
 
 interface BiometricAuthProps {
-  onAuthenticated: (username: string) => void;
+  onAuthenticated: (username: string) => Promise<void> | void;
   onShowOnboarding: () => void;
 }
 
 export default function BiometricAuth({ onAuthenticated, onShowOnboarding }: BiometricAuthProps) {
-  const [username, setUsername] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [biometricsSupported, setBiometricsSupported] = useState(false);
-  const [hasExistingAccount, setHasExistingAccount] = useState(false);
+  const {
+    username: storedUsername,
+    isBiometricSupported,
+    isBiometricEnabled,
+    authenticateWithBiometrics,
+  } = useAuth();
   const { toast } = useToast();
 
+  const [username, setUsername] = useState(storedUsername ?? '');
+  const [isUsernameSubmitting, setIsUsernameSubmitting] = useState(false);
+  const [isBiometricSubmitting, setIsBiometricSubmitting] = useState(false);
+
   useEffect(() => {
-    checkBiometricsSupport();
-    checkExistingAccount();
-  }, []);
-
-  const checkBiometricsSupport = async () => {
-    try {
-      if (window.PublicKeyCredential) {
-        const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-        setBiometricsSupported(available);
-      }
-    } catch (error) {
-      console.log('Biometrics check failed:', error);
-      setBiometricsSupported(false);
+    if (storedUsername) {
+      setUsername(storedUsername);
     }
-  };
+  }, [storedUsername]);
 
-  const checkExistingAccount = () => {
-    const savedUsername = localStorage.getItem('smartbudget_username');
-    if (savedUsername) {
-      setHasExistingAccount(true);
-      setUsername(savedUsername);
-    }
-  };
+  const trimmedUsername = username.trim();
+  const hasExistingAccount = Boolean(storedUsername);
+  const canAttemptBiometric = isBiometricSupported && isBiometricEnabled;
 
-  const authenticateWithBiometrics = async () => {
-    if (!biometricsSupported || !username) return;
-
-    setIsLoading(true);
-    try {
-      const credentialId = localStorage.getItem(`biometric_${username}`);
-      if (!credentialId) {
-        toast({
-          title: 'Biometric Not Setup',
-          description: 'Please use your username to sign in',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      const credential = await navigator.credentials.get({
-        publicKey: {
-          challenge: new Uint8Array(32),
-          allowCredentials: [
-            {
-              id: new TextEncoder().encode(credentialId),
-              type: 'public-key',
-            },
-          ],
-          userVerification: 'required',
-          timeout: 60000,
-        },
-      });
-
-      if (credential) {
-        onAuthenticated(username);
-        toast({
-          title: 'Welcome Back!',
-          description: 'Successfully authenticated with biometrics',
-        });
-      }
-    } catch (error) {
+  const handleUsernameSubmit = async () => {
+    if (!trimmedUsername) {
       toast({
-        title: 'Authentication Failed',
-        description: 'Please try again or use your username',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const authenticateWithUsername = () => {
-    if (!username.trim()) {
-      toast({
-        title: 'Username Required',
-        description: 'Please enter your username',
+        title: 'Username required',
+        description: 'Enter your username to continue.',
         variant: 'destructive',
       });
       return;
     }
 
-    // Save username and authenticate
-    localStorage.setItem('smartbudget_username', username.trim());
-    onAuthenticated(username.trim());
-
-    toast({
-      title: 'Welcome Back!',
-      description: 'Successfully signed in',
-    });
+    setIsUsernameSubmitting(true);
+    try {
+      await onAuthenticated(trimmedUsername);
+      toast({
+        title: 'Signed in',
+        description: `Welcome back, ${trimmedUsername}!`,
+        variant: 'success',
+      });
+    } catch (error) {
+      console.error('Username authentication failed', error);
+      toast({
+        title: 'Sign-in failed',
+        description: 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUsernameSubmitting(false);
+    }
   };
 
-  const hasBiometricSetup = username && localStorage.getItem(`biometric_${username}`);
+  const handleBiometricAuth = async () => {
+    if (!canAttemptBiometric) {
+      toast({
+        title: 'Biometrics unavailable',
+        description: 'Enable biometric unlock in your profile settings.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const targetUsername = storedUsername ?? trimmedUsername;
+
+    if (!targetUsername) {
+      toast({
+        title: 'Username required',
+        description: 'Add your username to continue after biometric authentication.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsBiometricSubmitting(true);
+    try {
+      const success = await authenticateWithBiometrics();
+      if (success) {
+        await onAuthenticated(targetUsername);
+        toast({
+          title: 'Authenticated',
+          description: `Welcome back, ${targetUsername}!`,
+          variant: 'success',
+        });
+      } else {
+        toast({
+          title: 'Authentication cancelled',
+          description: 'Try again or use your username.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Biometric authentication failed', error);
+      toast({
+        title: 'Authentication failed',
+        description: 'Try again or use your username instead.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBiometricSubmitting(false);
+    }
+  };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-white p-4">
-      <div className="w-full max-w-md space-y-6">
-        {/* Logo/Brand */}
-        <div className="space-y-2 text-center">
-          <div className="inline-block rounded-full bg-black p-4 shadow-md">
-            <Smartphone className="h-8 w-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-black">SmartBudget</h1>
-          <p className="text-gray-600">Your personal finance companion</p>
-        </div>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      className="flex-1 bg-app-background">
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="flex-1 px-6 py-12"
+        keyboardShouldPersistTaps="handled">
+        <View className="flex-1 items-center justify-center">
+          <View className="w-full max-w-md">
+            <View className="mb-8 items-center gap-3">
+              <View className="rounded-full bg-primary-500 p-4">
+                <Ionicons name="finger-print-outline" size={28} color="#FFFFFF" />
+              </View>
+              <Text className="text-3xl font-semibold text-app-text">Welcome back</Text>
+              <Text className="text-center text-sm text-app-text-muted">
+                Sign in securely with biometrics or your username to manage your budget.
+              </Text>
+            </View>
 
-        {/* Authentication Card */}
-        <Card className="border border-gray-400 bg-white shadow-md">
-          <CardHeader>
-            <CardTitle className="text-center text-black">
-              {hasExistingAccount ? 'Welcome Back' : 'Sign In'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Username Input */}
-            <div className="space-y-2">
-              <Label htmlFor="auth-username" className="font-medium text-black">
-                Username
-              </Label>
-              <Input
-                id="auth-username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
-                className="border-gray-400 text-black"
-                disabled={hasExistingAccount}
-              />
-            </div>
+            <Card>
+              <CardHeader className="items-center">
+                <CardTitle className="text-app-text">Sign in securely</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <View className="space-y-2">
+                  <Label htmlFor="auth-username" className="text-sm font-medium">
+                    Username
+                  </Label>
+                  <Input
+                    id="auth-username"
+                    placeholder="Enter your username"
+                    value={username}
+                    onChangeText={setUsername}
+                    disabled={hasExistingAccount}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="done"
+                  />
+                </View>
 
-            {/* Biometric Authentication */}
-            {biometricsSupported && hasBiometricSetup && (
-              <Button
-                onClick={authenticateWithBiometrics}
-                disabled={isLoading}
-                className="w-full bg-black text-white hover:bg-gray-800">
-                {isLoading ? (
-                  'Authenticating...'
+                {canAttemptBiometric ? (
+                  <Button
+                    onPress={handleBiometricAuth}
+                    loading={isBiometricSubmitting}
+                    className="w-full justify-center">
+                    <View className="flex-row items-center">
+                      <Ionicons name="finger-print-outline" size={18} color="#FFFFFF" />
+                      <Text className="ml-2 text-sm font-semibold text-white">
+                        Use Face ID / Touch ID
+                      </Text>
+                    </View>
+                  </Button>
                 ) : (
-                  <>
-                    <Fingerprint className="mr-2 h-4 w-4" />
-                    Use FaceID/TouchID
-                  </>
+                  <View className="rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4 py-3">
+                    <Text className="text-sm font-semibold text-app-text">
+                      Biometrics not enabled
+                    </Text>
+                    <Text className="mt-1 text-xs text-app-text-muted">
+                      Turn on biometric unlock from your profile to sign in with Face ID or Touch
+                      ID.
+                    </Text>
+                  </View>
                 )}
-              </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onPress={handleUsernameSubmit}
+                  loading={isUsernameSubmitting}
+                  title={hasExistingAccount ? 'Continue with username' : 'Sign in with username'}
+                />
+
+                <View className="rounded-2xl border border-app-border bg-app-surface-alt px-4 py-3">
+                  <View className="mb-2 flex-row items-center gap-2">
+                    <Ionicons name="shield-checkmark-outline" size={16} color="#0F172A" />
+                    <Text className="text-xs font-semibold text-app-text">Privacy first</Text>
+                  </View>
+                  <Text className="text-xs text-app-text-muted">
+                    Authentication details stay on this device. We never upload biometric data.
+                  </Text>
+                </View>
+              </CardContent>
+            </Card>
+
+            {!hasExistingAccount && (
+              <View className="mt-6 rounded-3xl border border-app-border bg-app-surface px-5 py-5">
+                <Text className="text-center text-sm text-app-text-muted">
+                  New to Budget App? Start onboarding to create your profile.
+                </Text>
+                <Button
+                  variant="secondary"
+                  className="mt-4 w-full justify-center"
+                  onPress={onShowOnboarding}
+                  title="Start onboarding"
+                />
+              </View>
             )}
-
-            {/* Username Authentication */}
-            <Button
-              onClick={authenticateWithUsername}
-              variant="outline"
-              className="w-full border-gray-400 text-black hover:bg-gray-100">
-              <User className="mr-2 h-4 w-4" />
-              Continue with Username
-            </Button>
-
-            {/* Privacy Notice */}
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <div className="mb-2 flex items-center gap-2">
-                <Shield className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">Privacy First</span>
-              </div>
-              <p className="text-xs text-gray-600">
-                Your data stays on your device. No cloud storage, no data sharing.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* New User */}
-        {!hasExistingAccount && (
-          <div className="space-y-2 text-center">
-            <p className="text-gray-600">New to SmartBudget?</p>
-            <Button
-              onClick={onShowOnboarding}
-              variant="outline"
-              className="border-gray-400 text-black hover:bg-gray-100">
-              Get Started
-            </Button>
-          </div>
-        )}
-      </div>
-    </div>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

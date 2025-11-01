@@ -118,7 +118,7 @@ export function DebtCard({
 
         <View className="flex-row gap-2">
           <Button
-            variant="primary"
+            variant="success"
             size="sm"
             className="flex-1"
             onPress={() => onPressPayment?.(debt)}

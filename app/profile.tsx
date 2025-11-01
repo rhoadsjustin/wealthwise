@@ -168,7 +168,7 @@ export default function ProfileModal() {
                     maxLength={12}
                     returnKeyType="done"
                     blurOnSubmit
-                    onSubmitEditing={Keyboard.dismiss}
+                    onSubmitEditing={() => Keyboard.dismiss()}
                   />
                 </View>
 

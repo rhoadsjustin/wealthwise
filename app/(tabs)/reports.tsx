@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, RefreshControl } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -87,38 +81,11 @@ export default function ReportsTab() {
 
   return (
     <View className="flex-1 bg-app-background">
-      <Stack.Screen
-        options={{
-          title: '',
-          headerTransparent: true,
-          headerShadowVisible: false,
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => router.push('/profile')}
-              accessibilityLabel="Open profile"
-              className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-app-surface shadow-xs">
-              <Ionicons name="menu-outline" size={20} color="#0F172A" />
-            </TouchableOpacity>
-          ),
-          headerRight: () => (
-            <View className="flex-row items-center gap-3 pr-3">
-              <TouchableOpacity
-                onPress={() => router.push('/(tabs)/insights')}
-                accessibilityLabel="Insights"
-                className="h-10 w-10 items-center justify-center rounded-full bg-app-surface shadow-xs">
-                <Ionicons name="sparkles-outline" size={20} color="#0F172A" />
-              </TouchableOpacity>
-              <HeaderProfileButton />
-            </View>
-          ),
-        }}
-      />
-
       <ScrollView
         className="flex-1"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
         contentContainerClassName="pb-32">
-        <View className="px-5" style={{ paddingTop: Math.max(insets.top + 8, 32) }}>
+        <View className="px-5" style={{ paddingTop: 12 }}>
           <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-6 py-7 shadow-md">
             <View className="flex-row items-start justify-between">
               <View className="max-w-[65%]">

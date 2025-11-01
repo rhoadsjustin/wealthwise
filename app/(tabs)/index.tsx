@@ -78,52 +78,58 @@ export default function DashboardTab() {
 
   const monthlyTrend = React.useMemo(() => {
     if (!safeTransactions.length || !safeSummary) return null;
-    
+
     // Use the baseline income from summary (which uses monthlyIncome if set, or actual income as fallback)
     const baselineIncome = safeSummary.incomeBaseline || 0;
-    
+
     if (baselineIncome <= 0) return null;
-    
+
     // Calculate current month totals
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth();
-    
+
     let totalExpenses = 0;
     let totalSavings = 0;
     let totalBills = 0;
     let totalDebt = 0;
-    
+
     safeTransactions.forEach((tx) => {
       const date = new Date(tx.date);
       if (Number.isNaN(date.getTime())) return;
-      
+
       // Only include current month transactions
       if (date.getFullYear() === currentYear && date.getMonth() === currentMonth) {
         if (tx.type === 'expense') {
           const amount = parseFloat(tx.amount);
           const description = tx.description.toLowerCase();
-          
+
           // Categorize expenses
-          if (description.includes('savings') || 
-              description.includes('investment') ||
-              description.includes('emergency fund') ||
-              description.includes('401k') ||
-              description.includes('ira')) {
+          if (
+            description.includes('savings') ||
+            description.includes('investment') ||
+            description.includes('emergency fund') ||
+            description.includes('401k') ||
+            description.includes('ira')
+          ) {
             totalSavings += amount;
-          } else if (description.includes('rent') || 
-                     description.includes('mortgage') ||
-                     description.includes('utility') ||
-                     description.includes('electric') ||
-                     description.includes('gas bill') ||
-                     description.includes('water') ||
-                     description.includes('internet') ||
-                     description.includes('phone bill')) {
+          } else if (
+            description.includes('rent') ||
+            description.includes('mortgage') ||
+            description.includes('utility') ||
+            description.includes('electric') ||
+            description.includes('gas bill') ||
+            description.includes('water') ||
+            description.includes('internet') ||
+            description.includes('phone bill')
+          ) {
             totalBills += amount;
-          } else if (description.includes('loan') || 
-                     description.includes('credit card') ||
-                     description.includes('debt') ||
-                     description.includes('payment')) {
+          } else if (
+            description.includes('loan') ||
+            description.includes('credit card') ||
+            description.includes('debt') ||
+            description.includes('payment')
+          ) {
             totalDebt += amount;
           } else {
             totalExpenses += amount;
@@ -131,11 +137,11 @@ export default function DashboardTab() {
         }
       }
     });
-    
+
     // Calculate remaining income after all allocations
     const totalAllocated = totalExpenses + totalSavings + totalBills + totalDebt;
     const remainingIncome = Math.max(0, baselineIncome - totalAllocated);
-    
+
     return {
       totalIncome: baselineIncome, // Use baseline income (monthly income setting)
       categories: [
@@ -144,7 +150,7 @@ export default function DashboardTab() {
         { name: 'Savings', value: totalSavings, color: '#0EA5E9', icon: '🏦' },
         { name: 'Bills', value: totalBills, color: '#F59E0B', icon: '🧾' },
         { name: 'Debt', value: totalDebt, color: '#8B5CF6', icon: '💳' },
-      ].filter(cat => cat.value > 0), // Only show categories with values
+      ].filter((cat) => cat.value > 0), // Only show categories with values
     };
   }, [safeTransactions, safeSummary]);
 
@@ -211,7 +217,7 @@ export default function DashboardTab() {
         contentContainerClassName="pb-32"
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
-        <View className="px-5" style={{ paddingTop: Math.max(insets.top + 8, 32) }}>
+        <View className="px-5" style={{ paddingTop: 12 }}>
           <TouchableOpacity
             onPress={openCurrentMonth}
             className="mb-6 rounded-3xl border border-app-border bg-app-surface px-6 py-7 shadow-md">
@@ -294,15 +300,20 @@ export default function DashboardTab() {
                 <View className="items-center">
                   <PieChart
                     data={monthlyTrend.categories.map((category) => {
-                      const percentage = monthlyTrend.totalIncome > 0 ? (category.value / monthlyTrend.totalIncome) * 100 : 0;
-                      
+                      const percentage =
+                        monthlyTrend.totalIncome > 0
+                          ? (category.value / monthlyTrend.totalIncome) * 100
+                          : 0;
+
                       // Calculate dynamic thickness based on percentage
                       const minThickness = 8;
                       const maxThickness = 24;
                       const thicknessRange = maxThickness - minThickness;
                       const normalizedPercentage = Math.min(percentage / 50, 1);
-                      const segmentThickness = Math.round(minThickness + (thicknessRange * normalizedPercentage));
-                      
+                      const segmentThickness = Math.round(
+                        minThickness + thicknessRange * normalizedPercentage
+                      );
+
                       return {
                         value: category.value,
                         color: category.color,
@@ -325,7 +336,9 @@ export default function DashboardTab() {
                     innerCircleBorderColor="#E5E7EB"
                     centerLabelComponent={() => (
                       <TouchableOpacity onPress={openCurrentMonth} className="items-center">
-                        <Text className="text-xs font-medium text-app-text-muted">Total Income</Text>
+                        <Text className="text-xs font-medium text-app-text-muted">
+                          Total Income
+                        </Text>
                         <Text className="text-sm font-bold text-app-text">
                           {formatAccentCurrency(monthlyTrend.totalIncome)}
                         </Text>
@@ -342,32 +355,37 @@ export default function DashboardTab() {
                     strokeColor="#FFFFFF"
                   />
                 </View>
-                
+
                 {/* Legend */}
                 <View className="mt-8 space-y-3">
                   {monthlyTrend.categories.map((category) => {
-                    const percentage = monthlyTrend.totalIncome > 0 ? (category.value / monthlyTrend.totalIncome) * 100 : 0;
-                    
+                    const percentage =
+                      monthlyTrend.totalIncome > 0
+                        ? (category.value / monthlyTrend.totalIncome) * 100
+                        : 0;
+
                     // Calculate same thickness as pie chart segment
                     const minThickness = 8;
                     const maxThickness = 24;
                     const thicknessRange = maxThickness - minThickness;
                     const normalizedPercentage = Math.min(percentage / 50, 1);
-                    const segmentThickness = Math.round(minThickness + (thicknessRange * normalizedPercentage));
-                    
+                    const segmentThickness = Math.round(
+                      minThickness + thicknessRange * normalizedPercentage
+                    );
+
                     // Scale for legend display (make smaller)
                     const legendSize = 10 + Math.round(segmentThickness / 3);
-                    
+
                     return (
                       <TouchableOpacity
                         key={category.name}
                         onPress={openCurrentMonth}
                         className="flex-row items-center justify-between rounded-2xl bg-app-surface-alt px-4 py-3">
-                        <View className="flex-row items-center flex-1">
+                        <View className="flex-1 flex-row items-center">
                           <View className="mr-3 flex-row items-center">
                             <View
                               className="mr-2 rounded-full"
-                              style={{ 
+                              style={{
                                 backgroundColor: category.color,
                                 width: legendSize,
                                 height: legendSize,
@@ -402,28 +420,38 @@ export default function DashboardTab() {
                     );
                   })}
                 </View>
-                
+
                 {/* Summary Stats */}
                 <View className="mt-6 rounded-2xl bg-app-surface-alt px-4 py-4">
                   <View className="flex-row justify-between">
                     <View className="items-center">
                       <Text className="text-xs text-app-text-muted">Total Allocated</Text>
                       <Text className="text-sm font-semibold text-app-text">
-                        {formatAccentCurrency(monthlyTrend.categories.reduce((sum, cat) => sum + cat.value, 0))}
+                        {formatAccentCurrency(
+                          monthlyTrend.categories.reduce((sum, cat) => sum + cat.value, 0)
+                        )}
                       </Text>
                     </View>
                     <View className="items-center">
                       <Text className="text-xs text-app-text-muted">Allocation Rate</Text>
                       <Text className="text-sm font-semibold text-primary-600">
-                        {monthlyTrend.totalIncome > 0 
-                          ? ((monthlyTrend.categories.reduce((sum, cat) => sum + cat.value, 0) / monthlyTrend.totalIncome) * 100).toFixed(1)
-                          : 0}%
+                        {monthlyTrend.totalIncome > 0
+                          ? (
+                              (monthlyTrend.categories.reduce((sum, cat) => sum + cat.value, 0) /
+                                monthlyTrend.totalIncome) *
+                              100
+                            ).toFixed(1)
+                          : 0}
+                        %
                       </Text>
                     </View>
                     <View className="items-center">
                       <Text className="text-xs text-app-text-muted">This Month</Text>
                       <Text className="text-sm font-semibold text-app-text">
-                        {new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                        {new Date().toLocaleDateString('en-US', {
+                          month: 'short',
+                          year: 'numeric',
+                        })}
                       </Text>
                     </View>
                   </View>

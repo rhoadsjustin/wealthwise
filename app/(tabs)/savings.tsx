@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  RefreshControl,
-  TouchableOpacity,
-} from 'react-native';
+import { ScrollView, View, Text, RefreshControl, TouchableOpacity } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +11,7 @@ import { Button } from '@/components/Button';
 import { Skeleton } from '@/components/Skeleton';
 import { useAppData } from '../_layout';
 import { useSavings } from '@/context/DataContext';
+import type { SavingsGoal } from '@/context/DataContext';
 
 const formatAccentCurrency = (value: number) => {
   if (!Number.isFinite(value)) return '$0';
@@ -29,10 +24,10 @@ export default function SavingsTab() {
   const { summary, savingsGoals, summaryLoading, refreshAppData } = useAppData();
   const { getSavingsGoals } = useSavings();
   const [refreshing, setRefreshing] = React.useState(false);
-  const [goals, setGoals] = React.useState(savingsGoals || []);
+  const [goals, setGoals] = React.useState<SavingsGoal[]>(savingsGoals ?? []);
 
   React.useEffect(() => {
-    setGoals(savingsGoals || []);
+    setGoals(savingsGoals ?? []);
   }, [savingsGoals]);
 
   const handleRefresh = React.useCallback(async () => {
@@ -51,14 +46,14 @@ export default function SavingsTab() {
   }, [router]);
 
   const handleEditGoal = React.useCallback(
-    (goal: any) => {
+    (goal: SavingsGoal) => {
       router.push({ pathname: '/savings-goal-modal', params: { goalId: goal.id } });
     },
     [router]
   );
 
   const handleFundGoal = React.useCallback(
-    (goal: any) => {
+    (goal: SavingsGoal) => {
       router.push({ pathname: '/savings-fund-modal', params: { goalId: goal.id } });
     },
     [router]
@@ -113,14 +108,16 @@ export default function SavingsTab() {
         className="flex-1"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
         contentContainerClassName="pb-28">
-        <View className="px-5" style={{ paddingTop: Math.max(insets.top + 8, 32) }}>
+        <View className="px-5" style={{ paddingTop: 12 }}>
           <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-6 py-7 shadow-md">
             <Text className="text-sm font-medium text-app-text-muted">Savings overview</Text>
             <Text className="mt-1 text-3xl font-semibold text-app-text">
               {formatAccentCurrency(totalProgress)}
             </Text>
             <Text className="mt-1 text-xs text-app-text-muted">
-              {totalGoals > 0 ? `${totalGoals} active goal${totalGoals > 1 ? 's' : ''}` : 'No goals yet'}
+              {totalGoals > 0
+                ? `${totalGoals} active goal${totalGoals > 1 ? 's' : ''}`
+                : 'No goals yet'}
             </Text>
             <View className="mt-6 flex-row items-center justify-between rounded-2xl bg-app-surface-alt px-4 py-3">
               <View>
@@ -152,7 +149,8 @@ export default function SavingsTab() {
                 Set up your first savings goal
               </Text>
               <Text className="mt-2 text-center text-sm text-app-text-muted">
-                Save toward upcoming purchases, emergencies, or long-term plans with monthly auto-funding.
+                Save toward upcoming purchases, emergencies, or long-term plans with monthly
+                auto-funding.
               </Text>
               <TouchableOpacity
                 className="mt-5 rounded-full bg-primary-500 px-6 py-3"

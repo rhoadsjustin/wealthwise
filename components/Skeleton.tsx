@@ -1,15 +1,13 @@
 import React from 'react';
-import { Animated } from 'react-native';
+import { View } from 'react-native';
 
-type SkeletonProps = React.ComponentProps<typeof Animated.View> & {
+type SkeletonProps = React.ComponentProps<typeof View> & {
   className?: string;
 };
 
-const Skeleton = React.forwardRef<Animated.View, SkeletonProps>(
-  ({ className = '', ...props }, ref) => {
-    return <Animated.View ref={ref} className={`rounded-md bg-gray-200 ${className}`} {...props} />;
-  }
-);
+const Skeleton = React.forwardRef<View, SkeletonProps>(({ className = '', ...props }, ref) => {
+  return <View ref={ref} className={`rounded-md bg-app-surface-alt ${className}`} {...props} />;
+});
 
 Skeleton.displayName = 'Skeleton';
 

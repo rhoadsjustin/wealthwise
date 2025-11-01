@@ -1,131 +1,89 @@
-import React from 'react';
-import { Platform, View, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import {
-  HStack,
-  Image,
-  Label,
-  Text,
-  ContextMenu as SwiftContextMenu,
-  Host as SwiftHost,
-  Button as SwiftUIButton,
-} from '@expo/ui/swift-ui';
-import {
-  ContextMenu as ComposeContextMenu,
-  Button as ComposeButton,
-} from '@expo/ui/jetpack-compose';
-import { background, fixedSize, frame, padding, shadow } from '@expo/ui/swift-ui/modifiers';
 
 type MenuItem = {
   label: string;
   route: string;
-  iosIcon?: string;
-  androidIcon?: string;
+  icon: keyof typeof Ionicons.glyphMap;
 };
 
 const MENU_ITEMS: MenuItem[] = [
-  {
-    label: 'Profile',
-    route: '/profile',
-    iosIcon: 'person.crop.circle',
-    androidIcon: 'person',
-  },
-  {
-    label: 'Budget',
-    route: '/categories',
-    iosIcon: 'chart.pie',
-    androidIcon: 'pie_chart',
-  },
-  {
-    label: 'Goals',
-    route: '/gamify',
-    iosIcon: 'trophy',
-    androidIcon: 'emoji_events',
-  },
+  { label: 'Profile', route: '/profile', icon: 'person-circle-outline' },
+  { label: 'Budget', route: '/categories', icon: 'pie-chart-outline' },
+  { label: 'Goals', route: '/gamify', icon: 'trophy-outline' },
 ];
 
 const TriggerIcon = () => (
-  <View
-    style={{
-      flex: 1,
-      flexDirection: 'row',
-      width: 34,
-      height: 34,
-      justifyContent: 'center',
-      alignContent: 'center',
-      alignItems: 'center',
-      alignSelf: 'center',
-      padding: 4,
-    }}>
-    <Ionicons name="settings-sharp" size={26} color="#0F172A" />
+  <View className="h-9 w-9 items-center justify-center rounded-full bg-app-surface shadow-xs">
+    <Ionicons name="settings-outline" size={20} color="#0F172A" />
   </View>
 );
 
 export default function HeaderProfileButton() {
   const router = useRouter();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Web fallback: use a simple touchable that opens the profile screen.
+  const handleSelect = (route: string) => {
+    setIsMenuOpen(false);
+    router.push(route as any);
+  };
+
   if (Platform.OS === 'web') {
     return (
-      <TouchableOpacity onPress={() => router.push('/profile')}>
+      <TouchableOpacity onPress={() => router.push('/profile')} accessibilityLabel="Open profile">
         <TriggerIcon />
       </TouchableOpacity>
     );
   }
 
-  if (Platform.OS === 'ios') {
-    return (
-      <SwiftHost
-        matchContents={{ horizontal: true, vertical: true }}
-        onLayoutContent={(event) => {
-          console.log('onLayoutContent', event.nativeEvent);
-        }}>
-        <SwiftContextMenu activationMethod="singlePress">
-          <SwiftContextMenu.Trigger>
-            <TriggerIcon />
-          </SwiftContextMenu.Trigger>
-          <SwiftContextMenu.Items>
-            {MENU_ITEMS.map((item) => (
-              <SwiftUIButton
-                key={item.route}
-                onPress={() => router.push(item.route as any)}
-                systemImage={item.iosIcon}
-                variant="borderless">
-                {item.label}
-              </SwiftUIButton>
-            ))}
-          </SwiftContextMenu.Items>
-        </SwiftContextMenu>
-      </SwiftHost>
-    );
-  }
-
-  if (Platform.OS === 'android') {
-    return (
-      <ComposeContextMenu activationMethod="singlePress">
-        <ComposeContextMenu.Trigger>
-          <TriggerIcon />
-        </ComposeContextMenu.Trigger>
-        <ComposeContextMenu.Items>
-          {MENU_ITEMS.map((item) => (
-            <ComposeButton
-              key={item.route}
-              onPress={() => router.push(item.route as any)}
-              systemImage={item.androidIcon}
-              variant="borderless">
-              {item.label}
-            </ComposeButton>
-          ))}
-        </ComposeContextMenu.Items>
-      </ComposeContextMenu>
-    );
-  }
-
-  // Fallback for other platforms (e.g., Expo Go on unsupported OS)
   return (
-    <TouchableOpacity onPress={() => router.push('/profile')}>
-      <TriggerIcon />
-    </TouchableOpacity>
+    <>
+      <TouchableOpacity
+        onPress={() => setIsMenuOpen(true)}
+        accessibilityLabel="Open profile menu"
+        activeOpacity={0.7}>
+        <TriggerIcon />
+      </TouchableOpacity>
+
+      <Modal
+        transparent
+        animationType="fade"
+        visible={isMenuOpen}
+        onRequestClose={() => setIsMenuOpen(false)}>
+        <Pressable style={styles.overlay} onPress={() => setIsMenuOpen(false)}>
+          <View className="w-48 rounded-2xl border border-app-border bg-app-surface shadow-lg">
+            {MENU_ITEMS.map((item) => (
+              <Pressable
+                key={item.route}
+                style={styles.menuItem}
+                onPress={() => handleSelect(item.route)}
+                accessibilityRole="menuitem">
+                <Ionicons name={item.icon} size={18} color="#0F172A" />
+                <Text className="ml-3 text-sm font-medium text-app-text">{item.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.3)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 64,
+    paddingRight: 20,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+});

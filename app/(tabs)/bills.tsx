@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/Skeleton';
 import { Button } from '@/components/Button';
 import { useAppData } from '../_layout';
 import { useBills } from '@/context/DataContext';
+import type { Category } from '@/context/DataContext';
 import { useToast } from '@/context/useToast';
 
 export default function BillsTab() {
@@ -28,7 +29,8 @@ export default function BillsTab() {
   }, [bills]);
 
   const categoryMap = React.useMemo(() => {
-    return new Map((categories || []).map((category: any) => [category.id, category]));
+    const list: Category[] = Array.isArray(categories) ? categories : [];
+    return new Map<number, Category>(list.map((category) => [category.id, category]));
   }, [categories]);
 
   const handleRefresh = React.useCallback(async () => {
@@ -85,39 +87,10 @@ export default function BillsTab() {
 
   return (
     <View className="flex-1 bg-app-background">
-      <Stack.Screen
-        options={{
-          title: '',
-          headerTransparent: true,
-          headerShadowVisible: false,
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => router.push('/profile')}
-              accessibilityLabel="Open profile"
-              className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-app-surface shadow-xs">
-              <Ionicons name="menu-outline" size={20} color="#0F172A" />
-            </TouchableOpacity>
-          ),
-          headerRight: () => (
-            <View className="flex-row items-center gap-3 pr-3">
-              <TouchableOpacity
-                onPress={handleAddBill}
-                accessibilityLabel="Add bill"
-                className="h-10 w-10 items-center justify-center rounded-full bg-primary-100">
-                <Ionicons name="add" size={20} color="#0284C7" />
-              </TouchableOpacity>
-              <HeaderProfileButton />
-            </View>
-          ),
-        }}
-      />
-
       <ScrollView
         className="flex-1"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
-        <View
-          className="px-5"
-          style={{ paddingTop: Math.max(insets.top + 8, 32), paddingBottom: insets.bottom + 96 }}>
+        <View className="px-5" style={{ paddingTop: 12, paddingBottom: insets.bottom + 96 }}>
           <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-6 py-7 shadow-md">
             <Text className="text-sm font-medium text-app-text-muted">Monthly bills overview</Text>
             <Text className="mt-1 text-3xl font-semibold text-app-text">
@@ -167,7 +140,7 @@ export default function BillsTab() {
                 <BillCard
                   key={bill.id}
                   bill={bill}
-                  category={categoryMap.get(bill.categoryId ?? 0) || null}
+                  category={categoryMap.get(bill.categoryId ?? 0) ?? null}
                   onPressPay={handleMarkPaid}
                   onPressEdit={handleEditBill}
                   isProcessing={payingBillId === bill.id}

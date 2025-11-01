@@ -1,15 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Toast from 'react-native-toast-message';
+import Toast, { type ToastConfig as NativeToastConfig } from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
-
-// Toast configuration and custom components
-export interface ToastConfig {
-  success: (props: any) => React.ReactElement;
-  error: (props: any) => React.ReactElement;
-  info: (props: any) => React.ReactElement;
-  warning: (props: any) => React.ReactElement;
-}
 
 // Custom Toast Components
 const SuccessToast = ({ text1, text2 }: any) => (
@@ -81,7 +73,7 @@ const WarningToast = ({ text1, text2 }: any) => (
 );
 
 // Toast configuration for react-native-toast-message
-export const toastConfig: ToastConfig = {
+export const toastConfig: NativeToastConfig = {
   success: SuccessToast,
   error: ErrorToast,
   info: InfoToast,
@@ -141,7 +133,7 @@ export const showToast = {
 
 // Compatibility types for existing codebase
 export interface ToastProps {
-  variant?: 'default' | 'destructive';
+  variant?: 'default' | 'destructive' | 'success' | 'info' | 'warning';
   title: string;
   description?: string;
 }
@@ -151,6 +143,15 @@ export const toast = ({ variant = 'default', title, description }: ToastProps) =
   switch (variant) {
     case 'destructive':
       showToast.error(title, description);
+      break;
+    case 'warning':
+      showToast.warning(title, description);
+      break;
+    case 'info':
+      showToast.info(title, description);
+      break;
+    case 'success':
+      showToast.success(title, description);
       break;
     default:
       showToast.success(title, description);

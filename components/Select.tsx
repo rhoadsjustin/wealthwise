@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+type TouchableOpacityRef = React.ElementRef<typeof TouchableOpacity>;
+
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -70,7 +72,7 @@ interface SelectTriggerProps {
   onPress?: () => void;
 }
 
-export const SelectTrigger = React.forwardRef<View, SelectTriggerProps>(
+export const SelectTrigger = React.forwardRef<TouchableOpacityRef, SelectTriggerProps>(
   ({ children, className = '', style, onPress, ...props }, ref) => {
     const { isOpen } = useSelectContext();
 
@@ -79,7 +81,7 @@ export const SelectTrigger = React.forwardRef<View, SelectTriggerProps>(
         ref={ref}
         onPress={onPress}
         activeOpacity={0.7}
-        className={`border-border-default bg-background-primary min-h-[40px] rounded-lg border px-3 py-2 ${className}`}
+        className={`min-h-[40px] rounded-lg border border-border-default bg-background-primary px-3 py-2 ${className}`}
         style={style}
         {...props}>
         <View className="flex-row items-center justify-between">
@@ -108,7 +110,7 @@ export const SelectValue = React.forwardRef<Text, SelectValueProps>(
     const { value } = useSelectContext();
 
     return (
-      <Text ref={ref} className="text-foreground-primary flex-1 text-sm" numberOfLines={1}>
+      <Text ref={ref} className="flex-1 text-sm text-foreground-primary" numberOfLines={1}>
         {value ? children || value : placeholder || 'Select an option'}
       </Text>
     );
@@ -129,15 +131,13 @@ export const SelectContent = React.forwardRef<View, SelectContentProps>(({ child
   return (
     <View
       ref={ref}
-      className="bg-background-primary border-border-default absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border shadow-md"
-      style={{ maxHeight: 240 }}
-    >
+      className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-border-default bg-background-primary shadow-md"
+      style={{ maxHeight: 240 }}>
       <Animated.ScrollView
         showsVerticalScrollIndicator
         bounces
         keyboardShouldPersistTaps="handled"
-        style={{ maxHeight: 240 }}
-      >
+        style={{ maxHeight: 240 }}>
         {children}
       </Animated.ScrollView>
     </View>
@@ -153,7 +153,7 @@ interface SelectItemProps {
   className?: string;
 }
 
-export const SelectItem = React.forwardRef<TouchableOpacity, SelectItemProps>(
+export const SelectItem = React.forwardRef<TouchableOpacityRef, SelectItemProps>(
   ({ children, value, disabled = false, className = '', ...props }, ref) => {
     const { value: selectedValue, onValueChange, setIsOpen } = useSelectContext();
     const isSelected = selectedValue === value;
@@ -194,7 +194,7 @@ export const SelectLabel = React.forwardRef<Text, SelectLabelProps>(
   ({ children, className = '', ...props }, ref) => (
     <Text
       ref={ref}
-      className={`text-foreground-muted px-3 py-2 text-xs font-medium uppercase tracking-wider ${className}`}
+      className={`px-3 py-2 text-xs font-medium uppercase tracking-wider text-foreground-muted ${className}`}
       {...props}>
       {children}
     </Text>
@@ -209,7 +209,7 @@ interface SelectSeparatorProps {
 
 export const SelectSeparator = React.forwardRef<View, SelectSeparatorProps>(
   ({ className = '', ...props }, ref) => (
-    <View ref={ref} className={`bg-border-default mx-2 h-px ${className}`} {...props} />
+    <View ref={ref} className={`mx-2 h-px bg-border-default ${className}`} {...props} />
   )
 );
 

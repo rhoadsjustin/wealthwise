@@ -1,5 +1,12 @@
 import * as React from 'react';
-import { TextInput, View, Text } from 'react-native';
+import {
+  TextInput,
+  View,
+  Text,
+  type NativeSyntheticEvent,
+  type TextInputFocusEventData,
+  type TextInputSubmitEditingEventData,
+} from 'react-native';
 
 export interface InputProps {
   variant?: 'default' | 'outline' | 'filled';
@@ -9,11 +16,15 @@ export interface InputProps {
   placeholder?: string;
   value?: string;
   onChangeText?: (text: string) => void;
-  onBlur?: () => void;
-  onFocus?: () => void;
-  keyboardType?: 'default' | 'numeric' | 'email-address' | 'phone-pad';
+  onBlur?: (event?: NativeSyntheticEvent<TextInputFocusEventData>) => void;
+  onFocus?: (event?: NativeSyntheticEvent<TextInputFocusEventData>) => void;
+  keyboardType?: 'default' | 'numeric' | 'email-address' | 'phone-pad' | 'decimal-pad';
   returnKeyType?: 'done' | 'go' | 'next' | 'search' | 'send' | 'default';
   secureTextEntry?: boolean;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  autoCorrect?: boolean;
+  onSubmitEditing?: (event?: NativeSyntheticEvent<TextInputSubmitEditingEventData>) => void;
+  blurOnSubmit?: boolean;
   multiline?: boolean;
   numberOfLines?: number;
   maxLength?: number;
@@ -41,9 +52,14 @@ const Input = React.forwardRef<TextInput, InputProps>(
       onFocus,
       keyboardType = 'default',
       secureTextEntry = false,
+      autoCapitalize,
+      autoCorrect,
       multiline = false,
       numberOfLines,
       maxLength,
+      returnKeyType = 'default',
+      onSubmitEditing,
+      blurOnSubmit,
       label,
       helperText,
       errorText,
@@ -172,6 +188,11 @@ const Input = React.forwardRef<TextInput, InputProps>(
             onBlur={handleBlur}
             keyboardType={keyboardType}
             secureTextEntry={secureTextEntry}
+            autoCapitalize={autoCapitalize}
+            autoCorrect={autoCorrect}
+            returnKeyType={returnKeyType}
+            onSubmitEditing={onSubmitEditing}
+            blurOnSubmit={blurOnSubmit}
             multiline={multiline}
             numberOfLines={numberOfLines}
             maxLength={maxLength}

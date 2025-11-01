@@ -61,6 +61,14 @@ export interface BudgetToolResult {
   payload: Record<string, any>;
 }
 
+type CategorySnapshot = {
+  id: number;
+  name: string;
+  budget: number;
+  spent: number;
+  percentage: number | null | undefined;
+};
+
 export interface AppleBudgetChatContext {
   summary: any;
   categories: Category[] | null | undefined;
@@ -134,14 +142,7 @@ export function buildAppleSystemInstruction(context: AppleBudgetChatContext): st
       ? `Tracked categories include: ${trimmedCategories}.`
       : 'Tracked categories are not yet available.';
 
-  return [
-    BASE_SYSTEM_PROMPT,
-    '',
-    monthSummary,
-    categoryLine,
-    '',
-    TOOL_PROMPT,
-  ].join('\n');
+  return [BASE_SYSTEM_PROMPT, '', monthSummary, categoryLine, '', TOOL_PROMPT].join('\n');
 }
 
 function dedupeMonths(transactions: Transaction[]): string[] {
@@ -166,12 +167,10 @@ function currentMonth(): string {
   return normalizeMonth(new Date()) ?? 'unknown';
 }
 
-function parseToolCall(content: string):
-  | {
-      name: string;
-      args: BudgetToolArguments;
-    }
-  | null {
+function parseToolCall(content: string): {
+  name: string;
+  args: BudgetToolArguments;
+} | null {
   const pattern = /<tool_call name="([^"]+)">\s*([\s\S]+?)\s*<\/tool_call>/i;
   const match = pattern.exec(content);
   if (!match) return null;
@@ -188,23 +187,36 @@ function resolveBudgetToolRequest(
   args: BudgetToolArguments,
   context: AppleBudgetChatContext
 ): BudgetToolResult {
-  const { summary, categories = [], transactions = [] } = context;
-  const targetMonth = args.month ?? selectDefaultMonth(transactions);
+  const categoriesList = Array.isArray(context.categories) ? context.categories : [];
+  const transactionsList = Array.isArray(context.transactions) ? context.transactions : [];
+  const { summary } = context;
+  const targetMonth = args.month ?? selectDefaultMonth(transactionsList);
   const selectedMonth = targetMonth ?? currentMonth();
 
   switch (args.scope) {
     case 'summary':
-      return buildSummaryResult(summary, categories, transactions, selectedMonth, args);
+      return buildSummaryResult(summary, categoriesList, transactionsList, selectedMonth, args);
     case 'category':
-      return buildCategoryResult(summary, categories, transactions, selectedMonth, args);
+      return buildCategoryResult(summary, categoriesList, transactionsList, selectedMonth, args);
     case 'topCategories':
-      return buildTopCategoriesResult(summary, categories, transactions, selectedMonth, args);
+      return buildTopCategoriesResult(
+        summary,
+        categoriesList,
+        transactionsList,
+        selectedMonth,
+        args
+      );
     case 'transactions':
-      return buildTransactionsResult(summary, categories, transactions, selectedMonth, args);
+      return buildTransactionsResult(
+        summary,
+        categoriesList,
+        transactionsList,
+        selectedMonth,
+        args
+      );
     default:
       return {
-        text:
-          'The tool request could not be processed. Provide a valid scope such as "summary", "category", "topCategories", or "transactions".',
+        text: 'The tool request could not be processed. Provide a valid scope such as "summary", "category", "topCategories", or "transactions".',
         payload: { ok: false, reason: 'invalid_scope', args },
       };
   }
@@ -232,16 +244,14 @@ function buildSummaryResult(
   const totalIncome = safeNumber(summary?.totalIncome ?? summary?.actualIncome);
   const remainingBudget = safeNumber(summary?.remainingBudget ?? totalBudget - totalExpenses);
 
-  const topBreakdown = Array.isArray(summary?.categoryBreakdown)
-    ? summary.categoryBreakdown
-        .slice(0, clampLimit(args.limit))
-        .map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          budget: safeNumber(item.budget),
-          spent: safeNumber(item.spent),
-          percentage: safeNumber(item.percentage),
-        }))
+  const topBreakdown: CategorySnapshot[] = Array.isArray(summary?.categoryBreakdown)
+    ? summary.categoryBreakdown.slice(0, clampLimit(args.limit)).map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        budget: safeNumber(item.budget),
+        spent: safeNumber(item.spent),
+        percentage: safeNumber(item.percentage),
+      }))
     : buildCategorySnapshotFromTransactions(categories, transactions, month, args.limit);
 
   const lines: string[] = [];
@@ -255,10 +265,12 @@ function buildSummaryResult(
 
   if (topBreakdown.length > 0) {
     lines.push('Top categories by spend:');
-    topBreakdown.forEach((entry, index) => {
+    topBreakdown.forEach((entry: CategorySnapshot, index: number) => {
       const variance = entry.spent - entry.budget;
       const varianceLabel =
-        variance === 0 ? '$0.00' : `${variance > 0 ? '+' : ''}${formatCurrency(Math.abs(variance))}`;
+        variance === 0
+          ? '$0.00'
+          : `${variance > 0 ? '+' : ''}${formatCurrency(Math.abs(variance))}`;
       lines.push(
         `${index + 1}. ${entry.name}: ${formatCurrency(entry.spent)} of ${formatCurrency(entry.budget)} (${Math.round(entry.percentage ?? 0)}%), variance ${varianceLabel}`
       );
@@ -373,7 +385,7 @@ function buildTopCategoriesResult(
   args: BudgetToolArguments
 ): BudgetToolResult {
   const limit = clampLimit(args.limit);
-  const entries = Array.isArray(summary?.categoryBreakdown)
+  const entries: CategorySnapshot[] = Array.isArray(summary?.categoryBreakdown)
     ? summary.categoryBreakdown
         .map((item: any) => ({
           id: item.id,
@@ -382,7 +394,7 @@ function buildTopCategoriesResult(
           spent: safeNumber(item.spent),
           percentage: safeNumber(item.percentage),
         }))
-        .sort((a, b) => b.spent - a.spent)
+        .sort((a: CategorySnapshot, b: CategorySnapshot) => b.spent - a.spent)
     : buildCategorySnapshotFromTransactions(categories, transactions, month, limit);
 
   const top = entries.slice(0, limit || 5);
@@ -396,7 +408,7 @@ function buildTopCategoriesResult(
 
   const lines: string[] = [];
   lines.push(`Top ${top.length} categories for ${monthLabel(month)}:`);
-  top.forEach((entry, index) => {
+  top.forEach((entry: CategorySnapshot, index: number) => {
     lines.push(
       `${index + 1}. ${entry.name}: ${formatCurrency(entry.spent)} of ${formatCurrency(entry.budget)} (${Math.round(entry.percentage ?? 0)}%)`
     );
@@ -461,7 +473,7 @@ function buildCategorySnapshotFromTransactions(
   transactions: Transaction[],
   month: string,
   limit?: number
-) {
+): CategorySnapshot[] {
   const limitValue = clampLimit(limit) || undefined;
   const perCategory = new Map<number, { name: string; budget: number; spent: number }>();
   const categoryById = new Map<number, Category>();
@@ -593,7 +605,9 @@ export interface AppleBudgetChatResult {
   messages: AppleChatMessage[];
 }
 
-export async function runAppleBudgetChat(params: AppleBudgetChatRunParams): Promise<AppleBudgetChatResult> {
+export async function runAppleBudgetChat(
+  params: AppleBudgetChatRunParams
+): Promise<AppleBudgetChatResult> {
   if (Platform.OS !== 'ios') {
     throw new Error('Apple budget chat is only available on iOS devices.');
   }
@@ -668,7 +682,7 @@ async function runAppleBudgetChatWithFoundationModels({
       toolExecutions.push({ args: normalizedArgs, result: toolResult });
       return toolResult.text;
     },
-  });
+  }) as any;
 
   const provider = createAppleProvider({
     availableTools: {
@@ -707,7 +721,8 @@ async function runAppleBudgetChatWithFoundationModels({
 
   const assistantReply = result.text?.replace(/^null\s*/i, '').trim()
     ? result.text.replace(/^null\s*/i, '').trim()
-    : toolExecutions.at(-1)?.result.text ?? 'I was unable to compose an answer from the retrieved budget data.';
+    : (toolExecutions.at(-1)?.result.text ??
+      'I was unable to compose an answer from the retrieved budget data.');
 
   conversation.push({
     role: 'assistant',
@@ -730,10 +745,7 @@ async function runAppleBudgetChatWithNativeModule({
   const systemInstruction = buildAppleSystemInstruction(context);
 
   const workingHistory = history.filter((message) => message.role !== 'system');
-  const conversation: AppleChatMessage[] = [
-    ...workingHistory,
-    { role: 'user', content: prompt },
-  ];
+  const conversation: AppleChatMessage[] = [...workingHistory, { role: 'user', content: prompt }];
 
   for (let iteration = 0; iteration < Math.max(1, maxToolIterations); iteration += 1) {
     const response = await generateNativeResponse({

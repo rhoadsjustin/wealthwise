@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, Text, ViewStyle, TextStyle, Animated } from 'react-native';
+import { View, Text, ViewStyle, TextStyle } from 'react-native';
 
 interface CardProps {
   variant?: 'default' | 'outlined' | 'elevated' | 'filled';
@@ -9,7 +9,7 @@ interface CardProps {
   children?: React.ReactNode;
 }
 
-const Card = React.forwardRef<Animated.View, CardProps>(
+const Card = React.forwardRef<View, CardProps>(
   ({ variant = 'default', padding = 'md', className = '', style, children, ...props }, ref) => {
     const getVariantClasses = () => {
       switch (variant) {
@@ -45,9 +45,9 @@ const Card = React.forwardRef<Animated.View, CardProps>(
     `.trim();
 
     return (
-      <Animated.View ref={ref} className={cardClasses} style={style} {...props}>
+      <View ref={ref} className={cardClasses} style={style} {...props}>
         {children}
-      </Animated.View>
+      </View>
     );
   }
 );
