@@ -15,7 +15,7 @@ export function SpendingTrendCard({ monthlyData }: SpendingTrendCardProps) {
   const maxAmount = Math.max(...monthlyData.map((d) => d.amount));
 
   return (
-    <Card className="card-mobile mb-6 bg-info-50 border-info-100">
+    <Card className="card-mobile mb-6 border-info-100 bg-info-50">
       <CardContent className="p-4">
         <View className="mb-4 flex-row items-center justify-between">
           <Text className="text-lg font-semibold text-gray-900">Spending Trend</Text>
@@ -32,7 +32,7 @@ export function SpendingTrendCard({ monthlyData }: SpendingTrendCardProps) {
                 <View className="mx-3 flex-1">
                   <View className="h-3 rounded-full bg-gray-200">
                     <View
-                      className="bg-budget-primary h-3 rounded-full"
+                      className="h-3 rounded-full bg-budget-primary"
                       style={{ width: `${percentage}%` }}
                     />
                   </View>

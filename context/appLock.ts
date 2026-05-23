@@ -7,4 +7,3 @@ export function setAppUnlocked(value: boolean) {
 export function isAppUnlocked() {
   return unlocked;
 }
-

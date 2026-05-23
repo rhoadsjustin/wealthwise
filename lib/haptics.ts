@@ -4,7 +4,6 @@ import { Platform, Vibration } from 'react-native';
 // is not installed in the environment (e.g., web or dev without the pkg).
 let Haptics: any = null;
 try {
-   
   Haptics = require('expo-haptics');
 } catch {}
 
@@ -68,4 +67,3 @@ export const error = async () => {
 };
 
 export default { impactLight, selection, success, warning, error };
-

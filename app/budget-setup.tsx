@@ -14,4 +14,3 @@ export default function BudgetSetupScreen() {
 
   return <BudgetSetupFlow onFinish={handleFinish} />;
 }
-

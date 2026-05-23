@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter } from 'expo-router';
 import { localStorage } from '@/lib/local-storage';
@@ -21,7 +28,7 @@ export default function LockScreen() {
         const hardware = await LocalAuthentication.hasHardwareAsync();
         if (hardware && enrolled) {
           const result = await LocalAuthentication.authenticateAsync({
-            promptMessage: 'Unlock Budget App',
+            promptMessage: 'Unlock WealthWise',
             fallbackLabel: 'Use Passcode',
             cancelLabel: 'Cancel',
           });
@@ -48,11 +55,24 @@ export default function LockScreen() {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#F7F9FC' }}>
-        <Text style={{ fontSize: 24, fontWeight: '700', color: '#111827', marginBottom: 12 }}>Locked</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}>
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+          backgroundColor: '#F7F9FC',
+        }}>
+        <Text style={{ fontSize: 24, fontWeight: '700', color: '#111827', marginBottom: 12 }}>
+          Locked
+        </Text>
         <Text style={{ color: '#374151', marginBottom: 24, textAlign: 'center' }}>
-          {hasPasscode ? 'Use Face ID/Touch ID or enter your passcode to continue.' : 'Use Face ID/Touch ID to continue.'}
+          {hasPasscode
+            ? 'Use Face ID/Touch ID or enter your passcode to continue.'
+            : 'Use Face ID/Touch ID to continue.'}
         </Text>
 
         {hasPasscode && (
@@ -73,9 +93,7 @@ export default function LockScreen() {
                 fontSize: 18,
               }}
             />
-            {error && (
-              <Text style={{ color: '#EF4444', marginTop: 8 }}>{error}</Text>
-            )}
+            {error && <Text style={{ color: '#EF4444', marginTop: 8 }}>{error}</Text>}
             <TouchableOpacity
               onPress={tryPasscode}
               style={{
@@ -93,4 +111,3 @@ export default function LockScreen() {
     </KeyboardAvoidingView>
   );
 }
-

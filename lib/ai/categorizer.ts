@@ -72,7 +72,10 @@ export async function recordFeedback(desc: string, categoryId: number, categoryN
     if (vectorStore && categoryName) {
       const content = `Tx: ${normalizeMerchant(desc)} -> Category: ${categoryName}`;
       try {
-        await vectorStore.add(content.slice(0, 200), { type: 'exemplar', categoryId: String(categoryId) });
+        await vectorStore.add(content.slice(0, 200), {
+          type: 'exemplar',
+          categoryId: String(categoryId),
+        });
       } catch {}
     }
   } catch {}
@@ -152,4 +155,3 @@ const categorizer = {
 };
 
 export default categorizer;
-

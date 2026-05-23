@@ -6,4 +6,3 @@ export default function AddTransactionScreen() {
   const router = useRouter();
   return <AddTransactionModal onClose={() => router.back()} />;
 }
-

@@ -208,9 +208,7 @@ export default function TransactionsModal() {
 
   return (
     <View className="flex-1 bg-app-background">
-      <View
-        className="px-5"
-        style={{ paddingTop: Math.max(insets.top + 8, 24) }}>
+      <View className="px-5" style={{ paddingTop: Math.max(insets.top + 8, 24) }}>
         <View className="mb-4 flex-row items-center justify-between">
           <View className="flex-row items-center">
             <TouchableOpacity
@@ -251,7 +249,8 @@ export default function TransactionsModal() {
                   : 'bg-primary-50'
               }`}
               accessibilityLabel="Auto categorize">
-              <Text className={`text-xs font-semibold ${isAutoCategorizing ? 'text-app-text-muted' : 'text-primary-700'}`}>
+              <Text
+                className={`text-xs font-semibold ${isAutoCategorizing ? 'text-app-text-muted' : 'text-primary-700'}`}>
                 {isAutoCategorizing ? 'Categorizing…' : 'Auto-categorize'}
               </Text>
             </TouchableOpacity>
@@ -269,7 +268,9 @@ export default function TransactionsModal() {
                     key={button.key}
                     onPress={() => setFilter(button.key as any)}
                     className={`flex-row items-center gap-2 rounded-full border px-4 py-2 ${
-                      isActive ? 'border-primary-500 bg-primary-50' : 'border-app-border bg-app-surface-alt'
+                      isActive
+                        ? 'border-primary-500 bg-primary-50'
+                        : 'border-app-border bg-app-surface-alt'
                     }`}>
                     <Text
                       className={`text-sm font-medium ${
@@ -299,9 +300,7 @@ export default function TransactionsModal() {
       </View>
 
       {/* Transactions List */}
-      <ScrollView
-        className="flex-1"
-        contentContainerClassName="px-5 pt-2 pb-28">
+      <ScrollView className="flex-1" contentContainerClassName="px-5 pt-2 pb-28">
         {filteredTransactions.length === 0 ? (
           <View className="items-center py-12">
             <Ionicons name="receipt-outline" size={48} color="#9CA3AF" />
@@ -440,9 +439,7 @@ export default function TransactionsModal() {
         presentationStyle="pageSheet"
         onRequestClose={handleCloseCategoryModal}>
         <View className="flex-1 bg-app-background">
-          <View
-            className="px-5"
-            style={{ paddingTop: Math.max(insets.top + 8, 24) }}>
+          <View className="px-5" style={{ paddingTop: Math.max(insets.top + 8, 24) }}>
             <View className="mb-4 flex-row items-center justify-between">
               <View>
                 <Text className="text-xl font-semibold text-app-text">Select category</Text>
@@ -473,9 +470,7 @@ export default function TransactionsModal() {
             )}
           </View>
 
-          <ScrollView
-            className="flex-1"
-            contentContainerClassName="px-5 pb-24">
+          <ScrollView className="flex-1" contentContainerClassName="px-5 pb-24">
             <View className="space-y-3">
               {categories
                 .filter((cat: any) => parseFloat(cat.budget) > 0)
@@ -494,7 +489,9 @@ export default function TransactionsModal() {
                         <Text className="text-base">{category.icon}</Text>
                       </View>
                       <View>
-                        <Text className="text-base font-semibold text-app-text">{category.name}</Text>
+                        <Text className="text-base font-semibold text-app-text">
+                          {category.name}
+                        </Text>
                         <Text className="text-xs text-app-text-muted">
                           Budget ${parseFloat(category.budget).toFixed(2)}
                         </Text>

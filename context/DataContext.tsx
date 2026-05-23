@@ -2,6 +2,12 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { setDataContext } from '@/lib/api';
 import { localStorage } from '@/lib/local-storage';
 
+const debugLog = (...args: unknown[]) => {
+  if (__DEV__) {
+    console.log(...args);
+  }
+};
+
 // Re-export interfaces from api.ts for consistency
 export interface DashboardSummary {
   totalIncome: number;
@@ -448,7 +454,7 @@ export function DataProvider({
   // Initialize local storage on mount
   useEffect(() => {
     const initializeDemoData = async () => {
-      console.log('🔄 Initializing demo data...');
+      debugLog('🔄 Initializing demo data...');
       const demoCategories: Omit<Category, 'id'>[] = [
         {
           name: 'Housing',
@@ -487,27 +493,27 @@ export function DataProvider({
         },
       ];
 
-      console.log(`📁 Creating ${demoCategories.length} demo categories...`);
+      debugLog(`📁 Creating ${demoCategories.length} demo categories...`);
       for (const category of demoCategories) {
         const newCategory = {
           ...category,
           // Don't pre-generate ID, let the database handle it
         };
-        console.log('💾 Saving category:', newCategory.name);
+        debugLog('💾 Saving category:', newCategory.name);
         await localStorage.saveItem('categories', newCategory);
       }
-      console.log('✅ Demo categories created');
+      debugLog('✅ Demo categories created');
 
       // Verify categories were saved
       const savedCategories = await localStorage.getItems<Category>('categories', currentUserId);
-      console.log('🔍 Verified saved categories:', savedCategories.length);
+      debugLog('🔍 Verified saved categories:', savedCategories.length);
       const categoryLookup = new Map(
         savedCategories.map((category) => [category.name, category.id])
       );
 
       // Also check all categories in the table (debug)
       const allCategories = await localStorage.getAllItems<Category>('categories');
-      console.log('🔍 All categories in database:', allCategories.length);
+      debugLog('🔍 All categories in database:', allCategories.length);
 
       // Add some demo transactions
       const demoTransactions: Omit<Transaction, 'id'>[] = [
@@ -540,27 +546,27 @@ export function DataProvider({
         },
       ];
 
-      console.log(`💰 Creating ${demoTransactions.length} demo transactions...`);
+      debugLog(`💰 Creating ${demoTransactions.length} demo transactions...`);
       for (const transaction of demoTransactions) {
         const newTransaction = {
           ...transaction,
           // Don't pre-generate ID, let the database handle it
         };
-        console.log('💾 Saving transaction:', newTransaction.description);
+        debugLog('💾 Saving transaction:', newTransaction.description);
         await localStorage.saveItem('transactions', newTransaction);
       }
-      console.log('✅ Demo transactions created');
+      debugLog('✅ Demo transactions created');
 
       // Verify transactions were saved
       const savedTransactions = await localStorage.getItems<Transaction>(
         'transactions',
         currentUserId
       );
-      console.log('🔍 Verified saved transactions:', savedTransactions.length);
+      debugLog('🔍 Verified saved transactions:', savedTransactions.length);
 
       // Also check all transactions in the table (debug)
       const allTransactions = await localStorage.getAllItems<Transaction>('transactions');
-      console.log('🔍 All transactions in database:', allTransactions.length);
+      debugLog('🔍 All transactions in database:', allTransactions.length);
 
       // Add some demo bank accounts
       const demoBankAccounts: Omit<BankAccount, 'id'>[] = [
@@ -594,7 +600,7 @@ export function DataProvider({
         },
       ];
 
-      console.log(`🏦 Creating ${demoBankAccounts.length} demo bank accounts...`);
+      debugLog(`🏦 Creating ${demoBankAccounts.length} demo bank accounts...`);
       for (const bankAccount of demoBankAccounts) {
         const newBankAccount = {
           ...bankAccount,
@@ -602,7 +608,7 @@ export function DataProvider({
         };
         await localStorage.saveItem('bankAccounts', newBankAccount);
       }
-      console.log('✅ Demo bank accounts created');
+      debugLog('✅ Demo bank accounts created');
 
       const demoSavingsGoals: Omit<SavingsGoal, 'id'>[] = [
         {
@@ -639,7 +645,7 @@ export function DataProvider({
       }
 
       const savedGoals = await localStorage.getItems('savingsGoals', currentUserId);
-      console.log('💰 Demo savings goals created:', savedGoals.length);
+      debugLog('💰 Demo savings goals created:', savedGoals.length);
 
       const demoBills = [
         {
@@ -676,7 +682,7 @@ export function DataProvider({
 
       type StoredBillRecord = Omit<Bill, 'autoPay'> & { autoPay: number | boolean };
       const savedBills = await localStorage.getItems<StoredBillRecord>('bills', currentUserId);
-      console.log('📄 Demo bills created:', savedBills.length);
+      debugLog('📄 Demo bills created:', savedBills.length);
 
       if (savedBills.length > 0) {
         const firstBill = savedBills[0];
@@ -736,7 +742,7 @@ export function DataProvider({
 
       type StoredDebtRecord = Debt & { categoryId?: number | null };
       const savedDebts = await localStorage.getItems<StoredDebtRecord>('debts', currentUserId);
-      console.log('📉 Demo debts created:', savedDebts.length);
+      debugLog('📉 Demo debts created:', savedDebts.length);
 
       if (savedDebts.length > 0) {
         const firstDebt = savedDebts[0];
@@ -756,11 +762,11 @@ export function DataProvider({
         });
       }
 
-      console.log('🎉 All demo data initialization complete!');
+      debugLog('🎉 All demo data initialization complete!');
     };
     // Seed only starter categories (no transactions/accounts) for production/real users
     const initializeStarterCategories = async () => {
-      console.log('🔄 Initializing starter categories...');
+      debugLog('🔄 Initializing starter categories...');
       const starterCategories: Omit<Category, 'id'>[] = [
         { name: 'Housing', icon: '🏠', color: '#8BC34A', budget: '0', userId: currentUserId },
         { name: 'Utilities', icon: '💡', color: '#FFA07A', budget: '0', userId: currentUserId },
@@ -772,23 +778,23 @@ export function DataProvider({
       for (const category of starterCategories) {
         await localStorage.saveItem('categories', category);
       }
-      console.log('✅ Starter categories created');
+      debugLog('✅ Starter categories created');
 
       const savedCategories = await localStorage.getItems<Category>('categories', currentUserId);
-      console.log('🔍 Verified saved starter categories:', savedCategories.length);
+      debugLog('🔍 Verified saved starter categories:', savedCategories.length);
     };
     const initializeStorage = async () => {
       try {
-        console.log('🔄 Initializing local storage...');
+        debugLog('🔄 Initializing local storage...');
         await localStorage.init();
-        console.log('✅ Local storage initialized');
+        debugLog('✅ Local storage initialized');
 
         // Test database connection
         try {
           const testResult = await localStorage.query(
             "SELECT name FROM sqlite_master WHERE type='table'"
           );
-          console.log(
+          debugLog(
             '🔍 Tables in database:',
             testResult.map((row: any) => row.name)
           );
@@ -798,7 +804,7 @@ export function DataProvider({
 
         if (DEVELOPMENT_MODE) {
           // DEVELOPMENT MODE: Clear all existing data and reinitialize
-          console.log('🔧 Development mode: Clearing all data and reinitializing...');
+          debugLog('🔧 Development mode: Clearing all data and reinitializing...');
 
           // Clear all data stores
           await Promise.all([
@@ -829,10 +835,10 @@ export function DataProvider({
           // Always reinitialize demo data
           await initializeDemoData();
 
-          console.log('✅ Demo data reinitialized successfully');
+          debugLog('✅ Demo data reinitialized successfully');
         } else {
           // PRODUCTION MODE: Only initialize minimal data if none exists
-          console.log('🚀 Production mode: Checking for existing data...');
+          debugLog('🚀 Production mode: Checking for existing data...');
 
           // Check if we have a user, if not create a demo user
           const existingUser = await localStorage.getItem('user', currentUserId);
@@ -849,10 +855,10 @@ export function DataProvider({
           // Initialize with starter categories only if no data exists
           const existingCategories = await localStorage.getItems('categories', currentUserId);
           if (existingCategories.length === 0) {
-            console.log('No existing categories found — initializing starter categories');
+            debugLog('No existing categories found — initializing starter categories');
             await initializeStarterCategories();
           } else {
-            console.log(`📊 Found ${existingCategories.length} existing categories`);
+            debugLog(`📊 Found ${existingCategories.length} existing categories`);
           }
         }
 
@@ -981,7 +987,7 @@ export function DataProvider({
 
   // Dashboard methods
   const getDashboardSummary = useCallback(async (): Promise<DashboardSummary> => {
-    console.log('🔍 getDashboardSummary called for userId:', currentUserId);
+    debugLog('🔍 getDashboardSummary called for userId:', currentUserId);
 
     try {
       const [transactions, categories, savingsGoalsRaw] = await Promise.all([
@@ -990,7 +996,7 @@ export function DataProvider({
         localStorage.getItems<any>('savingsGoals', currentUserId),
       ]);
 
-      console.log('📊 Data loaded:', {
+      debugLog('📊 Data loaded:', {
         transactionCount: transactions.length,
         categoryCount: categories.length,
         savingsGoalCount: savingsGoalsRaw.length,
@@ -1046,10 +1052,10 @@ export function DataProvider({
 
   // Category methods
   const getCategories = useCallback(async (): Promise<Category[]> => {
-    console.log('🏷️ getCategories called for userId:', currentUserId);
+    debugLog('🏷️ getCategories called for userId:', currentUserId);
     try {
       const categories = await localStorage.getItems<Category>('categories', currentUserId);
-      console.log('✅ Categories loaded:', categories.length, 'items');
+      debugLog('✅ Categories loaded:', categories.length, 'items');
       return categories;
     } catch (error) {
       console.error('❌ Error in getCategories:', error);
@@ -1660,10 +1666,10 @@ export function DataProvider({
 
   // Transaction methods
   const getTransactions = useCallback(async (): Promise<Transaction[]> => {
-    console.log('💰 getTransactions called for userId:', currentUserId);
+    debugLog('💰 getTransactions called for userId:', currentUserId);
     try {
       const transactions = await localStorage.getItems<Transaction>('transactions', currentUserId);
-      console.log('✅ Transactions loaded:', transactions.length, 'items');
+      debugLog('✅ Transactions loaded:', transactions.length, 'items');
       return transactions;
     } catch (error) {
       console.error('❌ Error in getTransactions:', error);
@@ -1954,7 +1960,7 @@ export function DataProvider({
     await localStorage.setSetting('monthlyIncome', null);
     setMonthlyIncome(null);
     // Note: clearAllData functionality simplified for development
-    console.log('Data cleared');
+    debugLog('Data cleared');
   }, []);
 
   // Set up the API compatibility layer
@@ -2120,9 +2126,9 @@ export function DataProvider({
     const applyInitialBudgets = async () => {
       if (isInitialized && initialBudgetCategories && initialBudgetCategories.length > 0) {
         try {
-          console.log('🎯 Applying initial budget categories from onboarding...');
+          debugLog('🎯 Applying initial budget categories from onboarding...');
           await updateCategoriesBudgets(initialBudgetCategories);
-          console.log('✅ Initial budget categories applied successfully');
+          debugLog('✅ Initial budget categories applied successfully');
         } catch (error) {
           console.error('❌ Failed to apply initial budget categories:', error);
         }

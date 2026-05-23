@@ -11,7 +11,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -23,11 +23,11 @@ import { Button } from '@/components/Button';
 
 export default function ProfileModal() {
   const router = useRouter();
+  const transactionImportRoute = '/transaction-import' as Href;
   const { username, login } = useAuth();
   const { updateUserProfile, getUserProfile, monthlyIncome, updateMonthlyIncome } = useData();
   const [name, setName] = useState(username || '');
   const [requireLock, setRequireLock] = useState(false);
-  const [passcode, setPasscode] = useState('');
   const [incomeInput, setIncomeInput] = useState('');
   const [incomeError, setIncomeError] = useState<string | null>(null);
 
@@ -35,9 +35,7 @@ export default function ProfileModal() {
     const load = async () => {
       await localStorage.init();
       const lock = await localStorage.getSetting('requireAppLock');
-      const savedPass = await localStorage.getSetting('appPasscode');
       setRequireLock(Boolean(lock));
-      setPasscode(savedPass || '');
     };
     load();
   }, []);
@@ -87,20 +85,6 @@ export default function ProfileModal() {
       console.error('Failed to save profile', error);
       Alert.alert('Error', 'Failed to save profile');
     }
-  };
-
-  const updatePasscode = async () => {
-    if (!passcode) {
-      await localStorage.setSetting('appPasscode', '');
-      Alert.alert('Removed', 'Passcode removed');
-      return;
-    }
-    if (passcode.length < 4) {
-      Alert.alert('Invalid', 'Passcode must be at least 4 digits');
-      return;
-    }
-    await localStorage.setSetting('appPasscode', passcode);
-    Alert.alert('Saved', 'Passcode updated');
   };
 
   const insets = useSafeAreaInsets();
@@ -189,6 +173,34 @@ export default function ProfileModal() {
                       trackColor={{ true: '#BAE6FD', false: '#CBD5F5' }}
                     />
                   </View>
+                </View>
+
+                <View className="rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-sm">
+                  <Text className="text-base font-semibold text-app-text">Statement import</Text>
+                  <Text className="mt-2 text-xs leading-5 text-app-text-muted">
+                    Paste CSV exports or copied statement and PDF text, then import the parsed
+                    transactions into your budget.
+                  </Text>
+                  <Button
+                    className="mt-4"
+                    variant="outline"
+                    title="Import statement transactions"
+                    onPress={() => router.push(transactionImportRoute)}
+                  />
+                </View>
+
+                <View className="rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-sm">
+                  <Text className="text-base font-semibold text-app-text">Apple Wallet import</Text>
+                  <Text className="mt-2 text-xs leading-5 text-app-text-muted">
+                    Connect FinanceKit and import recent Apple Card transactions from Wallet on this
+                    iPhone.
+                  </Text>
+                  <Button
+                    className="mt-4"
+                    variant="outline"
+                    title="Import Apple Card transactions"
+                    onPress={() => router.push('/apple-card-import')}
+                  />
                 </View>
               </View>
             </View>

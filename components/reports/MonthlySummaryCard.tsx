@@ -51,9 +51,7 @@ export function MonthlySummaryCard({
 
           <View className="flex-row justify-between">
             <Text className="text-sm text-gray-600">Planned Savings</Text>
-            <Text className="text-sm font-semibold text-sky-600">
-              ${plannedSavings.toFixed(2)}
-            </Text>
+            <Text className="text-sm font-semibold text-sky-600">${plannedSavings.toFixed(2)}</Text>
           </View>
 
           <View className="flex-row justify-between">

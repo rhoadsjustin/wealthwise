@@ -123,7 +123,8 @@ export function buildBudgetSnapshots({
     const remaining = snapshot.budget - snapshot.spent;
     if (snapshot.metadata) {
       snapshot.metadata.remaining = Number.isFinite(remaining) ? remaining : 0;
-      snapshot.metadata.budgetPerTx = snapshot.transactions > 0 ? snapshot.budget / snapshot.transactions : snapshot.budget;
+      snapshot.metadata.budgetPerTx =
+        snapshot.transactions > 0 ? snapshot.budget / snapshot.transactions : snapshot.budget;
     }
     // Avoid returning empty snapshots for zero budget and zero spend across all months
     if (snapshot.budget > 0 || snapshot.spent > 0) {
@@ -139,7 +140,9 @@ export function buildBudgetSnapshots({
   });
 }
 
-export async function trainBudgetInsights(snapshots: BudgetSnapshot[]): Promise<BudgetInsightsPayload> {
+export async function trainBudgetInsights(
+  snapshots: BudgetSnapshot[]
+): Promise<BudgetInsightsPayload> {
   if (!snapshots.length) {
     throw new Error('No budget snapshots available for training.');
   }

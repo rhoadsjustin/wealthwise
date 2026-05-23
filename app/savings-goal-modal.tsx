@@ -32,11 +32,7 @@ export default function SavingsGoalModal() {
   const params = useLocalSearchParams();
   const goalIdParam = typeof params.goalId === 'string' ? Number(params.goalId) : undefined;
   const { toast } = useToast();
-  const {
-    createSavingsGoal,
-    updateSavingsGoal,
-    getSavingsGoals,
-  } = useSavings();
+  const { createSavingsGoal, updateSavingsGoal, getSavingsGoals } = useSavings();
   const { refreshAppData } = useAppData();
   const [initialGoal, setInitialGoal] = React.useState<SavingsGoal | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -127,7 +123,10 @@ export default function SavingsGoalModal() {
         toast({ title: 'Savings goal updated', description: 'Your changes have been saved.' });
       } else {
         await createSavingsGoal(payload);
-        toast({ title: 'Savings goal created', description: 'Savings has been added to your plan.' });
+        toast({
+          title: 'Savings goal created',
+          description: 'Savings has been added to your plan.',
+        });
       }
 
       await refreshAppData();
@@ -161,14 +160,14 @@ export default function SavingsGoalModal() {
           className="flex-1"
           contentContainerClassName="pb-28"
           keyboardShouldPersistTaps="handled">
-          <View
-            className="px-5"
-            style={{ paddingTop: Math.max(insets.top + 8, 24) }}>
+          <View className="px-5" style={{ paddingTop: Math.max(insets.top + 8, 24) }}>
             <View className="mb-4 flex-row items-center justify-between">
               <View>
                 <Text className="text-xl font-semibold text-app-text">{modalTitle}</Text>
                 <Text className="mt-1 text-xs text-app-text-muted">
-                  {goalIdParam ? 'Update your savings target and cadence.' : 'Plan a new savings milestone.'}
+                  {goalIdParam
+                    ? 'Update your savings target and cadence.'
+                    : 'Plan a new savings milestone.'}
                 </Text>
               </View>
               <TouchableOpacity
@@ -193,69 +192,71 @@ export default function SavingsGoalModal() {
                   name="name"
                   rules={{ required: true }}
                   render={({ field: { onChange, value } }) => (
-                <Input
-                  label="Goal name"
-                  placeholder="Emergency fund"
-                  value={value}
-                  onChangeText={onChange}
-                  errorText={errors.name ? 'Name is required' : undefined}
+                    <Input
+                      label="Goal name"
+                      placeholder="Emergency fund"
+                      value={value}
+                      onChangeText={onChange}
+                      errorText={errors.name ? 'Name is required' : undefined}
+                    />
+                  )}
                 />
-              )}
-            />
 
-            <Controller
-              control={control}
-              name="targetAmount"
-              rules={{ required: true }}
-              render={({ field: { onChange, value } }) => (
-                <Input
-                  label="Target amount"
-                  placeholder="5000"
-                  keyboardType="numeric"
-                  value={value}
-                  onChangeText={onChange}
-                  helperText="Enter the total amount you want to save"
-                  errorText={errors.targetAmount ? 'Target amount is required' : undefined}
+                <Controller
+                  control={control}
+                  name="targetAmount"
+                  rules={{ required: true }}
+                  render={({ field: { onChange, value } }) => (
+                    <Input
+                      label="Target amount"
+                      placeholder="5000"
+                      keyboardType="numeric"
+                      value={value}
+                      onChangeText={onChange}
+                      helperText="Enter the total amount you want to save"
+                      errorText={errors.targetAmount ? 'Target amount is required' : undefined}
+                    />
+                  )}
                 />
-              )}
-            />
 
-            <Controller
-              control={control}
-              name="monthlyContribution"
-              render={({ field: { onChange, value } }) => (
-                <Input
-                  label="Monthly contribution"
-                  placeholder="250"
-                  keyboardType="numeric"
-                  value={value || ''}
-                  onChangeText={onChange}
-                  helperText="Amount to subtract from income each month"
+                <Controller
+                  control={control}
+                  name="monthlyContribution"
+                  render={({ field: { onChange, value } }) => (
+                    <Input
+                      label="Monthly contribution"
+                      placeholder="250"
+                      keyboardType="numeric"
+                      value={value || ''}
+                      onChangeText={onChange}
+                      helperText="Amount to subtract from income each month"
+                    />
+                  )}
                 />
-              )}
-            />
 
-            <Controller
-              control={control}
-              name="targetDate"
-              render={({ field: { onChange, value } }) => (
-                <Input
-                  label="Target date"
-                  placeholder="2024-12-31"
-                  value={value || ''}
-                  onChangeText={onChange}
-                  helperText="Optional. Use YYYY-MM-DD format"
+                <Controller
+                  control={control}
+                  name="targetDate"
+                  render={({ field: { onChange, value } }) => (
+                    <Input
+                      label="Target date"
+                      placeholder="2024-12-31"
+                      value={value || ''}
+                      onChangeText={onChange}
+                      helperText="Optional. Use YYYY-MM-DD format"
+                    />
+                  )}
                 />
-              )}
-            />
 
-            <Controller
-              control={control}
-              name="autoDeduct"
+                <Controller
+                  control={control}
+                  name="autoDeduct"
                   render={({ field: { value, onChange } }) => (
                     <View className="flex-row items-center justify-between rounded-xl bg-app-surface px-4 py-3">
                       <View className="flex-1 pr-4">
-                        <Text className="text-base font-medium text-foreground-primary">Auto-transfer</Text>
+                        <Text className="text-base font-medium text-foreground-primary">
+                          Auto-transfer
+                        </Text>
                         <Text className="mt-1 text-sm text-foreground-muted">
                           Reserve this amount from income before budgeting
                         </Text>
@@ -263,26 +264,26 @@ export default function SavingsGoalModal() {
                       <Switch
                         value={value ?? true}
                         onValueChange={onChange}
-                    thumbColor={value ? '#0EA5E9' : '#f4f3f4'}
-                    trackColor={{ true: '#bae6fd', false: '#e5e7eb' }}
-                  />
-                </View>
-              )}
-            />
+                        thumbColor={value ? '#0EA5E9' : '#f4f3f4'}
+                        trackColor={{ true: '#bae6fd', false: '#e5e7eb' }}
+                      />
+                    </View>
+                  )}
+                />
 
                 <Controller
                   control={control}
                   name="notes"
                   render={({ field: { onChange, value } }) => (
                     <Input
-                  label="Notes"
-                  placeholder="Any extra details"
-                  multiline
-                  numberOfLines={4}
-                  value={value || ''}
-                  onChangeText={onChange}
-                  helperText="Optional context for this savings goal"
-                />
+                      label="Notes"
+                      placeholder="Any extra details"
+                      multiline
+                      numberOfLines={4}
+                      value={value || ''}
+                      onChangeText={onChange}
+                      helperText="Optional context for this savings goal"
+                    />
                   )}
                 />
               </View>

@@ -1,5 +1,10 @@
 import * as SQLite from 'expo-sqlite';
-import { Transaction, Category, User, Insight, BankAccount } from './schema/schema';
+
+const debugLog = (...args: unknown[]) => {
+  if (__DEV__) {
+    console.log(...args);
+  }
+};
 
 class LocalStorage {
   private db: SQLite.SQLiteDatabase | null = null;
@@ -195,7 +200,7 @@ class LocalStorage {
         );
       `);
 
-      console.log('✅ All database tables created successfully');
+      debugLog('✅ All database tables created successfully');
     } catch (error) {
       console.error('Failed to create tables:', error);
       throw error;
@@ -210,14 +215,14 @@ class LocalStorage {
     const values = keys.map((key) => (item as any)[key]);
     const placeholders = keys.map(() => '?').join(', ');
 
-    console.log(`💾 Saving to ${table}:`, { keys, values });
+    debugLog(`💾 Saving to ${table}:`, { keys, values });
 
     if (item.id) {
       // Update existing item
       const setClause = keys.map((key) => `${key} = ?`).join(', ');
       try {
         this.db.runSync(`UPDATE ${table} SET ${setClause} WHERE id = ?`, [...values, item.id]);
-        console.log(`✅ Updated ${table} item with ID:`, item.id);
+        debugLog(`✅ Updated ${table} item with ID:`, item.id);
         return item as T & { id: number };
       } catch (error) {
         console.error(`❌ Error updating ${table}:`, error);
@@ -230,7 +235,7 @@ class LocalStorage {
           `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`,
           values
         );
-        console.log(`✅ Inserted into ${table} with ID:`, result.lastInsertRowId);
+        debugLog(`✅ Inserted into ${table} with ID:`, result.lastInsertRowId);
         return { ...item, id: result.lastInsertRowId } as T & { id: number };
       } catch (error) {
         console.error(`❌ Error inserting into ${table}:`, error);
@@ -254,12 +259,12 @@ class LocalStorage {
   async getItems<T>(table: string, userId: number): Promise<T[]> {
     if (!this.db) throw new Error('Database not initialized');
 
-    console.log(`🔍 Querying ${table} for userId:`, userId);
+    debugLog(`🔍 Querying ${table} for userId:`, userId);
     try {
       const results = this.db.getAllSync(`SELECT * FROM ${table} WHERE userId = ?`, [userId]);
-      console.log(`📋 Query results from ${table}:`, results.length, 'items');
+      debugLog(`📋 Query results from ${table}:`, results.length, 'items');
       if (results.length > 0) {
-        console.log('🔍 First item:', results[0]);
+        debugLog('🔍 First item:', results[0]);
       }
       return results as T[];
     } catch (error) {

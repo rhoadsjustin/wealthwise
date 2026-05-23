@@ -12,7 +12,6 @@ type MenuItem = {
 const MENU_ITEMS: MenuItem[] = [
   { label: 'Profile', route: '/profile', icon: 'person-circle-outline' },
   { label: 'Budget', route: '/categories', icon: 'pie-chart-outline' },
-  { label: 'Goals', route: '/gamify', icon: 'trophy-outline' },
 ];
 
 const TriggerIcon = () => (

@@ -6,10 +6,12 @@ interface BudgetPerformanceCardProps {
   remainingBudget: number;
 }
 
-export function BudgetPerformanceCard({ totalBudget, remainingBudget }: BudgetPerformanceCardProps) {
-  const budgetUsedPercentage = totalBudget > 0
-    ? ((totalBudget - remainingBudget) / totalBudget) * 100
-    : 0;
+export function BudgetPerformanceCard({
+  totalBudget,
+  remainingBudget,
+}: BudgetPerformanceCardProps) {
+  const budgetUsedPercentage =
+    totalBudget > 0 ? ((totalBudget - remainingBudget) / totalBudget) * 100 : 0;
 
   const spent = totalBudget - remainingBudget;
 
@@ -39,9 +41,7 @@ export function BudgetPerformanceCard({ totalBudget, remainingBudget }: BudgetPe
           <View className="flex-row justify-between">
             <View>
               <Text className="text-xs text-gray-600">Spent</Text>
-              <Text className="text-sm font-semibold text-gray-900">
-                ${spent.toFixed(0)}
-              </Text>
+              <Text className="text-sm font-semibold text-gray-900">${spent.toFixed(0)}</Text>
             </View>
             <View>
               <Text className="text-xs text-gray-600">Remaining</Text>
@@ -54,9 +54,7 @@ export function BudgetPerformanceCard({ totalBudget, remainingBudget }: BudgetPe
             </View>
             <View>
               <Text className="text-xs text-gray-600">Total Budget</Text>
-              <Text className="text-sm font-semibold text-gray-900">
-                ${totalBudget.toFixed(0)}
-              </Text>
+              <Text className="text-sm font-semibold text-gray-900">${totalBudget.toFixed(0)}</Text>
             </View>
           </View>
         </View>

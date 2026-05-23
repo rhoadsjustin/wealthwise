@@ -22,15 +22,20 @@ export function SavingsSummaryCard({ summary }: SavingsSummaryCardProps) {
         </View>
         <View className="flex-row gap-4">
           <View className="flex-1 rounded-xl bg-background-primary p-4">
-            <Text className="text-xs uppercase tracking-wide text-foreground-muted">Monthly Allocation</Text>
+            <Text className="text-xs uppercase tracking-wide text-foreground-muted">
+              Monthly Allocation
+            </Text>
             <Text className="mt-1 text-xl font-semibold text-foreground-primary">
               {formatCurrency(summary.totalSavingsPlanned || 0)}
             </Text>
             <Text className="mt-1 text-xs text-foreground-muted">
-              Subtracted from income before calculating net</Text>
+              Subtracted from income before calculating net
+            </Text>
           </View>
           <View className="flex-1 rounded-xl bg-background-primary p-4">
-            <Text className="text-xs uppercase tracking-wide text-foreground-muted">Saved So Far</Text>
+            <Text className="text-xs uppercase tracking-wide text-foreground-muted">
+              Saved So Far
+            </Text>
             <Text className="mt-1 text-xl font-semibold text-foreground-primary">
               {formatCurrency(summary.totalSavingsProgress || 0)}
             </Text>
@@ -38,12 +43,15 @@ export function SavingsSummaryCard({ summary }: SavingsSummaryCardProps) {
           </View>
         </View>
         <View className="rounded-xl bg-background-primary p-4">
-          <Text className="text-xs uppercase tracking-wide text-foreground-muted">Net Income After Savings</Text>
+          <Text className="text-xs uppercase tracking-wide text-foreground-muted">
+            Net Income After Savings
+          </Text>
           <Text className="mt-1 text-2xl font-semibold text-foreground-primary">
             {formatCurrency(summary.netIncomeAfterSavings || 0)}
           </Text>
           <Text className="mt-1 text-xs leading-tight text-foreground-muted">
-            Baseline {formatCurrency(summary.incomeBaseline || summary.totalIncome || 0)} minus monthly savings
+            Baseline {formatCurrency(summary.incomeBaseline || summary.totalIncome || 0)} minus
+            monthly savings
           </Text>
         </View>
       </CardContent>

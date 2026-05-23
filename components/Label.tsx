@@ -87,7 +87,7 @@ const Label = React.forwardRef<Text, LabelProps>(
         nativeID={htmlFor}
         {...props}>
         {children}
-        {required && <Text className="text-error-500 ml-1">*</Text>}
+        {required && <Text className="ml-1 text-error-500">*</Text>}
       </Text>
     );
   }

@@ -6,7 +6,6 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { Progress } from './Progress';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { showToast } from './Toast';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useData } from '@/context/DataContext';
@@ -33,8 +32,8 @@ const features: FeatureSlide[] = [
     icon: <MaterialIcons name="psychology" size={48} color="#000000" />,
     title: 'AI-Powered Insights',
     description:
-      'Get smart recommendations and automatic expense categorization powered by advanced AI',
-    highlight: 'Never manually categorize expenses again',
+      'Get private, on-device recommendations and automatic expense categorization without sending your budget data to a server',
+    highlight: 'Private insights built for daily budgeting',
   },
   {
     icon: <Ionicons name="wallet" size={48} color="#000000" />,
@@ -53,14 +52,15 @@ const features: FeatureSlide[] = [
     icon: <Ionicons name="shield-checkmark" size={48} color="#000000" />,
     title: 'Privacy First',
     description:
-      'Your data stays securely on your device with local storage and bank-level security',
-    highlight: 'Complete privacy and security',
+      'Your financial data stays on your device with local storage, optional app lock, and on-device AI assistance',
+    highlight: 'Your budget stays on your device',
   },
   {
-    icon: <Ionicons name="people" size={48} color="#000000" />,
-    title: 'Gamification',
-    description: 'Earn points, unlock achievements, and stay motivated with budget challenges',
-    highlight: 'Make budgeting fun and engaging',
+    icon: <Ionicons name="flag" size={48} color="#000000" />,
+    title: 'Savings Goals',
+    description:
+      'Track emergency funds, vacations, and other goals with progress updates and monthly contribution planning',
+    highlight: 'See every goal move forward',
   },
 ];
 
@@ -99,8 +99,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       setBiometricsSupported(hasHardware && isEnrolled);
-    } catch (error) {
-      console.log('Biometrics check failed:', error);
+    } catch {
       setBiometricsSupported(false);
     }
   };
@@ -111,7 +110,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setIsLoading(true);
     try {
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Set up biometric authentication for SmartBudget',
+        promptMessage: 'Set up biometric unlock for WealthWise',
         cancelLabel: 'Cancel',
         fallbackLabel: 'Use Username',
       });
@@ -132,7 +131,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         //   'You can still use your username to access the app'
         // );
       }
-    } catch (error) {
+    } catch {
       // showToast.error(
       //   'Biometric Setup Failed',
       //   'You can still use your username to access the app'
@@ -197,7 +196,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   // Budget editing removed from this flow
 
-  const renderFeatureSlide = (feature: FeatureSlide, index: number) => (
+  const renderFeatureSlide = (feature: FeatureSlide) => (
     <View className="items-center gap-6 p-8">
       <View className="h-24 w-24 items-center justify-center rounded-full bg-gray-100 shadow-md">
         {feature.icon}
@@ -253,8 +252,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <View className="max-w-xs items-center gap-4">
         <Text className="text-center text-2xl font-bold text-black">Monthly Household Income</Text>
         <Text className="max-w-xs text-center text-lg leading-7 text-gray-700">
-          This helps us benchmark your budgets and flag categories that use too much of your
-          income.
+          This helps us benchmark your budgets and flag categories that use too much of your income.
         </Text>
         <View className="w-full gap-3">
           <Text className="self-start text-base font-medium text-black">Monthly income</Text>
@@ -363,7 +361,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <Animated.View
                     entering={SlideInRight.duration(300)}
                     exiting={SlideOutLeft.duration(220)}>
-                    {renderFeatureSlide(features[currentStep], currentStep)}
+                    {renderFeatureSlide(features[currentStep])}
                   </Animated.View>
                 )}
                 {currentStep === features.length && (

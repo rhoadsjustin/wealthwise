@@ -1,0 +1,7 @@
+{
+  "platforms": ["apple"],
+  "apple": {
+    "modules": ["DocumentImportKitModule"],
+    "podspecPath": "document-import-kit.podspec"
+  }
+}

@@ -1,6 +1,11 @@
 import React from 'react';
 import { TouchableOpacity, View, Text } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { selection } from '@/lib/haptics';
@@ -26,18 +31,20 @@ export default function FAB({ onPress, label = '' }: FABProps) {
       style={{ position: 'absolute', right: 20, bottom: Math.max(bottom, 12) + 90, zIndex: 50 }}>
       <Animated.View style={style}>
         <TouchableOpacity
-        onPress={async () => {
-          // Small tap bounce + haptic selection
-          scale.value = withTiming(0.94, { duration: 80 }, () => {
-            scale.value = withSpring(1, { damping: 12, stiffness: 200 });
-          });
-          try { await selection(); } catch {}
-          onPress();
-        }}
-        activeOpacity={0.8}
-        className="bg-primary-500 shadow-lg h-14 w-14 items-center justify-center rounded-full">
-        <Ionicons name="add" size={28} color="#FFFFFF" />
-      </TouchableOpacity>
+          onPress={async () => {
+            // Small tap bounce + haptic selection
+            scale.value = withTiming(0.94, { duration: 80 }, () => {
+              scale.value = withSpring(1, { damping: 12, stiffness: 200 });
+            });
+            try {
+              await selection();
+            } catch {}
+            onPress();
+          }}
+          activeOpacity={0.8}
+          className="h-14 w-14 items-center justify-center rounded-full bg-primary-500 shadow-lg">
+          <Ionicons name="add" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
       </Animated.View>
       {label ? (
         <Text className="mt-2 text-center text-xs text-gray-600" accessibilityElementsHidden>

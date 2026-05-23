@@ -87,13 +87,20 @@ export default function CategoriesManager() {
       budget: editData.budget || '0',
     })
       .then((updated) => {
-        toast({ title: 'Category Updated', description: `${updated.name} has been updated successfully.` });
+        toast({
+          title: 'Category Updated',
+          description: `${updated.name} has been updated successfully.`,
+        });
         setEditingCategory(null);
         load();
       })
       .catch((error) => {
         console.error('Category update error:', error);
-        toast({ title: 'Error', description: 'Failed to update category. Please try again.', variant: 'destructive' });
+        toast({
+          title: 'Error',
+          description: 'Failed to update category. Please try again.',
+          variant: 'destructive',
+        });
       })
       .finally(() => setIsSaving(false));
   };
@@ -124,12 +131,19 @@ export default function CategoriesManager() {
                 await deleteCategory(category.id);
               })
               .then(() => {
-                toast({ title: 'Category Deleted', description: 'Transactions moved to Uncategorized.' });
+                toast({
+                  title: 'Category Deleted',
+                  description: 'Transactions moved to Uncategorized.',
+                });
                 load();
               })
               .catch((error) => {
                 console.error('Category deletion error:', error);
-                toast({ title: 'Error', description: 'Failed to delete category. Please try again.', variant: 'destructive' });
+                toast({
+                  title: 'Error',
+                  description: 'Failed to delete category. Please try again.',
+                  variant: 'destructive',
+                });
               })
               .finally(() => setIsSaving(false));
           },
@@ -151,14 +165,14 @@ export default function CategoriesManager() {
   // Basic error UI omitted since DataContext handles local data; retries are simple reloads
 
   return (
-    <View className="bg-background-primary flex-1">
+    <View className="flex-1 bg-background-primary">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View className="border-border-default bg-background-secondary border-b px-6 py-4">
+        <View className="border-b border-border-default bg-background-secondary px-6 py-4">
           <View className="flex-row items-center justify-between">
             <View>
-              <Text className="text-foreground-primary text-2xl font-bold">Categories</Text>
-              <Text className="text-foreground-secondary text-sm">
+              <Text className="text-2xl font-bold text-foreground-primary">Categories</Text>
+              <Text className="text-sm text-foreground-secondary">
                 ${totalBudget.toFixed(2)} total
               </Text>
             </View>
@@ -177,10 +191,10 @@ export default function CategoriesManager() {
           {categories.length === 0 ? (
             <View className="items-center py-12">
               <Ionicons name="folder-open-outline" size={64} color="#9CA3AF" />
-              <Text className="text-foreground-secondary mt-4 text-center text-lg">
+              <Text className="mt-4 text-center text-lg text-foreground-secondary">
                 No categories yet
               </Text>
-              <Text className="text-foreground-muted mt-2 text-center">
+              <Text className="mt-2 text-center text-foreground-muted">
                 Create your first category to get started
               </Text>
               <Button onPress={() => setShowCreateCategory(true)} className="mt-6">
@@ -221,9 +235,9 @@ export default function CategoriesManager() {
       {/* Edit Category Modal */}
       <Modal visible={!!editingCategory} animationType="slide" transparent>
         <View className="flex-1 items-center justify-center bg-black/50 p-6">
-          <View className="bg-background-primary w-full max-w-md rounded-xl p-6">
+          <View className="w-full max-w-md rounded-xl bg-background-primary p-6">
             <View className="mb-6 flex-row items-center justify-between">
-              <Text className="text-foreground-primary text-lg font-semibold">Edit Category</Text>
+              <Text className="text-lg font-semibold text-foreground-primary">Edit Category</Text>
               <TouchableOpacity onPress={() => setEditingCategory(null)}>
                 <Ionicons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
@@ -231,7 +245,7 @@ export default function CategoriesManager() {
 
             <View className="space-y-4">
               <View>
-                <Text className="text-foreground-primary mb-2 text-sm font-medium">Name</Text>
+                <Text className="mb-2 text-sm font-medium text-foreground-primary">Name</Text>
                 <Input
                   value={editData.name}
                   onChangeText={(value) => setEditData({ ...editData, name: value })}
@@ -241,7 +255,7 @@ export default function CategoriesManager() {
               </View>
 
               <View>
-                <Text className="text-foreground-primary mb-2 text-sm font-medium">
+                <Text className="mb-2 text-sm font-medium text-foreground-primary">
                   Monthly Budget
                 </Text>
                 <Input
@@ -264,7 +278,11 @@ export default function CategoriesManager() {
               <Button variant="outline" onPress={() => setEditingCategory(null)} className="flex-1">
                 <Text>Cancel</Text>
               </Button>
-              <Button onPress={handleSaveEdit} disabled={isSaving} loading={isSaving} className="flex-1">
+              <Button
+                onPress={handleSaveEdit}
+                disabled={isSaving}
+                loading={isSaving}
+                className="flex-1">
                 <Text>Save Changes</Text>
               </Button>
             </View>

@@ -110,7 +110,10 @@ export default function CreateCategoryModal({
         budget: data.budget || '0',
       } as any;
       const newCategory = await createCategory(categoryData);
-      toast({ title: 'Category Created', description: `${newCategory.name} has been successfully created.` });
+      toast({
+        title: 'Category Created',
+        description: `${newCategory.name} has been successfully created.`,
+      });
       onCategoryCreated?.(newCategory.id);
       reset();
       onClose();
@@ -118,9 +121,17 @@ export default function CreateCategoryModal({
       console.error('Category creation error:', error);
       const message = String(error?.message || '').toUpperCase();
       if (message.includes('CATEGORY_ALREADY_EXISTS')) {
-        toast({ title: 'Duplicate Category', description: 'A category with this name already exists.', variant: 'destructive' });
+        toast({
+          title: 'Duplicate Category',
+          description: 'A category with this name already exists.',
+          variant: 'destructive',
+        });
       } else {
-        toast({ title: 'Error', description: 'Failed to create category. Please try again.', variant: 'destructive' });
+        toast({
+          title: 'Error',
+          description: 'Failed to create category. Please try again.',
+          variant: 'destructive',
+        });
       }
     } finally {
       setSubmitting(false);
@@ -151,8 +162,10 @@ export default function CreateCategoryModal({
   };
 
   return (
-    <View className="bg-background-primary flex-1">
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
+    <View className="flex-1 bg-background-primary">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1">
         {/* Scrollable content */}
         <ScrollView
           className="flex-1"
@@ -160,12 +173,12 @@ export default function CreateCategoryModal({
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
           {/* Header */}
-          <View className="border-border-default border-b px-6 pb-4 pt-6 bg-background-primary">
+          <View className="border-b border-border-default bg-background-primary px-6 pb-4 pt-6">
             <View className="flex-row items-center justify-between">
               <Button variant="ghost" size="sm" onPress={onClose} className="px-0">
                 <Ionicons name="close" size={24} color="#6B7280" />
               </Button>
-              <Text className="text-foreground-primary text-xl font-semibold">Create Category</Text>
+              <Text className="text-xl font-semibold text-foreground-primary">Create Category</Text>
               <View className="w-10" />
             </View>
           </View>
@@ -175,7 +188,7 @@ export default function CreateCategoryModal({
             <View className="space-y-6">
               {/* Category Name */}
               <View>
-                <Label className="text-foreground-primary mb-2 text-sm font-medium">
+                <Label className="mb-2 text-sm font-medium text-foreground-primary">
                   Category Name
                 </Label>
                 <Input
@@ -185,7 +198,7 @@ export default function CreateCategoryModal({
                   variant="outline"
                 />
                 {errors.name && (
-                  <Text className="text-error-600 mt-1 text-xs">
+                  <Text className="mt-1 text-xs text-error-600">
                     {errors.name.message as string}
                   </Text>
                 )}
@@ -193,7 +206,7 @@ export default function CreateCategoryModal({
 
               {/* Icon Selection */}
               <View>
-                <Label className="text-foreground-primary mb-2 text-sm font-medium">
+                <Label className="mb-2 text-sm font-medium text-foreground-primary">
                   Select Icon
                 </Label>
                 <View className="flex-row flex-wrap gap-2">
@@ -215,7 +228,7 @@ export default function CreateCategoryModal({
 
               {/* Color Selection */}
               <View>
-                <Label className="text-foreground-primary mb-2 text-sm font-medium">
+                <Label className="mb-2 text-sm font-medium text-foreground-primary">
                   Select Color
                 </Label>
                 <View className="flex-row flex-wrap gap-2">
@@ -228,7 +241,9 @@ export default function CreateCategoryModal({
                         selectedColor === color ? 'border-gray-300' : 'border-transparent'
                       }`}
                       style={{ backgroundColor: color }}>
-                      {selectedColor === color && <Ionicons name="checkmark" size={16} color="white" />}
+                      {selectedColor === color && (
+                        <Ionicons name="checkmark" size={16} color="white" />
+                      )}
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -236,7 +251,7 @@ export default function CreateCategoryModal({
 
               {/* Budget Field */}
               <View>
-                <Label className="text-foreground-primary mb-2 text-sm font-medium">
+                <Label className="mb-2 text-sm font-medium text-foreground-primary">
                   Monthly Budget (Optional)
                 </Label>
                 <Input
@@ -255,7 +270,7 @@ export default function CreateCategoryModal({
                   variant="outline"
                 />
                 {errors.budget && (
-                  <Text className="text-error-600 mt-1 text-xs">
+                  <Text className="mt-1 text-xs text-error-600">
                     {errors.budget.message as string}
                   </Text>
                 )}
@@ -263,8 +278,8 @@ export default function CreateCategoryModal({
 
               {/* Preview */}
               <View>
-                <Label className="text-foreground-primary mb-2 text-sm font-medium">Preview</Label>
-                <View className="border-border-default bg-background-secondary rounded-lg border p-4">
+                <Label className="mb-2 text-sm font-medium text-foreground-primary">Preview</Label>
+                <View className="rounded-lg border border-border-default bg-background-secondary p-4">
                   <View className="flex-row items-center">
                     <View
                       className="mr-3 h-12 w-12 items-center justify-center rounded-lg"
@@ -272,11 +287,11 @@ export default function CreateCategoryModal({
                       <Text className="text-lg">{selectedIcon}</Text>
                     </View>
                     <View className="flex-1">
-                      <Text className="text-foreground-primary text-base font-medium">
+                      <Text className="text-base font-medium text-foreground-primary">
                         {watch('name') || 'Category Name'}
                       </Text>
                       {watch('budget') && (
-                        <Text className="text-foreground-secondary text-sm">
+                        <Text className="text-sm text-foreground-secondary">
                           Budget: ${watch('budget')}/month
                         </Text>
                       )}
@@ -286,12 +301,11 @@ export default function CreateCategoryModal({
               </View>
             </View>
           </View>
-
         </ScrollView>
 
         {/* Sticky Footer */}
         <View
-          className="bg-background-primary border-border-default border-t px-6 py-4"
+          className="border-t border-border-default bg-background-primary px-6 py-4"
           style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
           <View className="flex-row items-center gap-3">
             <Button

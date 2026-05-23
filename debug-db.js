@@ -32,7 +32,7 @@ async function debugDatabase() {
       budget: '100',
       userId: 1,
       syncStatus: 'synced',
-      lastModified: Date.now()
+      lastModified: Date.now(),
     };
 
     console.log('🧪 Test category data:', testCategory);
@@ -49,20 +49,21 @@ async function debugDatabase() {
         testCategory.budget,
         testCategory.userId,
         testCategory.syncStatus,
-        testCategory.lastModified
+        testCategory.lastModified,
       ]
     );
 
     console.log('✅ Test category inserted successfully');
 
     // Verify insertion
-    const result = await db.getFirstAsync('SELECT * FROM categories WHERE id = ?', [testCategory.id]);
+    const result = await db.getFirstAsync('SELECT * FROM categories WHERE id = ?', [
+      testCategory.id,
+    ]);
     console.log('📋 Retrieved category:', result);
 
     // Clean up
     await db.runAsync('DELETE FROM categories WHERE id = ?', [testCategory.id]);
     console.log('🧹 Test data cleaned up');
-
   } catch (error) {
     console.error('❌ Database debug error:', error);
     console.error('Error details:', error.message);

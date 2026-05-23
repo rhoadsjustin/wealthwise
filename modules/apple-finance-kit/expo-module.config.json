@@ -1,0 +1,7 @@
+{
+  "platforms": ["apple"],
+  "apple": {
+    "modules": ["AppleFinanceKitModule"],
+    "podspecPath": "apple-finance-kit.podspec"
+  }
+}

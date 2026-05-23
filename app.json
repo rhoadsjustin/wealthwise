@@ -7,20 +7,36 @@
     "newArchEnabled": true,
     "web": {
       "bundler": "metro",
-      "output": "static",
+      "output": "server",
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
       "expo-web-browser",
+      "expo-document-picker",
       "expo-sqlite",
       "expo-secure-store",
       "expo-font",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access screenshots and receipt photos for transaction import.",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to capture receipts and statements for transaction import.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "./modules/apple-finance-kit/app.plugin.js",
+        {
+          "enabled": true,
+          "usageDescription": "Allow $(PRODUCT_NAME) to read Apple Wallet financial data so it can import your Apple Card transactions and balances into your budget."
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "ios": {
-            "deploymentTarget": "17.0"
+            "deploymentTarget": "17.4"
           }
         }
       ]
@@ -40,7 +56,7 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "icon": "./assets/WealthWise.icon",
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.rhoadsjustin.budgetapp",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false

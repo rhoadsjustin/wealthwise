@@ -12,13 +12,12 @@ export default function RootIndex() {
       try {
         await localStorage.init();
         const val = await localStorage.getSetting('requireAppLock');
-        console.log('the value of requireAppLock is:', val);
         const hasCompletedOnboardingVal = await localStorage.getSetting('onboardingCompleted');
-        console.log('the value of hasCompletedOnboarding is:', hasCompletedOnboardingVal);
         setRequireLock(Boolean(val));
         setHasCompletedOnboarding(Boolean(hasCompletedOnboardingVal));
       } catch {
         setRequireLock(false);
+        setHasCompletedOnboarding(false);
       }
     };
     load();

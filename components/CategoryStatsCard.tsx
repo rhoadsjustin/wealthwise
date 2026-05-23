@@ -44,8 +44,8 @@ function CategoryStats({ category, spent, className }: CategoryStatsProps) {
             <Text className="text-base">{category.icon}</Text>
           </View>
           <View className="flex-1">
-            <Text className="text-app-text text-base font-semibold">{category.name}</Text>
-            <Text className="text-app-text-secondary text-xs">
+            <Text className="text-base font-semibold text-app-text">{category.name}</Text>
+            <Text className="text-xs text-app-text-secondary">
               ${spentAmount.toFixed(2)} of ${budget.toFixed(2)}
             </Text>
           </View>
@@ -54,7 +54,7 @@ function CategoryStats({ category, spent, className }: CategoryStatsProps) {
               className={`text-sm font-semibold ${isOverBudget ? 'text-financial-negative' : 'text-financial-positive'}`}>
               {isOverBudget ? '+' : ''}${Math.abs(spentAmount - budget).toFixed(2)}
             </Text>
-            <Text className="text-app-text-muted text-xs">
+            <Text className="text-xs text-app-text-muted">
               {isOverBudget ? 'over' : 'remaining'}
             </Text>
           </View>
@@ -70,7 +70,7 @@ function CategoryStats({ category, spent, className }: CategoryStatsProps) {
         </View>
 
         <View className="flex-row items-center justify-between">
-          <Text className="text-app-text-secondary text-xs">{percentage.toFixed(1)}% used</Text>
+          <Text className="text-xs text-app-text-secondary">{percentage.toFixed(1)}% used</Text>
           <Text
             className={`text-xs font-medium ${isOverBudget ? 'text-financial-negative' : 'text-app-text-secondary'}`}>
             {isOverBudget ? 'Over budget' : `$${remaining.toFixed(2)} left`}
@@ -125,12 +125,12 @@ export default function CategoryStatsCard({
     return (
       <Card variant="elevated" className={`card-mobile bg-secondary-50 ${className}`}>
         <CardContent className="p-6">
-          <Text className="text-app-text mb-2 text-lg font-semibold">Category Overview</Text>
+          <Text className="mb-2 text-lg font-semibold text-app-text">Category Overview</Text>
           <View className="items-center py-8">
-            <Text className="text-app-text-secondary text-center">
+            <Text className="text-center text-app-text-secondary">
               No spending data available for categories
             </Text>
-            <Text className="text-app-text-muted mt-1 text-center text-sm">
+            <Text className="mt-1 text-center text-sm text-app-text-muted">
               Start adding transactions to see your category breakdown
             </Text>
           </View>
@@ -146,12 +146,12 @@ export default function CategoryStatsCard({
     <Card variant="elevated" className={`card-mobile bg-secondary-50 ${className}`}>
       <CardContent className="p-6">
         <View className="mb-4 flex-row items-center justify-between">
-          <Text className="text-app-text text-lg font-semibold">Category Overview</Text>
+          <Text className="text-lg font-semibold text-app-text">Category Overview</Text>
           <View className="items-end">
-            <Text className="text-app-text text-sm font-semibold">
+            <Text className="text-sm font-semibold text-app-text">
               ${totalSpent.toFixed(2)} / ${totalBudget.toFixed(2)}
             </Text>
-            <Text className="text-app-text-secondary text-xs">Total spent</Text>
+            <Text className="text-xs text-app-text-secondary">Total spent</Text>
           </View>
         </View>
 
@@ -167,7 +167,7 @@ export default function CategoryStatsCard({
 
         {sortedCategories.length > 6 && (
           <View className="mt-4 items-center">
-            <Text className="text-app-text-muted text-sm">
+            <Text className="text-sm text-app-text-muted">
               +{sortedCategories.length - 6} more categories
             </Text>
           </View>

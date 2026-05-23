@@ -1,0 +1,8 @@
+{
+  "name": "document-import-kit",
+  "version": "1.0.0",
+  "description": "Local Expo module for extracting text from imported PDFs and images on iOS",
+  "main": "index.ts",
+  "private": true,
+  "license": "UNLICENSED"
+}

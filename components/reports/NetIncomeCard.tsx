@@ -48,9 +48,7 @@ export function NetIncomeCard({
             </Text>
           </View>
         </View>
-        <Text className="mt-3 text-xs text-gray-500">
-          Based on activity in {currentMonth}
-        </Text>
+        <Text className="mt-3 text-xs text-gray-500">Based on activity in {currentMonth}</Text>
       </CardContent>
     </Card>
   );

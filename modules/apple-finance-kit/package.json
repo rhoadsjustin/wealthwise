@@ -1,0 +1,11 @@
+{
+  "name": "apple-finance-kit",
+  "version": "1.0.0",
+  "description": "Local Expo module for Apple FinanceKit access",
+  "main": "index.ts",
+  "expo": {
+    "plugin": "./app.plugin.js"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

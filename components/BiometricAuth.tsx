@@ -205,7 +205,7 @@ export default function BiometricAuth({ onAuthenticated, onShowOnboarding }: Bio
             {!hasExistingAccount && (
               <View className="mt-6 rounded-3xl border border-app-border bg-app-surface px-5 py-5">
                 <Text className="text-center text-sm text-app-text-muted">
-                  New to Budget App? Start onboarding to create your profile.
+                  New to WealthWise? Start onboarding to set up your profile.
                 </Text>
                 <Button
                   variant="secondary"

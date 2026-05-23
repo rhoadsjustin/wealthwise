@@ -12,7 +12,11 @@ interface SavingsGoalCardProps {
   onPressEdit?: (goal: SavingsGoal) => void;
 }
 
-export const SavingsGoalCard: React.FC<SavingsGoalCardProps> = ({ goal, onPressFund, onPressEdit }) => {
+export const SavingsGoalCard: React.FC<SavingsGoalCardProps> = ({
+  goal,
+  onPressFund,
+  onPressEdit,
+}) => {
   const target = parseFloat(goal.targetAmount || '0');
   const current = parseFloat(goal.currentAmount || '0');
   const monthlyContribution = parseFloat(goal.monthlyContribution || '0');
@@ -63,7 +67,9 @@ export const SavingsGoalCard: React.FC<SavingsGoalCardProps> = ({ goal, onPressF
           </View>
           {goal.targetDate ? (
             <View className="items-end gap-1">
-              <Text className="text-xs uppercase tracking-wide text-foreground-muted">Target date</Text>
+              <Text className="text-xs uppercase tracking-wide text-foreground-muted">
+                Target date
+              </Text>
               <Text className="text-sm font-semibold text-foreground-primary">
                 {formatDate(goal.targetDate)}
               </Text>

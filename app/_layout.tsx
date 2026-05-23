@@ -1,20 +1,20 @@
 import '../global.css';
-import { Stack, useRouter, usePathname } from 'expo-router';
-import { Platform, StatusBar, View, Text } from 'react-native';
-import { AuthProvider, useAuth } from '../context/useAuth';
+import { Stack } from 'expo-router';
+import { StatusBar, View } from 'react-native';
+import { AuthProvider } from '../context/useAuth';
 import { DataProvider, useData, Bill, Debt } from '../context/DataContext';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import AddTransactionModal from '../components/AddTransactionModal';
 import { ToastProvider } from '../components/Toast';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { VectorStoreProvider } from '@/context/RAGContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import HeaderProfileButton from '@/components/HeaderProfileButton';
 import categorizer from '@/lib/ai/categorizer';
-import { Ionicons } from '@expo/vector-icons';
 import { vexo } from 'vexo-analytics';
 
-vexo('7eeb416e-f5a5-4742-b75d-31939f29182d');
+if (!__DEV__) {
+  vexo('7eeb416e-f5a5-4742-b75d-31939f29182d');
+}
 
 // Create context for sharing data across tabs
 interface AppDataContextType {
@@ -254,9 +254,6 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
 }
 
 function AppContent() {
-  const router = useRouter();
-  const pathname = usePathname();
-
   return (
     <View style={{ flex: 1, backgroundColor: '#F7F9FC' }}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
@@ -295,12 +292,16 @@ function AppContent() {
               options={{ headerShown: false, presentation: 'modal' }}
             />
             <Stack.Screen
-              name="gamify"
+              name="profile"
               options={{ headerShown: false, presentation: 'formSheet' }}
             />
             <Stack.Screen
-              name="profile"
-              options={{ headerShown: false, presentation: 'formSheet' }}
+              name="apple-card-import"
+              options={{ headerShown: false, presentation: 'modal' }}
+            />
+            <Stack.Screen
+              name="transaction-import"
+              options={{ headerShown: false, presentation: 'modal' }}
             />
             <Stack.Screen name="lock" options={{ headerShown: false }} />
             <Stack.Screen

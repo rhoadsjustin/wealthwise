@@ -23,7 +23,7 @@ export function CategoryBreakdownCard({
   incomeBaseline,
 }: CategoryBreakdownCardProps) {
   return (
-    <Card className="card-mobile mb-6 bg-success-50 border-success-100">
+    <Card className="card-mobile mb-6 border-success-100 bg-success-50">
       <CardContent className="p-4">
         <View className="mb-4 flex-row items-center justify-between">
           <Text className="text-lg font-semibold text-gray-900">Category Breakdown</Text>
@@ -35,12 +35,10 @@ export function CategoryBreakdownCard({
             .sort((a, b) => b.spent - a.spent)
             .slice(0, 5)
             .map((category) => {
-              const percentage =
-                totalExpenses > 0 ? (category.spent / totalExpenses) * 100 : 0;
-              const incomeShare = category.incomeShare ??
-                (incomeBaseline && incomeBaseline > 0
-                  ? category.spent / incomeBaseline
-                  : 0);
+              const percentage = totalExpenses > 0 ? (category.spent / totalExpenses) * 100 : 0;
+              const incomeShare =
+                category.incomeShare ??
+                (incomeBaseline && incomeBaseline > 0 ? category.spent / incomeBaseline : 0);
               const incomeWarning = Boolean(category.incomeWarning) || incomeShare >= 0.3;
 
               return (
@@ -55,7 +53,8 @@ export function CategoryBreakdownCard({
                         {category.name}
                       </Text>
                       <Text className="text-xs text-gray-600">
-                        {percentage.toFixed(1)}% of spending · {(incomeShare * 100).toFixed(1)}% of income
+                        {percentage.toFixed(1)}% of spending · {(incomeShare * 100).toFixed(1)}% of
+                        income
                       </Text>
                       {incomeWarning && (
                         <Text className="mt-1 text-xs font-semibold text-red-600">

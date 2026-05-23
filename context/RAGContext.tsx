@@ -4,7 +4,7 @@ import { ExecuTorchEmbeddings, ExecuTorchLLM } from '@react-native-rag/executorc
 import { ALL_MINILM_L6_V2, LLAMA3_2_1B } from 'react-native-executorch';
 import { MemoryVectorStore } from 'react-native-rag';
 import categorizer from '@/lib/ai/categorizer';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const VectorStoreContext = createContext<{
   vectorStore: MemoryVectorStore | null;
@@ -54,14 +54,18 @@ export const VectorStoreProvider = ({ children }: { children: React.ReactNode })
         try {
           const embeddingsModelFile = `${RNEDirectory}${getFilenameFromUri((ALL_MINILM_L6_V2 as any).modelSource)}`;
           const embeddingsTokenizerFile = `${RNEDirectory}${getFilenameFromUri((ALL_MINILM_L6_V2 as any).tokenizerSource)}`;
-          const hasEmbeddings = (await fileExists(embeddingsModelFile)) && (await fileExists(embeddingsTokenizerFile));
+          const hasEmbeddings =
+            (await fileExists(embeddingsModelFile)) && (await fileExists(embeddingsTokenizerFile));
           setEmbeddingsInstalled(hasEmbeddings);
           if (hasEmbeddings) setEmbeddingsProgress(1);
 
           const llmModelFile = `${RNEDirectory}${getFilenameFromUri((LLAMA3_2_1B as any).modelSource)}`;
           const llmTokenizerFile = `${RNEDirectory}${getFilenameFromUri((LLAMA3_2_1B as any).tokenizerSource)}`;
           const llmTokenizerConfigFile = `${RNEDirectory}${getFilenameFromUri((LLAMA3_2_1B as any).tokenizerConfigSource)}`;
-          const hasLLM = (await fileExists(llmModelFile)) && (await fileExists(llmTokenizerFile)) && (await fileExists(llmTokenizerConfigFile));
+          const hasLLM =
+            (await fileExists(llmModelFile)) &&
+            (await fileExists(llmTokenizerFile)) &&
+            (await fileExists(llmTokenizerConfigFile));
           setLlmInstalled(hasLLM);
           if (hasLLM) setLlmProgress(1);
         } catch (e) {
@@ -120,8 +124,14 @@ export const VectorStoreProvider = ({ children }: { children: React.ReactNode })
 
   return (
     <VectorStoreContext.Provider
-      value={{ vectorStore, llm, embeddingsProgress, llmProgress, embeddingsInstalled, llmInstalled }}
-    >
+      value={{
+        vectorStore,
+        llm,
+        embeddingsProgress,
+        llmProgress,
+        embeddingsInstalled,
+        llmInstalled,
+      }}>
       {children}
     </VectorStoreContext.Provider>
   );
