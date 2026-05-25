@@ -1,30 +1,24 @@
 import * as React from 'react';
-import {
-  TextInput,
-  View,
-  Text,
-  type NativeSyntheticEvent,
-  type TextInputFocusEventData,
-  type TextInputSubmitEditingEventData,
-} from 'react-native';
+import { View, Text } from 'react-native';
+import { TextInput, useNativeState, Host, type TextInputRef, type ObservableState } from '@expo/ui';
 
 export interface InputProps {
-  variant?: 'default' | 'outline' | 'filled';
+  variant?: 'default' | 'outline' | 'filled' | 'dark';
   size?: 'sm' | 'md' | 'lg';
   state?: 'default' | 'error' | 'success';
   disabled?: boolean;
   placeholder?: string;
   value?: string;
   onChangeText?: (text: string) => void;
-  onBlur?: (event?: NativeSyntheticEvent<TextInputFocusEventData>) => void;
-  onFocus?: (event?: NativeSyntheticEvent<TextInputFocusEventData>) => void;
+  nativeValue?: ObservableState<string>;
+  onBlur?: () => void;
+  onFocus?: () => void;
   keyboardType?: 'default' | 'numeric' | 'email-address' | 'phone-pad' | 'decimal-pad';
   returnKeyType?: 'done' | 'go' | 'next' | 'search' | 'send' | 'default';
   secureTextEntry?: boolean;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   autoCorrect?: boolean;
-  onSubmitEditing?: (event?: NativeSyntheticEvent<TextInputSubmitEditingEventData>) => void;
-  blurOnSubmit?: boolean;
+  onSubmitEditing?: (text: string) => void;
   multiline?: boolean;
   numberOfLines?: number;
   maxLength?: number;
@@ -38,7 +32,7 @@ export interface InputProps {
   id?: string;
 }
 
-const Input = React.forwardRef<TextInput, InputProps>(
+const Input = React.forwardRef<TextInputRef, InputProps>(
   (
     {
       variant = 'default',
@@ -47,6 +41,7 @@ const Input = React.forwardRef<TextInput, InputProps>(
       disabled = false,
       placeholder,
       value,
+      nativeValue,
       onChangeText,
       onBlur,
       onFocus,
@@ -59,7 +54,6 @@ const Input = React.forwardRef<TextInput, InputProps>(
       maxLength,
       returnKeyType = 'default',
       onSubmitEditing,
-      blurOnSubmit,
       label,
       helperText,
       errorText,
@@ -74,8 +68,16 @@ const Input = React.forwardRef<TextInput, InputProps>(
   ) => {
     const [isFocused, setIsFocused] = React.useState(false);
 
+    const internalNative = useNativeState(value ?? '');
+    React.useEffect(() => {
+      internalNative.value = value ?? '';
+    }, [value, internalNative]);
+    const activeNative = nativeValue ?? internalNative;
+
     const getVariantClasses = () => {
       switch (variant) {
+        case 'dark':
+          return 'bg-app-surface-1 border border-app-border';
         case 'outline':
           return 'bg-transparent border-2 border-border-default';
         case 'filled':
@@ -92,7 +94,7 @@ const Input = React.forwardRef<TextInput, InputProps>(
       if (state === 'success') {
         return 'border-success-500 focus:border-success-600';
       }
-      return 'focus:border-primary-500';
+      return variant === 'dark' ? 'focus:border-app-border-contrast' : 'focus:border-primary-500';
     };
 
     const getFocusClasses = () => {
@@ -147,29 +149,35 @@ const Input = React.forwardRef<TextInput, InputProps>(
       ${stateClasses}
       ${focusClasses}
       ${disabledClasses}
-      rounded-lg flex-row items-center
+      rounded-2xl flex-row items-center
       ${className}
     `.trim();
 
-    const inputClasses = `
-      ${sizeClasses.input}
-      flex-1 text-foreground-primary
-    `.trim();
+    const textColor = variant === 'dark' ? '#F8FAFC' : '#111827';
+    const fontSize = size === 'sm' ? 14 : size === 'lg' ? 18 : 16;
+    const paddingH = size === 'lg' ? 16 : 12;
 
-    const handleFocus = (e: any) => {
+    const handleFocus = () => {
       setIsFocused(true);
-      onFocus?.(e);
+      onFocus?.();
     };
 
-    const handleBlur = (e: any) => {
+    const handleBlur = () => {
       setIsFocused(false);
-      onBlur?.(e);
+      onBlur?.();
     };
 
     return (
       <View className="w-full">
         {/* Label */}
-        {label && <Text className={`${sizeClasses.label} text-foreground-primary`}>{label}</Text>}
+        {label && (
+          <Text
+            className={`${sizeClasses.label} ${
+              variant === 'dark' ? 'text-app-text-soft' : 'text-foreground-primary'
+            }`}>
+            {label}
+          </Text>
+        )}
 
         {/* Input Container */}
         <View className={containerClasses} style={style}>
@@ -177,32 +185,31 @@ const Input = React.forwardRef<TextInput, InputProps>(
           {leftIcon && <View className="ml-3">{leftIcon}</View>}
 
           {/* Text Input */}
-          <TextInput
-            ref={ref}
-            className={inputClasses}
-            placeholder={placeholder}
-            placeholderTextColor="#9ca3af"
-            value={value}
-            onChangeText={onChangeText}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            keyboardType={keyboardType}
-            secureTextEntry={secureTextEntry}
-            autoCapitalize={autoCapitalize}
-            autoCorrect={autoCorrect}
-            returnKeyType={returnKeyType}
-            onSubmitEditing={onSubmitEditing}
-            blurOnSubmit={blurOnSubmit}
-            multiline={multiline}
-            numberOfLines={numberOfLines}
-            maxLength={maxLength}
-            editable={!disabled}
-            selectTextOnFocus={!disabled}
-            accessibilityLabel={label || placeholder}
-            accessibilityHint={helperText}
-            nativeID={id}
-            {...props}
-          />
+          <Host style={{ flex: 1 }}>
+            <TextInput
+              ref={ref}
+              value={activeNative}
+              style={{ paddingHorizontal: paddingH }}
+              textStyle={{ color: textColor, fontSize }}
+              placeholder={placeholder}
+              placeholderTextColor={variant === 'dark' ? '#8190B3' : '#9ca3af'}
+              onChangeText={onChangeText}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              keyboardType={keyboardType}
+              secureTextEntry={secureTextEntry}
+              autoCapitalize={autoCapitalize}
+              autoCorrect={autoCorrect}
+              returnKeyType={returnKeyType}
+              onSubmitEditing={onSubmitEditing}
+              multiline={multiline}
+              numberOfLines={numberOfLines}
+              maxLength={maxLength}
+              editable={!disabled}
+              selectTextOnFocus={!disabled}
+              testID={id}
+            />
+          </Host>
 
           {/* Right Icon */}
           {rightIcon && <View className="mr-3">{rightIcon}</View>}
@@ -212,7 +219,11 @@ const Input = React.forwardRef<TextInput, InputProps>(
         {(helperText || errorText) && (
           <Text
             className={`${sizeClasses.helper} ${
-              errorText ? 'text-error-600' : 'text-foreground-muted'
+              errorText
+                ? 'text-error-600'
+                : variant === 'dark'
+                  ? 'text-app-text-faint'
+                  : 'text-foreground-muted'
             }`}>
             {errorText || helperText}
           </Text>

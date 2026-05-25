@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
+import { AppText } from '@/components/AppText';
 import { Card, CardContent } from './Card';
 import { Progress } from './Progress';
 import { Button } from './Button';
@@ -28,26 +29,26 @@ export const SavingsGoalCard: React.FC<SavingsGoalCardProps> = ({
       <CardContent className="gap-4">
         <View className="flex-row items-start justify-between">
           <View className="flex-1 pr-4">
-            <Text className="text-lg font-semibold text-foreground-primary">{goal.name}</Text>
-            <Text className="mt-1 text-sm text-foreground-muted">
+            <AppText variant="section" className="text-app-text-strong">{goal.name}</AppText>
+            <AppText variant="body" className="mt-1 text-app-text-faint">
               Target {formatCurrency(target)} · Saved {formatCurrency(current)}
-            </Text>
+            </AppText>
           </View>
           {goal.autoDeduct && (
             <View className="rounded-full bg-success-100 px-3 py-1">
-              <Text className="text-xs font-medium text-success-700">Auto-transfer</Text>
+              <AppText variant="caption" className="text-success-700">Auto-transfer</AppText>
             </View>
           )}
         </View>
 
         <View>
           <View className="flex-row items-center justify-between">
-            <Text className="text-sm font-medium text-foreground-secondary">
+            <AppText variant="form-label" className="text-app-text-soft">
               {progress.toFixed(0)}%
-            </Text>
-            <Text className="text-sm text-foreground-muted">
+            </AppText>
+            <AppText variant="body" className="text-app-text-faint">
               {remaining > 0 ? `${formatCurrency(remaining)} left` : 'Goal reached'}
-            </Text>
+            </AppText>
           </View>
           <Progress
             value={progress}
@@ -60,26 +61,22 @@ export const SavingsGoalCard: React.FC<SavingsGoalCardProps> = ({
 
         <View className="flex-row items-center justify-between">
           <View className="gap-1">
-            <Text className="text-xs uppercase tracking-wide text-foreground-muted">Monthly</Text>
-            <Text className="text-sm font-semibold text-foreground-primary">
+            <AppText variant="label-sm" className="text-app-text-faint">Monthly</AppText>
+            <AppText variant="metric" className="text-app-text-strong">
               {formatCurrency(Number.isFinite(monthlyContribution) ? monthlyContribution : 0)}
-            </Text>
+            </AppText>
           </View>
           {goal.targetDate ? (
             <View className="items-end gap-1">
-              <Text className="text-xs uppercase tracking-wide text-foreground-muted">
-                Target date
-              </Text>
-              <Text className="text-sm font-semibold text-foreground-primary">
-                {formatDate(goal.targetDate)}
-              </Text>
+              <AppText variant="label-sm" className="text-app-text-faint">Target date</AppText>
+              <AppText variant="metric" className="text-app-text-strong">{formatDate(goal.targetDate)}</AppText>
             </View>
           ) : (
             <View className="items-end gap-1">
-              <Text className="text-xs uppercase tracking-wide text-foreground-muted">Status</Text>
-              <Text className="text-sm font-semibold text-foreground-primary">
+              <AppText variant="label-sm" className="text-app-text-faint">Status</AppText>
+              <AppText variant="metric" className="text-app-text-strong">
                 {remaining > 0 ? 'In progress' : 'Complete'}
-              </Text>
+              </AppText>
             </View>
           )}
         </View>

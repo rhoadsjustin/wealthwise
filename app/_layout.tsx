@@ -8,8 +8,7 @@ import { ToastProvider } from '../components/Toast';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { VectorStoreProvider } from '@/context/RAGContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import HeaderProfileButton from '@/components/HeaderProfileButton';
-import categorizer from '@/lib/ai/categorizer';
+import { indexCategoryDocs } from '@/lib/ai/categorizer';
 import { vexo } from 'vexo-analytics';
 
 if (!__DEV__) {
@@ -101,7 +100,7 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
         setBills(billList);
         setDebts(debtList);
         try {
-          await categorizer.indexCategoryDocs(cats);
+          await indexCategoryDocs(cats);
         } catch {}
       } catch (e) {
         console.warn('Failed to load app data:', e);
@@ -255,32 +254,29 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
 
 function AppContent() {
   return (
-    <View style={{ flex: 1, backgroundColor: '#F7F9FC' }}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
+    <View style={{ flex: 1, backgroundColor: '#050816' }}>
+      <StatusBar barStyle="light-content" backgroundColor="#050816" translucent={false} />
       <DataProvider userId={1} initialBudgetCategories={null}>
         <AppDataProvider>
           <Stack
             screenOptions={{
               headerStyle: {
-                backgroundColor: '#FFFFFF',
+                backgroundColor: '#050816',
               },
               headerTitleStyle: {
                 fontSize: 18,
                 fontWeight: '700',
-                color: '#1F2937',
+                color: '#F8FAFC',
               },
-              headerTintColor: '#0EA5E9',
+              headerTintColor: '#59F7A5',
               contentStyle: {
-                backgroundColor: '#F7F9FC',
+                backgroundColor: '#050816',
               },
             }}>
             <Stack.Screen
               name="(tabs)"
               options={{
-                title: 'WealthWise',
-                headerLeft: () => <HeaderProfileButton />,
-                headerShadowVisible: true,
-                headerBackVisible: false,
+                headerShown: false,
               }}
             />
             <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -303,6 +299,7 @@ function AppContent() {
               name="transaction-import"
               options={{ headerShown: false, presentation: 'modal' }}
             />
+            <Stack.Screen name="imports" options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen name="lock" options={{ headerShown: false }} />
             <Stack.Screen
               name="edit-transaction/[id]"
@@ -330,7 +327,7 @@ function AppContent() {
                 presentation: 'modal',
                 headerShown: false,
                 contentStyle: {
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: '#050816',
                 },
               }}
             />
@@ -340,7 +337,7 @@ function AppContent() {
                 presentation: 'modal',
                 headerShown: false,
                 contentStyle: {
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: '#050816',
                 },
               }}
             />
@@ -350,7 +347,7 @@ function AppContent() {
                 presentation: 'modal',
                 headerShown: false,
                 contentStyle: {
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: '#050816',
                 },
               }}
             />
@@ -372,7 +369,7 @@ function AppContent() {
                 sheetGrabberVisible: true,
                 sheetAllowedDetents: 'fitToContents',
                 contentStyle: {
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: '#050816',
                 },
               }}
             />

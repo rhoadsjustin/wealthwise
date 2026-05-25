@@ -150,7 +150,7 @@ export default function SavingsGoalModal() {
   const screenOptions = React.useMemo(() => ({ headerShown: false }), []);
 
   return (
-    <View className="flex-1 bg-app-background">
+    <View className="flex-1 bg-app-canvas">
       <Stack.Screen options={screenOptions} />
       <KeyboardAvoidingView
         className="flex-1"
@@ -163,8 +163,8 @@ export default function SavingsGoalModal() {
           <View className="px-5" style={{ paddingTop: Math.max(insets.top + 8, 24) }}>
             <View className="mb-4 flex-row items-center justify-between">
               <View>
-                <Text className="text-xl font-semibold text-app-text">{modalTitle}</Text>
-                <Text className="mt-1 text-xs text-app-text-muted">
+                <Text className="text-xl font-semibold text-app-text-strong">{modalTitle}</Text>
+                <Text className="mt-1 text-xs text-app-text-faint">
                   {goalIdParam
                     ? 'Update your savings target and cadence.'
                     : 'Plan a new savings milestone.'}
@@ -173,19 +173,19 @@ export default function SavingsGoalModal() {
               <TouchableOpacity
                 onPress={() => router.back()}
                 accessibilityLabel="Close savings goal"
-                className="h-10 w-10 items-center justify-center rounded-full border border-app-border bg-app-surface shadow-xs">
-                <Ionicons name="close" size={18} color="#0F172A" />
+                className="h-10 w-10 items-center justify-center rounded-full border border-app-border-strong bg-app-surface-2 shadow-xs">
+                <Ionicons name="close" size={18} color="#8190B3" />
               </TouchableOpacity>
             </View>
 
-            <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-sm">
-              <Text className="text-sm font-medium text-app-text-muted">Goal overview</Text>
-              <Text className="mt-2 text-base text-app-text-secondary">
+            <View className="mb-6 rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-5 shadow-sm">
+              <Text className="text-sm font-medium text-app-text-faint">Goal overview</Text>
+              <Text className="mt-2 text-base text-app-text-soft">
                 Outline how much you want to save and how quickly you’ll get there.
               </Text>
             </View>
 
-            <View className="rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-sm">
+            <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-5 shadow-sm">
               <View className="space-y-6">
                 <Controller
                   control={control}
@@ -197,6 +197,7 @@ export default function SavingsGoalModal() {
                       placeholder="Emergency fund"
                       value={value}
                       onChangeText={onChange}
+                      variant="dark"
                       errorText={errors.name ? 'Name is required' : undefined}
                     />
                   )}
@@ -213,6 +214,7 @@ export default function SavingsGoalModal() {
                       keyboardType="numeric"
                       value={value}
                       onChangeText={onChange}
+                      variant="dark"
                       helperText="Enter the total amount you want to save"
                       errorText={errors.targetAmount ? 'Target amount is required' : undefined}
                     />
@@ -229,6 +231,7 @@ export default function SavingsGoalModal() {
                       keyboardType="numeric"
                       value={value || ''}
                       onChangeText={onChange}
+                      variant="dark"
                       helperText="Amount to subtract from income each month"
                     />
                   )}
@@ -243,6 +246,7 @@ export default function SavingsGoalModal() {
                       placeholder="2024-12-31"
                       value={value || ''}
                       onChangeText={onChange}
+                      variant="dark"
                       helperText="Optional. Use YYYY-MM-DD format"
                     />
                   )}
@@ -252,20 +256,20 @@ export default function SavingsGoalModal() {
                   control={control}
                   name="autoDeduct"
                   render={({ field: { value, onChange } }) => (
-                    <View className="flex-row items-center justify-between rounded-xl bg-app-surface px-4 py-3">
+                    <View className="flex-row items-center justify-between rounded-xl border border-app-border-strong bg-app-surface-2 px-4 py-3">
                       <View className="flex-1 pr-4">
-                        <Text className="text-base font-medium text-foreground-primary">
+                        <Text className="text-base font-medium text-app-text-strong">
                           Auto-transfer
                         </Text>
-                        <Text className="mt-1 text-sm text-foreground-muted">
+                        <Text className="mt-1 text-sm text-app-text-faint">
                           Reserve this amount from income before budgeting
                         </Text>
                       </View>
                       <Switch
                         value={value ?? true}
                         onValueChange={onChange}
-                        thumbColor={value ? '#0EA5E9' : '#f4f3f4'}
-                        trackColor={{ true: '#bae6fd', false: '#e5e7eb' }}
+                        thumbColor={value ? '#58B6FF' : '#8190B3'}
+                        trackColor={{ true: '#182136', false: '#0D1325' }}
                       />
                     </View>
                   )}
@@ -282,6 +286,7 @@ export default function SavingsGoalModal() {
                       numberOfLines={4}
                       value={value || ''}
                       onChangeText={onChange}
+                      variant="dark"
                       helperText="Optional context for this savings goal"
                     />
                   )}
@@ -293,6 +298,7 @@ export default function SavingsGoalModal() {
               <Button
                 className="w-full"
                 size="lg"
+                variant="primary-solid"
                 title={goalIdParam ? 'Save changes' : 'Create goal'}
                 onPress={handleSubmit(onSubmit)}
                 loading={loading}

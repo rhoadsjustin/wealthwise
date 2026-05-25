@@ -23,7 +23,7 @@ import { Button } from '@/components/Button';
 
 export default function ProfileModal() {
   const router = useRouter();
-  const transactionImportRoute = '/transaction-import' as Href;
+  const transactionImportRoute = '/imports' as Href;
   const { username, login } = useAuth();
   const { updateUserProfile, getUserProfile, monthlyIncome, updateMonthlyIncome } = useData();
   const [name, setName] = useState(username || '');
@@ -96,7 +96,7 @@ export default function ProfileModal() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1 }}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <View className="flex-1 bg-app-background">
+        <View className="flex-1 bg-app-canvas">
           <Stack.Screen options={screenOptions} />
           <ScrollView
             className="flex-1"
@@ -110,34 +110,35 @@ export default function ProfileModal() {
             <View className="flex-1 px-5">
               <View className="mb-4 flex-row items-center justify-between">
                 <View>
-                  <Text className="text-xl font-semibold text-app-text">Profile</Text>
-                  <Text className="mt-1 text-xs text-app-text-muted">
+                  <Text className="text-xl font-semibold text-app-text-strong">Profile</Text>
+                  <Text className="mt-1 text-xs text-app-text-faint">
                     Update your name and security preferences.
                   </Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => router.back()}
                   accessibilityLabel="Close profile"
-                  className="h-10 w-10 items-center justify-center rounded-full border border-app-border bg-app-surface shadow-xs">
-                  <Ionicons name="close" size={18} color="#0F172A" />
+                  className="h-10 w-10 items-center justify-center rounded-full border border-app-border-strong bg-app-surface-2 shadow-xs">
+                  <Ionicons name="close" size={18} color="#8190B3" />
                 </TouchableOpacity>
               </View>
 
               <View className="space-y-5">
-                <View className="rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-sm">
-                  <Text className="text-sm font-medium text-app-text-muted">Display name</Text>
+                <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-5 shadow-sm">
+                  <Text className="text-sm font-medium text-app-text-faint">Display name</Text>
                   <Input
                     label="Username"
                     placeholder="Your username"
                     value={name}
                     onChangeText={setName}
+                    variant="dark"
                     className="mt-3"
                   />
                 </View>
 
-                <View className="rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-sm">
-                  <Text className="text-base font-semibold text-app-text">Household income</Text>
-                  <Text className="mt-2 text-xs text-app-text-muted">
+                <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-5 shadow-sm">
+                  <Text className="text-base font-semibold text-app-text-strong">Household income</Text>
+                  <Text className="mt-2 text-xs text-app-text-faint">
                     Used to benchmark budgets and insight recommendations.
                   </Text>
                   <Input
@@ -147,59 +148,44 @@ export default function ProfileModal() {
                     placeholder="e.g. 5500"
                     value={incomeInput}
                     onChangeText={handleIncomeChange}
+                    variant="dark"
                     helperText="Monthly take-home amount"
                     errorText={incomeError || undefined}
                     maxLength={12}
                     returnKeyType="done"
-                    blurOnSubmit
                     onSubmitEditing={() => Keyboard.dismiss()}
                   />
                 </View>
 
-                <View className="rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-sm">
+                <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-5 shadow-sm">
                   <View className="flex-row items-center justify-between">
                     <View className="flex-1 pr-4">
-                      <Text className="text-base font-semibold text-app-text">
+                      <Text className="text-base font-semibold text-app-text-strong">
                         Require app lock on open
                       </Text>
-                      <Text className="mt-2 text-xs text-app-text-muted">
+                      <Text className="mt-2 text-xs text-app-text-faint">
                         Use Face ID / Touch ID or your passcode.
                       </Text>
                     </View>
                     <Switch
                       value={requireLock}
                       onValueChange={setRequireLock}
-                      thumbColor={requireLock ? '#0EA5E9' : '#E5E7EB'}
-                      trackColor={{ true: '#BAE6FD', false: '#CBD5F5' }}
+                      thumbColor={requireLock ? '#58B6FF' : '#8190B3'}
+                      trackColor={{ true: '#182136', false: '#0D1325' }}
                     />
                   </View>
                 </View>
 
-                <View className="rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-sm">
-                  <Text className="text-base font-semibold text-app-text">Statement import</Text>
-                  <Text className="mt-2 text-xs leading-5 text-app-text-muted">
-                    Paste CSV exports or copied statement and PDF text, then import the parsed
-                    transactions into your budget.
+                <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-5 shadow-sm">
+                  <Text className="text-base font-semibold text-app-text-strong">Imports</Text>
+                  <Text className="mt-2 text-xs leading-5 text-app-text-faint">
+                    Open the import launcher for statement capture or Apple Card transaction review.
                   </Text>
                   <Button
                     className="mt-4"
-                    variant="outline"
-                    title="Import statement transactions"
+                    variant="secondary-muted"
+                    title="Open imports"
                     onPress={() => router.push(transactionImportRoute)}
-                  />
-                </View>
-
-                <View className="rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-sm">
-                  <Text className="text-base font-semibold text-app-text">Apple Wallet import</Text>
-                  <Text className="mt-2 text-xs leading-5 text-app-text-muted">
-                    Connect FinanceKit and import recent Apple Card transactions from Wallet on this
-                    iPhone.
-                  </Text>
-                  <Button
-                    className="mt-4"
-                    variant="outline"
-                    title="Import Apple Card transactions"
-                    onPress={() => router.push('/apple-card-import')}
                   />
                 </View>
               </View>
@@ -208,7 +194,7 @@ export default function ProfileModal() {
           <View
             className="px-5"
             style={{ paddingBottom: Math.max(insets.bottom + 12, 28), paddingTop: 12 }}>
-            <Button className="w-full" size="lg" title="Save changes" onPress={saveProfile} />
+            <Button className="w-full" size="lg" variant="primary-solid" title="Save changes" onPress={saveProfile} />
           </View>
         </View>
       </TouchableWithoutFeedback>

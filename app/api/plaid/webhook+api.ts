@@ -1,5 +1,5 @@
-import { errorResponse } from './_lib/errors';
-import { recordWebhookEvent } from './_lib/storage';
+import { errorResponse } from '@/lib/plaid-api/errors';
+import { recordWebhookEvent } from '@/lib/plaid-api/storage';
 
 export async function POST(request: Request) {
   try {

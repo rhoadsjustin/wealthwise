@@ -1,10 +1,6 @@
 import { requireNativeModule } from 'expo';
 
-export type AppleFinanceAuthorizationStatus =
-  | 'authorized'
-  | 'denied'
-  | 'notDetermined'
-  | 'unknown';
+export type AppleFinanceAuthorizationStatus = 'authorized' | 'denied' | 'notDetermined' | 'unknown';
 
 export interface AppleFinanceAvailability {
   platformSupported: boolean;

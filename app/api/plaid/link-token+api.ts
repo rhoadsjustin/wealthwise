@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import { getPlaidEnv } from './_lib/env';
-import { ApiError, errorResponse } from './_lib/errors';
-import { plaidRequest } from './_lib/plaid';
+import { getPlaidEnv } from '@/lib/plaid-api/env';
+import { ApiError, errorResponse } from '@/lib/plaid-api/errors';
+import { plaidRequest } from '@/lib/plaid-api/plaid';
 
 const linkTokenRequestSchema = z.object({
   userId: z.union([z.string(), z.number()]).optional(),
@@ -21,7 +21,12 @@ export async function POST(request: Request) {
     const input = linkTokenRequestSchema.safeParse(json);
 
     if (!input.success) {
-      throw new ApiError(400, 'invalid_request', 'Invalid link token payload', input.error.flatten());
+      throw new ApiError(
+        400,
+        'invalid_request',
+        'Invalid link token payload',
+        input.error.flatten()
+      );
     }
 
     const env = getPlaidEnv();

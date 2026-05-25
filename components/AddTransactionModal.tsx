@@ -13,6 +13,7 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { Label } from './Label';
 // Drop custom Select for categories; use a simple scrollable list
+import { AppText } from '@/components/AppText';
 // RadioGroup removed in favor of a segmented toggle
 import { useForm, Controller, useWatch } from 'react-hook-form';
 // Removed react-query; use DataContext directly
@@ -234,21 +235,21 @@ export default function AddTransactionModal({
   };
 
   return (
-    <View className="flex-1 bg-background-primary">
+    <View className="flex-1 bg-app-canvas">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1">
         {/* Header (safe-area aware). Mark non-collapsable for formSheet+ScrollView layout rule */}
-        <SafeAreaView edges={['top']} className="bg-app-surface" collapsable={false}>
-          <View className="border-b border-border-default px-6 pb-4 pt-2">
+        <SafeAreaView edges={['top']} className="bg-app-surface-1" collapsable={false}>
+          <View className="border-b border-app-border-strong px-6 pb-4 pt-2">
             <View className="items-center">
               <View
-                className="mb-3 h-1.5 w-12 rounded-full bg-border-default"
+                className="mb-3 h-1.5 w-12 rounded-full bg-app-border-strong"
                 accessibilityElementsHidden
               />
-              <Text className="text-lg font-semibold text-foreground-primary">
+              <AppText variant="title" className="text-app-text-strong">
                 {mode === 'edit' ? 'Edit Transaction' : 'Add Transaction'}
-              </Text>
+              </AppText>
             </View>
           </View>
         </SafeAreaView>
@@ -265,7 +266,7 @@ export default function AddTransactionModal({
             {/* Form Content */}
             <View className="flex-1 px-6 py-6">
               {/* Type Segmented Toggle (moved below header to avoid overlap) */}
-              <View className="mb-4 flex-row rounded-xl bg-background-secondary p-1">
+              <View className="mb-4 flex-row rounded-xl bg-app-surface-2 p-1">
                 <TouchableOpacity
                   accessibilityRole="button"
                   accessibilityLabel="Set transaction type to expense"
@@ -275,16 +276,17 @@ export default function AddTransactionModal({
                     setValue('type', 'expense');
                   }}
                   className={`flex-1 items-center rounded-lg px-4 py-2 ${
-                    transactionType === 'expense' ? 'bg-primary-500' : 'bg-transparent'
+                    transactionType === 'expense' ? 'bg-accent-expense' : 'bg-transparent'
                   }`}>
-                  <Text
-                    className={`text-sm font-medium ${
+                  <AppText
+                    variant="caption"
+                    className={`${
                       transactionType === 'expense'
-                        ? 'text-foreground-inverse'
-                        : 'text-foreground-primary'
+                        ? 'text-app-canvas'
+                        : 'text-app-text-soft'
                     }`}>
                     Expense
-                  </Text>
+                  </AppText>
                 </TouchableOpacity>
                 <TouchableOpacity
                   accessibilityRole="button"
@@ -295,22 +297,23 @@ export default function AddTransactionModal({
                     setValue('type', 'income');
                   }}
                   className={`flex-1 items-center rounded-lg px-4 py-2 ${
-                    transactionType === 'income' ? 'bg-success-500' : 'bg-transparent'
+                    transactionType === 'income' ? 'bg-accent-income' : 'bg-transparent'
                   }`}>
-                  <Text
-                    className={`text-sm font-medium ${
+                  <AppText
+                    variant="caption"
+                    className={`${
                       transactionType === 'income'
-                        ? 'text-foreground-inverse'
-                        : 'text-foreground-primary'
+                        ? 'text-app-canvas'
+                        : 'text-app-text-soft'
                     }`}>
                     Income
-                  </Text>
+                  </AppText>
                 </TouchableOpacity>
               </View>
               <View className="space-y-6">
                 {/* Description Field */}
                 <View>
-                  <Label className="mb-2 text-sm font-medium text-foreground-primary">
+                  <Label className="mb-2 text-sm font-medium text-app-text-strong">
                     Description
                   </Label>
                   <Controller
@@ -321,20 +324,20 @@ export default function AddTransactionModal({
                         value={value || ''}
                         onChangeText={onChange}
                         placeholder="Enter transaction description"
-                        variant="outline"
+                        variant="dark"
                       />
                     )}
                   />
                   {errors.description && (
-                    <Text className="mt-1 text-xs text-error-600">
+                    <AppText variant="hint" className="mt-1 text-error-600">
                       {errors.description.message as string}
-                    </Text>
+                    </AppText>
                   )}
                 </View>
 
                 {/* Amount Field */}
                 <View>
-                  <Label className="mb-2 text-sm font-medium text-foreground-primary">Amount</Label>
+                  <Label className="mb-2 text-sm font-medium text-app-text-strong">Amount</Label>
                   <Input
                     keyboardType={Platform.OS === 'ios' ? 'decimal-pad' : 'numeric'}
                     returnKeyType="done"
@@ -355,7 +358,7 @@ export default function AddTransactionModal({
                       setValue('amount', limited, { shouldDirty: true });
                     }}
                     placeholder="$0.00"
-                    variant="outline"
+                    variant="dark"
                     onFocus={() => {
                       selection();
                       setAmountFocused(true);
@@ -366,9 +369,9 @@ export default function AddTransactionModal({
                     }}
                   />
                   {errors.amount && (
-                    <Text className="mt-1 text-xs text-error-600">
+                    <AppText variant="hint" className="mt-1 text-error-600">
                       {errors.amount.message as string}
-                    </Text>
+                    </AppText>
                   )}
                 </View>
 
@@ -383,16 +386,16 @@ export default function AddTransactionModal({
                           onPress={() =>
                             setValue('categoryId', suggestion.id, { shouldDirty: true })
                           }
-                          className="self-start rounded-full border border-info-100 bg-info-50 px-3 py-1">
-                          <Text className="text-xs font-medium text-info-700">
+                          className="self-start rounded-full border border-app-border-strong bg-app-surface-2 px-3 py-1">
+                          <AppText variant="hint" className="text-accent-savings">
                             Suggested: {suggestion.name} ({Math.round(suggestion.confidence * 100)}
                             %) — Tap to apply
-                          </Text>
+                          </AppText>
                         </TouchableOpacity>
                       </View>
                     )}
                     <View className="mb-2 flex-row items-center justify-between">
-                      <Label className="text-sm font-medium text-foreground-primary">
+                      <Label className="text-sm font-medium text-app-text-strong">
                         Category
                       </Label>
                       <Button
@@ -400,39 +403,39 @@ export default function AddTransactionModal({
                         size="sm"
                         onPress={() => setShowCreateCategory(true)}
                         className="flex-row items-center px-2 py-1">
-                        <Ionicons name="add" size={16} color="#6366F1" />
-                        <Text className="ml-1 text-xs font-medium text-primary-600">
+                        <Ionicons name="add" size={16} color="#58B6FF" />
+                        <AppText variant="hint" className="ml-1 text-accent-savings">
                           Create New
-                        </Text>
+                        </AppText>
                       </Button>
                     </View>
 
                     {/* Selected preview */}
                     {selectedCategoryId ? (
-                      <View className="mb-2 flex-row items-center rounded-lg border border-app-border bg-app-surface p-2">
+                      <View className="mb-2 flex-row items-center rounded-lg border border-app-border-strong bg-app-surface-2 p-2">
                         <View
                           className="mr-3 h-8 w-8 items-center justify-center rounded-lg"
                           style={{
                             backgroundColor:
-                              categories.find((c) => c.id === selectedCategoryId)?.color + '20',
+                              categories.find((c) => c.id === selectedCategoryId)?.color + '30',
                           }}>
                           <Text className="text-sm">
                             {categories.find((c) => c.id === selectedCategoryId)?.icon || '📊'}
                           </Text>
                         </View>
-                        <Text className="flex-1 font-medium text-foreground-primary">
+                        <AppText variant="body" className="flex-1 text-app-text-strong">
                           {categories.find((c) => c.id === selectedCategoryId)?.name}
-                        </Text>
+                        </AppText>
                         <TouchableOpacity onPress={() => setValue('categoryId', null)}>
-                          <Text className="text-xs font-medium text-blue-600">Clear</Text>
+                          <AppText variant="hint" className="text-accent-savings">Clear</AppText>
                         </TouchableOpacity>
                       </View>
                     ) : (
-                      <Text className="mb-2 text-xs text-app-text-muted">Optional</Text>
+                      <AppText variant="hint" className="mb-2 text-app-text-faint">Optional</AppText>
                     )}
 
                     {/* Scrollable category list */}
-                    <View className="rounded-lg border border-app-border bg-app-surface">
+                    <View className="rounded-lg border border-app-border-strong bg-app-surface-1">
                       <ScrollView
                         style={{ maxHeight: 280 }}
                         keyboardShouldPersistTaps="handled"
@@ -447,32 +450,32 @@ export default function AddTransactionModal({
                               }
                               activeOpacity={0.7}
                               className={`flex-row items-center px-3 py-3 ${
-                                isSelected ? 'bg-blue-50' : 'bg-transparent'
+                                isSelected ? 'bg-app-surface-3' : 'bg-transparent'
                               }`}>
                               <View
                                 className="mr-3 h-8 w-8 items-center justify-center rounded-lg"
-                                style={{ backgroundColor: category.color + '20' }}>
+                                style={{ backgroundColor: category.color + '30' }}>
                                 <Text className="text-sm">{category.icon || '📊'}</Text>
                               </View>
                               <View className="flex-1">
-                                <Text className="font-medium text-foreground-primary">
+                                <AppText variant="body" className="text-app-text-strong">
                                   {category.name}
-                                </Text>
-                                <Text className="text-xs text-foreground-secondary">
+                                </AppText>
+                                <AppText variant="hint" className="text-app-text-faint">
                                   Budget: ${parseFloat(category.budget).toFixed(2)}/month
-                                </Text>
+                                </AppText>
                               </View>
                               {isSelected && (
-                                <Ionicons name="checkmark" size={16} color="#2563EB" />
+                                <Ionicons name="checkmark" size={16} color="#58B6FF" />
                               )}
                             </TouchableOpacity>
                           );
                         })}
                         {categories.length === 0 && (
                           <View className="items-center px-3 py-6">
-                            <Text className="text-sm text-app-text-secondary">
+                            <AppText variant="body" className="text-app-text-faint">
                               No categories yet — create one
-                            </Text>
+                            </AppText>
                           </View>
                         )}
                       </ScrollView>
@@ -484,11 +487,11 @@ export default function AddTransactionModal({
           </ScrollView>
 
           {/* Action Bar (non-absolute so it lifts above keyboard) */}
-          <SafeAreaView edges={['bottom']} className="bg-app-surface">
-            <View className="border-t border-border-default px-6 py-4">
+          <SafeAreaView edges={['bottom']} className="bg-app-surface-1">
+            <View className="border-t border-app-border-strong px-6 py-4">
               <Button
                 title="Save"
-                variant="default"
+                variant="primary-solid"
                 onPress={handleSubmit(onSubmit)}
                 disabled={submitting}
                 loading={submitting}

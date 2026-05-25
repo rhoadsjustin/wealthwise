@@ -12,6 +12,7 @@ import {
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppText } from '@/components/AppText';
 
 import { useAppData } from './_layout';
 import type { Transaction, Category, Bill, Debt } from '@/context/DataContext';
@@ -220,7 +221,7 @@ export default function MonthOverviewModal() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-app-background">
+      <View className="flex-1 bg-app-canvas">
         <Stack.Screen
           options={{
             title: 'Month Overview',
@@ -238,21 +239,21 @@ export default function MonthOverviewModal() {
   }
 
   return (
-    <View className="flex-1 bg-app-background">
+    <View className="flex-1 bg-app-canvas">
       {/* Month Navigation */}
-      <View className="mx-5 mb-6 mt-4 flex-row items-center justify-between rounded-3xl border border-app-border bg-app-surface px-6 py-4 shadow-sm">
-        <TouchableOpacity onPress={handlePrevMonth} className="rounded-full bg-app-surface-alt p-3">
+      <View className="mx-5 mb-6 mt-4 flex-row items-center justify-between rounded-3xl border border-app-border-strong bg-app-surface-1 px-6 py-4 shadow-sm">
+        <TouchableOpacity onPress={handlePrevMonth} className="rounded-full bg-app-surface-2 p-3">
           <Ionicons name="chevron-back" size={20} color="#0EA5E9" />
         </TouchableOpacity>
 
         <View className="flex-1 items-center">
-          <Text className="text-xl font-bold text-app-text">{currentMonthName}</Text>
-          <Text className="text-sm text-app-text-muted">
+          <AppText variant="page-title" className="text-app-text-strong">{currentMonthName}</AppText>
+          <AppText variant="hint" className="text-app-text-faint">
             {monthlyStats.transactionCount} transactions
-          </Text>
+          </AppText>
         </View>
 
-        <TouchableOpacity onPress={handleNextMonth} className="rounded-full bg-app-surface-alt p-3">
+        <TouchableOpacity onPress={handleNextMonth} className="rounded-full bg-app-surface-2 p-3">
           <Ionicons name="chevron-forward" size={20} color="#0EA5E9" />
         </TouchableOpacity>
       </View>
@@ -263,73 +264,72 @@ export default function MonthOverviewModal() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
         <View className="space-y-6 px-5">
           {/* Monthly Summary Card */}
-          <View className="rounded-3xl border border-app-border bg-app-surface px-6 py-6 shadow-sm">
-            <Text className="mb-4 text-lg font-bold text-app-text">Monthly Summary</Text>
+          <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-6 py-6 shadow-sm">
+            <AppText variant="section" className="mb-4 text-app-text-strong">Monthly Summary</AppText>
 
             <View className="space-y-4">
-              <View className="flex-row items-center justify-between rounded-2xl bg-success-50 px-4 py-3">
+              <View className="flex-row items-center justify-between rounded-2xl bg-app-surface-2 px-4 py-3">
                 <View className="flex-row items-center">
-                  <View className="mr-3 rounded-full bg-success-100 p-2">
-                    <Ionicons name="trending-up" size={16} color="#10B981" />
+                  <View className="mr-3 rounded-full bg-success-900 p-2">
+                    <Ionicons name="trending-up" size={16} color="#22c55e" />
                   </View>
-                  <Text className="text-sm font-medium text-success-700">Income</Text>
+                  <AppText variant="form-label" className="text-accent-income">Income</AppText>
                 </View>
-                <Text className="text-lg font-bold text-success-700">
+                <AppText variant="metric-lg" className="text-accent-income">
                   {formatCompactCurrency(monthlyStats.income)}
-                </Text>
+                </AppText>
               </View>
 
-              <View className="flex-row items-center justify-between rounded-2xl bg-error-50 px-4 py-3">
+              <View className="flex-row items-center justify-between rounded-2xl bg-app-surface-2 px-4 py-3">
                 <View className="flex-row items-center">
-                  <View className="mr-3 rounded-full bg-error-100 p-2">
-                    <Ionicons name="trending-down" size={16} color="#EF4444" />
+                  <View className="mr-3 rounded-full bg-error-900 p-2">
+                    <Ionicons name="trending-down" size={16} color="#ef4444" />
                   </View>
-                  <Text className="text-sm font-medium text-error-700">Expenses</Text>
+                  <AppText variant="form-label" className="text-accent-expense">Expenses</AppText>
                 </View>
-                <Text className="text-lg font-bold text-error-700">
+                <AppText variant="metric-lg" className="text-accent-expense">
                   {formatCompactCurrency(monthlyStats.expenses)}
-                </Text>
+                </AppText>
               </View>
 
-              <View className="flex-row items-center justify-between rounded-2xl bg-primary-50 px-4 py-3">
+              <View className="flex-row items-center justify-between rounded-2xl bg-app-surface-2 px-4 py-3">
                 <View className="flex-row items-center">
-                  <View className="mr-3 rounded-full bg-primary-100 p-2">
+                  <View className="mr-3 rounded-full bg-info-900 p-2">
                     <Ionicons name="wallet" size={16} color="#0EA5E9" />
                   </View>
-                  <Text className="text-sm font-medium text-primary-700">Net Balance</Text>
+                  <AppText variant="form-label" className="text-accent-savings">Net Balance</AppText>
                 </View>
-                <Text
-                  className={`text-lg font-bold ${
-                    monthlyStats.netBalance >= 0 ? 'text-success-700' : 'text-error-700'
-                  }`}>
+                <AppText
+                  variant="metric-lg"
+                  className={monthlyStats.netBalance >= 0 ? 'text-accent-income' : 'text-accent-expense'}>
                   {formatCompactCurrency(monthlyStats.netBalance)}
-                </Text>
+                </AppText>
               </View>
             </View>
           </View>
 
           {/* Transactions Section */}
-          <View className="rounded-3xl border border-app-border bg-app-surface px-5 py-6 shadow-sm">
+          <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-6 shadow-sm">
             <View className="mb-4 flex-row items-center justify-between">
-              <Text className="text-lg font-bold text-app-text">
+              <AppText variant="section" className="text-app-text-strong">
                 Transactions ({monthTransactions.length})
-              </Text>
+              </AppText>
               <TouchableOpacity
                 onPress={() => router.push('/transactions-modal')}
-                className="rounded-full bg-app-surface-alt px-3 py-1">
-                <Text className="text-xs font-semibold text-primary-600">View all</Text>
+                className="rounded-full bg-app-surface-2 px-3 py-1">
+                <AppText variant="caption" className="text-primary-600">View all</AppText>
               </TouchableOpacity>
             </View>
 
             {monthTransactions.length === 0 ? (
-              <View className="items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4 py-12">
+              <View className="items-center justify-center rounded-2xl border border-dashed border-app-border-strong bg-app-surface-2 px-4 py-12">
                 <Ionicons name="calendar-outline" size={32} color="#9CA3AF" />
-                <Text className="mt-3 text-base font-medium text-app-text-muted">
-                  No transactions this month
-                </Text>
-                <Text className="mt-1 text-sm text-app-text-muted">
-                  Transactions for {currentMonthName} will appear here
-                </Text>
+                  <AppText variant="body-md" className="mt-3 text-app-text-faint">
+                    No transactions this month
+                  </AppText>
+                  <AppText variant="body" className="mt-1 text-app-text-faint">
+                    Transactions for {currentMonthName} will appear here
+                  </AppText>
               </View>
             ) : (
               <View className="space-y-3">
@@ -341,30 +341,28 @@ export default function MonthOverviewModal() {
                   return (
                     <View
                       key={transaction.id}
-                      className="flex-row items-center justify-between rounded-2xl bg-app-surface-alt px-4 py-3">
+                      className="flex-row items-center justify-between rounded-2xl bg-app-surface-2 px-4 py-3">
                       <View className="flex-1 flex-row items-center">
-                        <View className="mr-3 h-10 w-10 items-center justify-center rounded-xl bg-app-surface">
+                        <View className="mr-3 h-10 w-10 items-center justify-center rounded-xl bg-app-surface-1">
                           <Text className="text-lg">
                             {categoryMeta?.icon ?? (isExpense ? '🧾' : '💰')}
                           </Text>
                         </View>
                         <View className="flex-1">
-                          <Text className="text-sm font-semibold text-app-text" numberOfLines={1}>
+                          <AppText variant="title" className="text-app-text-strong" numberOfLines={1}>
                             {transaction.description}
-                          </Text>
-                          <Text className="text-xs text-app-text-muted">
-                            {categoryMeta?.name ?? 'Uncategorized'} •{' '}
-                            {formatRelativeDate(transaction.date)}
-                          </Text>
+                          </AppText>
+                          <AppText variant="hint" className="text-app-text-faint">
+                            {categoryMeta?.name ?? 'Uncategorized'} · {formatRelativeDate(transaction.date)}
+                          </AppText>
                         </View>
                       </View>
-                      <Text
-                        className={`text-sm font-bold ${
-                          isExpense ? 'text-error-600' : 'text-success-600'
-                        }`}>
+                      <AppText
+                        variant="metric"
+                        className={isExpense ? 'text-error-600' : 'text-success-600'}>
                         {isExpense ? '-' : '+'}
                         {formatCurrency(parseFloat(transaction.amount))}
-                      </Text>
+                      </AppText>
                     </View>
                   );
                 })}
@@ -372,10 +370,10 @@ export default function MonthOverviewModal() {
                 {monthTransactions.length > 5 && (
                   <TouchableOpacity
                     onPress={() => router.push('/transactions-modal')}
-                    className="mt-2 items-center rounded-xl bg-app-surface-alt py-3">
-                    <Text className="text-sm font-medium text-primary-600">
-                      View {monthTransactions.length - 5} more transactions
-                    </Text>
+                    className="mt-2 items-center rounded-xl bg-app-surface-2 py-3">
+                  <AppText variant="body" className="text-sm font-medium text-primary-600">
+                    View {monthTransactions.length - 5} more transactions
+                  </AppText>
                   </TouchableOpacity>
                 )}
               </View>
@@ -383,18 +381,18 @@ export default function MonthOverviewModal() {
           </View>
 
           {/* Category Breakdown */}
-          <View className="rounded-3xl border border-app-border bg-app-surface px-5 py-6 shadow-sm">
-            <Text className="mb-4 text-lg font-bold text-app-text">Category Breakdown</Text>
+          <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-6 shadow-sm">
+            <AppText variant="section" className="mb-4 text-app-text-strong">Category Breakdown</AppText>
 
             {categoryBreakdown.length === 0 ? (
-              <View className="items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4 py-12">
+              <View className="items-center justify-center rounded-2xl border border-dashed border-app-border-strong bg-app-surface-2 px-4 py-12">
                 <Ionicons name="pie-chart-outline" size={32} color="#9CA3AF" />
-                <Text className="mt-3 text-base font-medium text-app-text-muted">
-                  No expenses this month
-                </Text>
-                <Text className="mt-1 text-sm text-app-text-muted">
-                  Expense categories will be shown here
-                </Text>
+                  <AppText variant="body-md" className="mt-3 text-app-text-faint">
+                    No expenses this month
+                  </AppText>
+                  <AppText variant="body" className="mt-1 text-app-text-faint">
+                    Expense categories will be shown here
+                  </AppText>
               </View>
             ) : (
               <View className="space-y-3">
@@ -405,26 +403,26 @@ export default function MonthOverviewModal() {
                   return (
                     <View
                       key={category.id || 'uncategorized'}
-                      className="flex-row items-center justify-between rounded-2xl bg-app-surface-alt px-4 py-3">
+                      className="flex-row items-center justify-between rounded-2xl bg-app-surface-2 px-4 py-3">
                       <View className="flex-1 flex-row items-center">
                         <Text className="mr-3 text-xl">{category.icon}</Text>
                         <View className="flex-1">
-                          <Text className="text-sm font-semibold text-app-text">
+                          <AppText variant="title" className="text-app-text-strong">
                             {category.name}
-                          </Text>
-                          <Text className="text-xs text-app-text-muted">
+                          </AppText>
+                          <AppText variant="hint" className="text-app-text-faint">
                             {category.transactionCount} transaction
                             {category.transactionCount !== 1 ? 's' : ''}
-                          </Text>
+                          </AppText>
                         </View>
                       </View>
                       <View className="items-end">
-                        <Text className="text-sm font-bold text-app-text">
+                        <AppText variant="metric" className="text-app-text-strong">
                           {formatCompactCurrency(category.spent)}
-                        </Text>
-                        <Text className="text-xs text-app-text-muted">
+                        </AppText>
+                        <AppText variant="hint" className="text-app-text-faint">
                           {percentage.toFixed(1)}%
-                        </Text>
+                        </AppText>
                       </View>
                     </View>
                   );
@@ -434,25 +432,25 @@ export default function MonthOverviewModal() {
           </View>
 
           {/* Bills Section */}
-          <View className="rounded-3xl border border-app-border bg-app-surface px-5 py-6 shadow-sm">
+          <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-6 shadow-sm">
             <View className="mb-4 flex-row items-center justify-between">
-              <Text className="text-lg font-bold text-app-text">Bills ({monthBills.length})</Text>
+              <AppText variant="section" className="text-app-text-strong">Bills ({monthBills.length})</AppText>
               <TouchableOpacity
                 onPress={() => router.push('/(tabs)/bills')}
-                className="rounded-full bg-app-surface-alt px-3 py-1">
-                <Text className="text-xs font-semibold text-primary-600">Manage</Text>
+                className="rounded-full bg-app-surface-2 px-3 py-1">
+                <AppText variant="caption" className="text-primary-600">Manage</AppText>
               </TouchableOpacity>
             </View>
 
             {monthBills.length === 0 ? (
-              <View className="items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4 py-12">
+              <View className="items-center justify-center rounded-2xl border border-dashed border-app-border-strong bg-app-surface-2 px-4 py-12">
                 <Ionicons name="receipt-outline" size={32} color="#9CA3AF" />
-                <Text className="mt-3 text-base font-medium text-app-text-muted">
+                <AppText variant="body-md" className="mt-3 text-app-text-faint">
                   No bills this month
-                </Text>
-                <Text className="mt-1 text-sm text-app-text-muted">
+                </AppText>
+                <AppText variant="body" className="mt-1 text-app-text-faint">
                   Bills for {currentMonthName} will appear here
-                </Text>
+                </AppText>
               </View>
             ) : (
               <View className="space-y-3">
@@ -461,21 +459,21 @@ export default function MonthOverviewModal() {
                   return (
                     <View
                       key={bill.id}
-                      className="flex-row items-center justify-between rounded-2xl bg-app-surface-alt px-4 py-3">
+                      className="flex-row items-center justify-between rounded-2xl bg-app-surface-2 px-4 py-3">
                       <View className="flex-1 flex-row items-center">
-                        <View className="mr-3 h-10 w-10 items-center justify-center rounded-xl bg-app-surface">
+                        <View className="mr-3 h-10 w-10 items-center justify-center rounded-xl bg-app-surface-1">
                           <Ionicons name="receipt" size={16} color="#0EA5E9" />
                         </View>
                         <View className="flex-1">
-                          <Text className="text-sm font-semibold text-app-text" numberOfLines={1}>
+                          <AppText variant="title" className="text-app-text-strong" numberOfLines={1}>
                             {bill.name}
-                          </Text>
-                          <Text className="text-xs text-app-text-muted">Due day {bill.dueDay}</Text>
+                          </AppText>
+                          <AppText variant="hint" className="text-app-text-faint">Due day {bill.dueDay}</AppText>
                         </View>
                       </View>
-                      <Text className="text-sm font-bold text-app-text">
+                      <AppText variant="metric" className="text-app-text-strong">
                         {formatCurrency(parseFloat(bill.amount))}
-                      </Text>
+                      </AppText>
                     </View>
                   );
                 })}
@@ -484,25 +482,25 @@ export default function MonthOverviewModal() {
           </View>
 
           {/* Savings Goals Progress */}
-          <View className="rounded-3xl border border-app-border bg-app-surface px-5 py-6 shadow-sm">
+          <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-6 shadow-sm">
             <View className="mb-4 flex-row items-center justify-between">
-              <Text className="text-lg font-bold text-app-text">Savings Goals</Text>
+              <AppText variant="section" className="text-app-text-strong">Savings Goals</AppText>
               <TouchableOpacity
                 onPress={() => router.push('/savings-goal-modal')}
-                className="rounded-full bg-app-surface-alt px-3 py-1">
-                <Text className="text-xs font-semibold text-primary-600">Manage</Text>
+                className="rounded-full bg-app-surface-2 px-3 py-1">
+                <AppText variant="caption" className="text-primary-600">Manage</AppText>
               </TouchableOpacity>
             </View>
 
             {safeSavingsGoals.length === 0 ? (
-              <View className="items-center justify-center rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4 py-12">
+              <View className="items-center justify-center rounded-2xl border border-dashed border-app-border-strong bg-app-surface-2 px-4 py-12">
                 <Ionicons name="trending-up-outline" size={32} color="#9CA3AF" />
-                <Text className="mt-3 text-base font-medium text-app-text-muted">
-                  No savings goals set
-                </Text>
-                <Text className="mt-1 text-sm text-app-text-muted">
-                  Create savings goals to track your progress
-                </Text>
+                  <AppText variant="body-md" className="mt-3 text-app-text-faint">
+                    No savings goals set
+                  </AppText>
+                  <AppText variant="body" className="mt-1 text-app-text-faint">
+                    Create savings goals to track your progress
+                  </AppText>
               </View>
             ) : (
               <View className="space-y-3">
@@ -511,13 +509,13 @@ export default function MonthOverviewModal() {
                   const monthlyTarget = goal.monthlyContribution || 0;
 
                   return (
-                    <View key={goal.id} className="rounded-2xl bg-app-surface-alt px-4 py-4">
+                    <View key={goal.id} className="rounded-2xl bg-app-surface-2 px-4 py-4">
                       <View className="mb-3 flex-row items-center justify-between">
-                        <Text className="text-sm font-semibold text-app-text">{goal.name}</Text>
-                        <Text className="text-xs text-app-text-muted">{progress.toFixed(1)}%</Text>
+                        <AppText variant="title" className="text-app-text-strong">{goal.name}</AppText>
+                        <AppText variant="hint" className="text-app-text-faint">{progress.toFixed(1)}%</AppText>
                       </View>
 
-                      <View className="mb-3 h-2 w-full rounded-full bg-app-surface">
+                      <View className="mb-3 h-2 w-full rounded-full bg-app-surface-1">
                         <View
                           className="h-2 rounded-full bg-success-500"
                           style={{ width: `${Math.min(progress, 100)}%` }}
@@ -525,14 +523,14 @@ export default function MonthOverviewModal() {
                       </View>
 
                       <View className="flex-row items-center justify-between">
-                        <Text className="text-xs text-app-text-muted">
+                        <AppText variant="hint" className="text-app-text-faint">
                           {formatCompactCurrency(goal.currentAmount)} of{' '}
                           {formatCompactCurrency(goal.targetAmount)}
-                        </Text>
+                        </AppText>
                         {monthlyTarget > 0 && (
-                          <Text className="text-xs text-success-600">
+                          <AppText variant="hint" className="text-success-600">
                             +{formatCompactCurrency(monthlyTarget)}/month
-                          </Text>
+                          </AppText>
                         )}
                       </View>
                     </View>
@@ -544,13 +542,13 @@ export default function MonthOverviewModal() {
 
           {/* Debts Section */}
           {safeDebts.length > 0 && (
-            <View className="rounded-3xl border border-app-border bg-app-surface px-5 py-6 shadow-sm">
+            <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-6 shadow-sm">
               <View className="mb-4 flex-row items-center justify-between">
-                <Text className="text-lg font-bold text-app-text">Debts</Text>
+                <AppText variant="section" className="text-app-text-strong">Debts</AppText>
                 <TouchableOpacity
                   onPress={() => router.push('/(tabs)/debts')}
-                  className="rounded-full bg-app-surface-alt px-3 py-1">
-                  <Text className="text-xs font-semibold text-primary-600">Manage</Text>
+                  className="rounded-full bg-app-surface-2 px-3 py-1">
+                  <AppText variant="caption" className="text-primary-600">Manage</AppText>
                 </TouchableOpacity>
               </View>
 
@@ -561,19 +559,19 @@ export default function MonthOverviewModal() {
                     (parseFloat(debt.currentBalance) / parseFloat(debt.totalAmount)) * 100;
 
                   return (
-                    <View key={debt.id} className="rounded-2xl bg-app-surface-alt px-4 py-4">
+                    <View key={debt.id} className="rounded-2xl bg-app-surface-2 px-4 py-4">
                       <View className="mb-2 flex-row items-center justify-between">
-                        <Text className="text-sm font-semibold text-app-text">{debt.name}</Text>
-                        <Text className="text-xs text-app-text-muted">
+                        <AppText variant="title" className="text-app-text-strong">{debt.name}</AppText>
+                        <AppText variant="hint" className="text-app-text-faint">
                           {progress.toFixed(1)}% paid
-                        </Text>
+                        </AppText>
                       </View>
 
-                      <Text className="mb-3 text-lg font-bold text-error-600">
+                      <AppText variant="metric-lg" className="mb-3 text-error-600">
                         {formatCompactCurrency(remaining)} remaining
-                      </Text>
+                      </AppText>
 
-                      <View className="h-2 w-full rounded-full bg-app-surface">
+                      <View className="h-2 w-full rounded-full bg-app-surface-1">
                         <View
                           className="h-2 rounded-full bg-warning-500"
                           style={{ width: `${Math.min(progress, 100)}%` }}

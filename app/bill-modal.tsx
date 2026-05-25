@@ -19,7 +19,6 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { useBills } from '@/context/DataContext';
 import { useAppData } from './_layout';
 import { useToast } from '@/context/useToast';
-import { theme } from '@/lib/theme';
 
 interface BillFormData {
   name: string;
@@ -216,7 +215,7 @@ export default function BillModal() {
   }, [billId, deleteBill, refreshAppData, router, toast]);
 
   return (
-    <View className="flex-1 bg-background-primary">
+    <View className="flex-1 bg-app-canvas">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1">
@@ -224,11 +223,11 @@ export default function BillModal() {
           className="flex-1"
           contentContainerStyle={{ paddingBottom: insets.bottom + 160 }}
           keyboardShouldPersistTaps="handled">
-          <View className="border-b border-border-default bg-background-primary px-6 pb-4 pt-6">
-            <Text className="text-xl font-semibold text-foreground-primary">
+          <View className="border-b border-app-border-strong bg-app-surface-1 px-6 pb-4 pt-6">
+            <Text className="text-xl font-semibold text-app-text-strong">
               {isEditing ? 'Edit bill' : 'Add monthly bill'}
             </Text>
-            <Text className="mt-1 text-sm text-foreground-muted">
+            <Text className="mt-1 text-sm text-app-text-faint">
               Keep recurring expenses visible and categorized for cleaner spending insights.
             </Text>
           </View>
@@ -245,6 +244,7 @@ export default function BillModal() {
                     placeholder="e.g. Rent"
                     value={value}
                     onChangeText={onChange}
+                    variant="dark"
                     errorText={errors.name?.message}
                   />
                 )}
@@ -261,6 +261,7 @@ export default function BillModal() {
                     keyboardType="numeric"
                     value={value}
                     onChangeText={onChange}
+                    variant="dark"
                     helperText="Average monthly amount"
                     errorText={errors.amount?.message}
                   />
@@ -273,7 +274,7 @@ export default function BillModal() {
                 rules={{ required: 'Select a category' }}
                 render={({ field: { value, onChange } }) => (
                   <View>
-                    <Label className="mb-2 text-sm font-medium text-foreground-primary">
+                    <Label className="mb-2 text-sm font-medium text-app-text-strong">
                       Category
                     </Label>
                     <Select value={value} onValueChange={onChange}>
@@ -288,7 +289,7 @@ export default function BillModal() {
                       <SelectContent>
                         {(categories || []).map((category: any) => (
                           <SelectItem key={category.id} value={String(category.id)}>
-                            <Text className="text-sm text-foreground-primary">{category.name}</Text>
+                            <Text className="text-sm text-app-text-strong">{category.name}</Text>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -312,6 +313,7 @@ export default function BillModal() {
                     keyboardType="numeric"
                     value={value}
                     onChangeText={onChange}
+                    variant="dark"
                     helperText="Day of month (1-31). Leave blank if flexible."
                   />
                 )}
@@ -321,12 +323,12 @@ export default function BillModal() {
                 control={control}
                 name="autoPay"
                 render={({ field: { value, onChange } }) => (
-                  <View className="flex-row items-center justify-between rounded-xl border border-app-border bg-app-surface-alt px-4 py-3">
+                  <View className="flex-row items-center justify-between rounded-xl border border-app-border-strong bg-app-surface-2 px-4 py-3">
                     <View className="flex-1 pr-4">
-                      <Text className="text-sm font-medium text-foreground-primary">
+                      <Text className="text-sm font-medium text-app-text-strong">
                         Auto-pay enabled
                       </Text>
-                      <Text className="mt-1 text-xs text-foreground-muted">
+                      <Text className="mt-1 text-xs text-app-text-faint">
                         Toggle on if the bill is automatically drafted each month.
                       </Text>
                     </View>
@@ -334,10 +336,10 @@ export default function BillModal() {
                       value={value}
                       onValueChange={onChange}
                       trackColor={{
-                        false: theme.colors.secondary[200],
-                        true: theme.colors.primary[500],
+                        false: '#0D1325',
+                        true: '#182136',
                       }}
-                      thumbColor={theme.colors.background.primary}
+                      thumbColor={value ? '#58B6FF' : '#8190B3'}
                     />
                   </View>
                 )}
@@ -352,6 +354,7 @@ export default function BillModal() {
                     placeholder="Optional details, confirmation numbers, etc."
                     value={value}
                     onChangeText={onChange}
+                    variant="dark"
                     multiline
                     numberOfLines={3}
                   />
@@ -362,7 +365,7 @@ export default function BillModal() {
         </ScrollView>
 
         <View
-          className="border-border-default bg-background-primary px-6 pb-6 pt-4"
+          className="border-t border-app-border-strong bg-app-surface-1 px-6 pb-6 pt-4"
           style={{ paddingBottom: Math.max(insets.bottom + 16, 24) }}>
           {isEditing ? (
             <Button
@@ -376,6 +379,7 @@ export default function BillModal() {
           <Button
             onPress={handleSubmit(onSubmit)}
             title={isEditing ? 'Save changes' : 'Add bill'}
+            variant="primary-solid"
             disabled={isSubmitting || initializing}
           />
         </View>

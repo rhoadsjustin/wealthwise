@@ -42,12 +42,12 @@ export default function FAB({ onPress, label = '' }: FABProps) {
             onPress();
           }}
           activeOpacity={0.8}
-          className="h-14 w-14 items-center justify-center rounded-full bg-primary-500 shadow-lg">
-          <Ionicons name="add" size={28} color="#FFFFFF" />
+          className="h-14 w-14 items-center justify-center rounded-full border border-app-border-contrast bg-app-surface-2 shadow-glow">
+          <Ionicons name="add" size={28} color="#59F7A5" />
         </TouchableOpacity>
       </Animated.View>
       {label ? (
-        <Text className="mt-2 text-center text-xs text-gray-600" accessibilityElementsHidden>
+        <Text className="mt-2 text-center text-xs text-app-text-faint" accessibilityElementsHidden>
           {label}
         </Text>
       ) : null}

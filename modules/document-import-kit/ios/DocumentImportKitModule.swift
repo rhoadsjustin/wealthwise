@@ -73,7 +73,9 @@ extension DocumentImportKitError: LocalizedError {
 }
 
 private extension DocumentImportKitModule {
-  static var activeScannerCoordinator: LiveTextScannerCoordinator?
+  // Retain the live scanner coordinator while the camera flow is active without
+  // exposing the iOS 16-only type from the surrounding extension.
+  static var activeScannerCoordinator: AnyObject?
 
   static func extractTextFromPdf(uri: String) throws -> String {
     #if canImport(PDFKit)
@@ -158,11 +160,18 @@ private extension DocumentImportKitModule {
   static func scanTextWithCamera() async throws -> String {
     #if canImport(VisionKit) && canImport(UIKit)
     if #available(iOS 16.0, *) {
-      guard DataScannerViewController.isSupported else {
+      let scannerAvailability = await MainActor.run {
+        (
+          supported: DataScannerViewController.isSupported,
+          available: DataScannerViewController.isAvailable
+        )
+      }
+
+      guard scannerAvailability.supported else {
         throw DocumentImportKitError.scannerUnsupported
       }
 
-      guard DataScannerViewController.isAvailable else {
+      guard scannerAvailability.available else {
         throw DocumentImportKitError.scannerUnavailable
       }
 

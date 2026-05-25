@@ -8,18 +8,21 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Keyboard,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Markdown from 'react-native-markdown-display';
 
+import { TopUtilityBar } from '@/components/TopUtilityBar';
 import { useAuth } from '@/context/useAuth';
 import { useAppData } from '../_layout';
+import { Card, CardContent } from '@/components/Card';
+import { PillSegmentedControl } from '@/components/PillSegmentedControl';
+import { SectionHeaderRow } from '@/components/SectionHeaderRow';
 import { useVectorStore } from '@/context/RAGContext';
 import { useRAG } from 'react-native-rag';
+import { AppText } from '@/components/AppText';
 import type { Transaction, Category, CategoryBreakdown, Insight } from '@/context/DataContext';
 import {
   buildBudgetSnapshots,
@@ -48,7 +51,6 @@ function InsightsTab() {
   const [isLoading, setIsLoading] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [isContinuing, setIsContinuing] = useState(false);
-  const [keyboardInset, setKeyboardInset] = useState(0);
   const [insightsMode, setInsightsMode] = useState<'assistant' | 'apple'>('apple');
   const [appleResult, setAppleResult] = useState<BudgetInsightsPayload | null>(null);
   const [appleLoading, setAppleLoading] = useState(false);
@@ -132,14 +134,6 @@ function InsightsTab() {
     return appleResult.classifications;
   }, [appleResult, latestClassifications]);
 
-  const classificationByCategoryId = useMemo(() => {
-    const map = new Map<number, BudgetClassification>();
-    classificationList.forEach((entry) => {
-      map.set(entry.categoryId, entry);
-    });
-    return map;
-  }, [classificationList]);
-
   const recommendations = useMemo<BudgetRecommendation[]>(() => {
     return appleResult?.recommendations ?? [];
   }, [appleResult]);
@@ -196,23 +190,6 @@ function InsightsTab() {
     llm: llm as any,
     preventLoad: !vectorStore || !llm || !isFocused,
   });
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const showSub = Keyboard.addListener(showEvent, (event) => {
-      setKeyboardInset(event.endCoordinates.height);
-    });
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      setKeyboardInset(0);
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
 
   useEffect(() => {
     if (!isAssistantMode) return;
@@ -479,16 +456,6 @@ function InsightsTab() {
       ? 'Crunching recent activity to tailor recommendations for you.'
       : 'Ask about spending, budgets, goals, or anything money-related.';
 
-  const assistantStatusBadgeBg = assistantSetupPending
-    ? 'bg-warning-100'
-    : assistantDataLoading
-      ? 'bg-info-100'
-      : 'bg-success-100';
-  const assistantStatusBadgeText = assistantSetupPending
-    ? 'text-warning-700'
-    : assistantDataLoading
-      ? 'text-info-700'
-      : 'text-success-700';
   const assistantStatusLabel = assistantSetupPending
     ? 'Preparing'
     : assistantDataLoading
@@ -503,20 +470,6 @@ function InsightsTab() {
       : appleHasResult
         ? 'Ready'
         : 'Idle';
-  const appleStatusBadgeBg = appleLoading
-    ? 'bg-info-100'
-    : appleError
-      ? 'bg-error-100'
-      : appleHasResult
-        ? 'bg-success-100'
-        : 'bg-app-surface-alt';
-  const appleStatusBadgeText = appleLoading
-    ? 'text-info-700'
-    : appleError
-      ? 'text-error-700'
-      : appleHasResult
-        ? 'text-success-700'
-        : 'text-app-text-muted';
   const appleHeroTitle = appleLoading
     ? 'Training your budget coach'
     : appleError
@@ -526,12 +479,14 @@ function InsightsTab() {
         : 'Apple budget coach';
   const appleHeroSubtitle = appleLoading
     ? 'Crunching your recent budgets securely on-device.'
-    : (appleError ?? 'Train Apple’s on-device model on your recent budgets for tailored guidance.');
+    : appleError
+      ? appleError
+      : appleHasResult
+        ? 'Your private on-device coach is ready with budget signals and next actions.'
+        : 'Run the coach on your recent budgets whenever you want a fresh local read.';
 
   const heroTitle = isAssistantMode ? assistantHeroTitle : appleHeroTitle;
   const heroSubtitle = isAssistantMode ? assistantHeroSubtitle : appleHeroSubtitle;
-  const statusBadgeBg = isAssistantMode ? assistantStatusBadgeBg : appleStatusBadgeBg;
-  const statusBadgeText = isAssistantMode ? assistantStatusBadgeText : appleStatusBadgeText;
   const statusLabel = isAssistantMode ? assistantStatusLabel : appleStatusLabel;
 
   const embeddingsPercent = Math.round(((embeddingsInstalled ? 1 : embeddingsProgress) || 0) * 100);
@@ -679,113 +634,358 @@ function InsightsTab() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
       style={{ flex: 1 }}>
-      <View className="flex-1 bg-app-background">
-        <View className="flex-1 px-5">
-          <View className="flex-1">
-            <View
-              className="my-6 rounded-3xl border border-app-border bg-app-surface px-4 pb-5 pt-5 shadow-sm"
-              style={Platform.OS === 'ios' ? { flex: 1 } : undefined}>
-              <View className="mb-4 flex-row items-center justify-between">
-                <Text className="text-base font-semibold text-app-text">Budget Assistant</Text>
-                {appleChatLoading && Platform.OS === 'ios' && (
-                  <View className="flex-row items-center rounded-full bg-app-surface-alt px-3 py-1">
-                    <ActivityIndicator size="small" color="#0EA5E9" />
-                    <Text className="ml-2 text-xs font-medium text-app-text-muted">Thinking…</Text>
-                  </View>
-                )}
+      <View className="flex-1 bg-app-canvas">
+        <TopUtilityBar
+          badge="Insights"
+          actionIcon="sparkles-outline"
+          actionLabel="Retrain coach"
+          onPressAction={handleRetrain}
+        />
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{
+            paddingTop: 20,
+            paddingBottom: insets.bottom + 120,
+          }}
+          contentContainerClassName="px-5"
+          keyboardShouldPersistTaps="handled">
+          <Text className="mb-6 text-sm leading-6 text-app-text-faint">
+            Analytics and coaching in one premium view.
+          </Text>
+
+          <PillSegmentedControl
+            value={insightsMode}
+            onChange={(value) => setInsightsMode(value)}
+            options={[
+              { label: 'Coach', value: 'apple' },
+              { label: 'Assistant', value: 'assistant' },
+            ]}
+          />
+
+          <Card variant="hero" className="mt-5">
+            <CardContent>
+              <View className="flex-row items-start justify-between gap-4">
+                <View className="flex-1">
+                  <Text className="text-xs uppercase tracking-[0.12em] text-app-text-faint">
+                    Reports overview
+                  </Text>
+                  <Text className="mt-3 text-3xl font-semibold text-app-text-strong">
+                    {heroTitle}
+                  </Text>
+                  <Text className="mt-2 text-sm leading-6 text-app-text-faint">{heroSubtitle}</Text>
+                </View>
+                <View className="rounded-full border border-app-border-contrast bg-app-surface-1 px-3 py-1.5">
+                  <Text className="text-xs font-medium text-accent-savings">{statusLabel}</Text>
+                </View>
               </View>
 
-              {Platform.OS !== 'ios' ? (
-                <View className="rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4 py-3">
-                  <Text className="text-xs text-app-text-muted">
-                    Apple budget chat is only available on iOS devices.
-                  </Text>
-                </View>
-              ) : (
-                <View className="flex-1">
-                  <ScrollView
-                    ref={(ref) => {
-                      appleChatScrollRef.current = ref;
-                    }}
-                    className="max-h-screen-safe-offset-8 flex-1"
-                    contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}
-                    keyboardShouldPersistTaps="handled"
-                    onContentSizeChange={() =>
-                      appleChatScrollRef.current?.scrollToEnd({ animated: true })
-                    }>
-                    {appleChatMessages
-                      .filter((message) => message.role !== 'system')
-                      .map((message, index) => {
-                        const baseClasses =
-                          message.role === 'user'
-                            ? 'self-end bg-primary-500'
-                            : message.role === 'tool'
-                              ? 'self-start border border-dashed border-app-border bg-app-surface'
-                              : 'self-start border border-app-border bg-app-surface-alt';
-                        const textClasses =
-                          message.role === 'user'
-                            ? 'text-white'
-                            : message.role === 'tool'
-                              ? 'text-xs text-app-text-muted'
-                              : 'text-sm text-app-text';
-                        return (
-                          <View
-                            key={`apple-chat-${index}-${message.role}`}
-                            className={`mt-2 max-w-[85%] rounded-3xl px-4 py-3 shadow-sm ${baseClasses}`}>
-                            {message.role === 'user' ? (
-                              <Text className={textClasses}>{message.content}</Text>
-                            ) : (
-                              <Markdown>{message.content}</Markdown>
-                            )}
-                          </View>
-                        );
-                      })}
-                  </ScrollView>
+              <View className="mt-5 flex-row gap-3">
+                <InsightStat
+                  label="Net income"
+                  value={currencyFormatter.format(summary?.netIncomeAfterSavings ?? 0)}
+                />
+                <InsightStat
+                  label="Expenses"
+                  value={currencyFormatter.format(summary?.totalExpenses ?? 0)}
+                />
+              </View>
+            </CardContent>
+          </Card>
 
-                  {appleChatError && (
-                    <View className="mt-3 rounded-2xl border border-warning-200 bg-warning-50 px-4 py-2">
-                      <Text className="text-xs font-medium text-warning-700">{appleChatError}</Text>
-                    </View>
-                  )}
-                </View>
-              )}
+          <View className="mt-5 flex-row gap-3">
+            {['1W', '1M', '1Y', 'YTD', 'ALL'].map((label) => (
+              <View
+                key={label}
+                className="rounded-full border border-app-border bg-app-surface-1 px-3 py-2">
+                <Text className="text-xs font-medium text-app-text-faint">{label}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View className="mt-8">
+            <SectionHeaderRow title="Signals" subtitle="The numbers worth attention right now" />
+            <View className="gap-3">
+              <InsightPanel
+                title="Budget pressure"
+                value={currencyFormatter.format(summary?.remainingBudget ?? 0)}
+                detail="Remaining budget"
+              />
+              <InsightPanel
+                title="Savings progress"
+                value={currencyFormatter.format(summary?.totalSavingsProgress ?? 0)}
+                detail={`Planned ${currencyFormatter.format(summary?.totalSavingsPlanned ?? 0)}`}
+              />
             </View>
           </View>
 
-          {Platform.OS === 'ios' && (
-            <View className="pt-3" style={{ paddingBottom: insets.bottom + 60 }}>
-              <View className="flex-row items-end rounded-2xl border border-app-border bg-app-surface-alt px-3 py-2">
-                <TextInput
-                  value={appleChatInput}
-                  onChangeText={setAppleChatInput}
-                  placeholder="Ask the Apple advisor…"
-                  placeholderTextColor="#64748B"
-                  className="max-h-32 flex-1 align-middle text-sm text-app-text"
-                  editable={!appleChatLoading}
-                  returnKeyType="send"
-                  onSubmitEditing={() => {
-                    if (!appleChatLoading) handleAppleChatSubmit();
-                  }}
-                />
-                <TouchableOpacity
-                  onPress={handleAppleChatSubmit}
-                  disabled={appleChatLoading || !appleChatInput.trim()}
-                  accessibilityLabel="Send Apple advisor question"
-                  className={`ml-2 h-9 w-9 items-center justify-center rounded-full bg-primary-500 ${
-                    appleChatLoading || !appleChatInput.trim() ? 'opacity-40' : ''
-                  }`}>
-                  {appleChatLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Ionicons name="send" size={18} color="#FFFFFF" />
-                  )}
-                </TouchableOpacity>
-              </View>
+          {isAssistantMode ? (
+            <View className="mt-8">
+              <SectionHeaderRow
+                title="Local assistant"
+                subtitle="Ask grounded questions about your current transactions and budgets"
+                actionLabel="Use prompt"
+                onPressAction={quickPrompt}
+              />
+
+              <Card variant="glass-dark">
+                <CardContent>
+                  {isSetupPending || isAssistantLoading ? (
+                    <View className="rounded-2xl bg-app-canvas-elevated px-4 py-4">
+                      <Text className="text-sm font-medium text-app-text-soft">
+                        {assistantSetupPending
+                          ? `Embeddings ${embeddingsPercent}% • LLM ${llmPercent}%`
+                          : 'Analyzing your financial data…'}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  <ScrollView
+                    ref={(ref) => {
+                      messagesScrollRef.current = ref;
+                    }}
+                    className="mt-4 max-h-[360px]"
+                    contentContainerStyle={{ gap: 10, paddingBottom: 8 }}
+                    onContentSizeChange={() =>
+                      messagesScrollRef.current?.scrollToEnd({ animated: true })
+                    }>
+                    {messages
+                      .filter((message) => message.role !== 'system')
+                      .map((message, index) => (
+                        <View
+                          key={`assistant-${index}-${message.role}`}
+                          className={`max-w-[88%] rounded-3xl px-4 py-3 ${
+                            message.role === 'user'
+                              ? 'self-end bg-app-surface-3'
+                              : 'self-start border border-app-border bg-app-surface-1'
+                          }`}>
+                          <Text
+                            className={`text-sm leading-6 ${
+                              message.role === 'user'
+                                ? 'text-app-text-strong'
+                                : 'text-app-text-soft'
+                            }`}>
+                            {message.content}
+                          </Text>
+                        </View>
+                      ))}
+                  </ScrollView>
+
+                  <View className="mt-4 flex-row items-end rounded-2xl border border-app-border bg-app-canvas-elevated px-3 py-2">
+                    <TextInput
+                      ref={inputRef}
+                      value={query}
+                      onChangeText={setQuery}
+                      placeholder="Ask about spending, categories, or progress"
+                      placeholderTextColor="#8190B3"
+                      className="max-h-32 flex-1 text-sm text-app-text-strong"
+                      editable={!isLoading}
+                      returnKeyType="send"
+                      onSubmitEditing={() => {
+                        if (!isLoading) handleSubmitQuery();
+                      }}
+                    />
+                    <TouchableOpacity
+                      onPress={handleSubmitQuery}
+                      disabled={isLoading || !query.trim()}
+                      className={`ml-2 h-10 w-10 items-center justify-center rounded-full bg-accent-savings ${
+                        isLoading || !query.trim() ? 'opacity-40' : ''
+                      }`}>
+                      {isLoading ? (
+                        <ActivityIndicator size="small" color="#050816" />
+                      ) : (
+                        <Ionicons name="send" size={18} color="#050816" />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </CardContent>
+              </Card>
             </View>
+          ) : (
+            <>
+              <View className="mt-8">
+                <SectionHeaderRow
+                  title="Coach actions"
+                  subtitle={
+                    appleLatestMonth ? formatMonthLabel(appleLatestMonth) : 'Latest model state'
+                  }
+                  actionLabel="Retrain"
+                  onPressAction={handleRetrain}
+                />
+                <View className="gap-3">
+                  {classificationList.slice(0, 4).map((entry) => {
+                    const snapshot = appleSnapshotMap.get(`${entry.categoryId}:${entry.month}`);
+                    const statusStyles = getStatusStyles(entry.predictedStatus);
+                    return (
+                      <Card key={`${entry.categoryId}-${entry.month}`} variant="glass-dark">
+                        <CardContent>
+                          <View className="flex-row items-start justify-between gap-4">
+                            <View className="flex-1">
+                              <Text className="text-base font-semibold text-app-text-strong">
+                                {entry.categoryName}
+                              </Text>
+                              <Text className="mt-2 text-sm leading-6 text-app-text-faint">
+                                {buildRecommendationCopy(entry, snapshot)}
+                              </Text>
+                            </View>
+                            <View className="rounded-full bg-app-canvas-elevated px-3 py-1.5">
+                              <Text className={`text-xs font-medium ${statusStyles.text}`}>
+                                {statusStyles.label}
+                              </Text>
+                            </View>
+                          </View>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View className="mt-8">
+                <SectionHeaderRow title="Recommended actions" subtitle="Model-driven next moves" />
+                <View className="gap-3">
+                  {recommendations.length ? (
+                    recommendations.slice(0, 4).map((recommendation, index) => (
+                      <Card key={`${recommendation.categoryId ?? index}-${index}`} variant="inset">
+                        <CardContent>
+                          <Text className="text-sm leading-6 text-app-text-soft">
+                            Consider revisiting {recommendation.categoryName}.
+                          </Text>
+                          {Number.isFinite(recommendation.score) ? (
+                            <Text className="mt-2 text-xs leading-5 text-app-text-faint">
+                              Recommendation score {recommendation.score.toFixed(2)}
+                            </Text>
+                          ) : null}
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <Card variant="inset">
+                      <CardContent>
+                        <Text className="text-sm text-app-text-faint">
+                          Train the coach on recent budget snapshots to surface actions here.
+                        </Text>
+                      </CardContent>
+                    </Card>
+                  )}
+                </View>
+              </View>
+
+              <View className="mt-8">
+                <SectionHeaderRow
+                  title="Coach chat"
+                  subtitle="Ask Apple’s on-device budget advisor"
+                />
+                <Card variant="glass-dark">
+                  <CardContent>
+                    {Platform.OS !== 'ios' ? (
+                      <View className="rounded-2xl border border-dashed border-app-border bg-app-canvas-elevated px-4 py-3">
+                        <Text className="text-xs text-app-text-faint">
+                          Apple budget chat is only available on iOS devices.
+                        </Text>
+                      </View>
+                    ) : (
+                      <>
+                        <ScrollView
+                          ref={(ref) => {
+                            appleChatScrollRef.current = ref;
+                          }}
+                          className="max-h-[360px]"
+                          contentContainerStyle={{ gap: 10, paddingBottom: 8 }}
+                          keyboardShouldPersistTaps="handled"
+                          onContentSizeChange={() =>
+                            appleChatScrollRef.current?.scrollToEnd({ animated: true })
+                          }>
+                          {appleChatMessages
+                            .filter((message) => message.role !== 'system')
+                            .map((message, index) => (
+                              <View
+                                key={`apple-chat-${index}-${message.role}`}
+                                className={`max-w-[88%] rounded-3xl px-4 py-3 ${
+                                  message.role === 'user'
+                                    ? 'self-end bg-app-surface-3'
+                                    : 'self-start border border-app-border bg-app-surface-1'
+                                }`}>
+                                {message.role === 'user' ? (
+                                  <Text className="text-sm leading-6 text-app-text-strong">
+                                    {message.content}
+                                  </Text>
+                                ) : (
+                                  <Markdown>{message.content}</Markdown>
+                                )}
+                              </View>
+                            ))}
+                        </ScrollView>
+
+                        {appleChatError ? (
+                          <View className="mt-3 rounded-2xl border border-warning-500/30 bg-warning-500/10 px-4 py-2">
+                            <Text className="text-xs font-medium text-warning-700">
+                              {appleChatError}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              </View>
+            </>
           )}
-        </View>
+        </ScrollView>
+
+        {Platform.OS === 'ios' && !isAssistantMode ? (
+          <View className="px-5 pt-3" style={{ paddingBottom: insets.bottom + 60 }}>
+            <View className="flex-row items-end rounded-2xl border border-app-border bg-app-surface-1 px-3 py-2">
+              <TextInput
+                value={appleChatInput}
+                onChangeText={setAppleChatInput}
+                placeholder="Ask the Apple advisor…"
+                placeholderTextColor="#8190B3"
+                className="max-h-32 flex-1 text-sm text-app-text-strong"
+                editable={!appleChatLoading}
+                returnKeyType="send"
+                onSubmitEditing={() => {
+                  if (!appleChatLoading) handleAppleChatSubmit();
+                }}
+              />
+              <TouchableOpacity
+                onPress={handleAppleChatSubmit}
+                disabled={appleChatLoading || !appleChatInput.trim()}
+                accessibilityLabel="Send Apple advisor question"
+                className={`ml-2 h-10 w-10 items-center justify-center rounded-full bg-accent-savings ${
+                  appleChatLoading || !appleChatInput.trim() ? 'opacity-40' : ''
+                }`}>
+                {appleChatLoading ? (
+                  <ActivityIndicator size="small" color="#050816" />
+                ) : (
+                  <Ionicons name="send" size={18} color="#050816" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
       </View>
     </KeyboardAvoidingView>
+  );
+}
+
+function InsightStat({ label, value }: { label: string; value: string }) {
+  return (
+    <View className="flex-1 rounded-2xl bg-app-canvas-elevated px-3 py-4">
+      <AppText variant="label-xs" className="text-app-text-faint">{label}</AppText>
+      <AppText variant="metric-lg" className="mt-2 text-app-text-strong">{value}</AppText>
+    </View>
+  );
+}
+
+function InsightPanel({ title, value, detail }: { title: string; value: string; detail: string }) {
+  return (
+    <Card variant="glass-dark">
+      <CardContent>
+      <AppText variant="form-label" className="text-app-text-faint">{title}</AppText>
+      <AppText variant="hero" className="mt-2 text-2xl text-app-text-strong">{value}</AppText>
+      <AppText variant="hint" className="mt-2 text-app-text-soft">{detail}</AppText>
+      </CardContent>
+    </Card>
   );
 }
 

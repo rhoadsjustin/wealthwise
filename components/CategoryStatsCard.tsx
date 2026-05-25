@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
+import { AppText } from '@/components/AppText';
 import { Card, CardContent } from './Card';
 import { Progress } from './Progress';
 import { Category } from '../context/DataContext';
@@ -44,19 +45,20 @@ function CategoryStats({ category, spent, className }: CategoryStatsProps) {
             <Text className="text-base">{category.icon}</Text>
           </View>
           <View className="flex-1">
-            <Text className="text-base font-semibold text-app-text">{category.name}</Text>
-            <Text className="text-xs text-app-text-secondary">
+            <AppText variant="title" className="text-app-text-strong">{category.name}</AppText>
+            <AppText variant="hint" className="text-app-text-soft">
               ${spentAmount.toFixed(2)} of ${budget.toFixed(2)}
-            </Text>
+            </AppText>
           </View>
           <View className="items-end">
-            <Text
-              className={`text-sm font-semibold ${isOverBudget ? 'text-financial-negative' : 'text-financial-positive'}`}>
+            <AppText
+              variant="metric"
+              className={isOverBudget ? 'text-financial-negative' : 'text-financial-positive'}>
               {isOverBudget ? '+' : ''}${Math.abs(spentAmount - budget).toFixed(2)}
-            </Text>
-            <Text className="text-xs text-app-text-muted">
+            </AppText>
+            <AppText variant="hint" className="text-app-text-soft">
               {isOverBudget ? 'over' : 'remaining'}
-            </Text>
+            </AppText>
           </View>
         </View>
 
@@ -70,11 +72,12 @@ function CategoryStats({ category, spent, className }: CategoryStatsProps) {
         </View>
 
         <View className="flex-row items-center justify-between">
-          <Text className="text-xs text-app-text-secondary">{percentage.toFixed(1)}% used</Text>
-          <Text
-            className={`text-xs font-medium ${isOverBudget ? 'text-financial-negative' : 'text-app-text-secondary'}`}>
+          <AppText variant="hint" className="text-app-text-soft">{percentage.toFixed(1)}% used</AppText>
+          <AppText
+            variant="hint"
+            className={isOverBudget ? 'text-financial-negative' : 'text-app-text-soft'}>
             {isOverBudget ? 'Over budget' : `$${remaining.toFixed(2)} left`}
-          </Text>
+          </AppText>
         </View>
       </CardContent>
     </Card>

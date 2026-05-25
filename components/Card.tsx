@@ -2,7 +2,7 @@ import * as React from 'react';
 import { View, Text, ViewStyle, TextStyle } from 'react-native';
 
 interface CardProps {
-  variant?: 'default' | 'outlined' | 'elevated' | 'filled';
+  variant?: 'default' | 'outlined' | 'elevated' | 'filled' | 'hero' | 'glass-dark' | 'inset';
   padding?: 'none' | 'sm' | 'md' | 'lg';
   className?: string;
   style?: ViewStyle;
@@ -13,6 +13,12 @@ const Card = React.forwardRef<View, CardProps>(
   ({ variant = 'default', padding = 'md', className = '', style, children, ...props }, ref) => {
     const getVariantClasses = () => {
       switch (variant) {
+        case 'hero':
+          return 'border border-app-border-contrast bg-app-surface-2 shadow-glow';
+        case 'glass-dark':
+          return 'border border-app-border bg-app-surface-1 shadow-lg';
+        case 'inset':
+          return 'border border-app-border bg-app-canvas-elevated';
         case 'outlined':
           return 'bg-app-surface border-2 border-app-border';
         case 'elevated':
@@ -82,9 +88,9 @@ const CardTitle = React.forwardRef<View, CardTitleProps>(
     const getVariantClasses = () => {
       switch (variant) {
         case 'large':
-          return 'text-2xl font-bold';
+          return 'text-3xl font-bold';
         case 'small':
-          return 'text-lg font-semibold';
+          return 'text-base font-semibold tracking-[0.02em]';
         default:
           return 'text-xl font-semibold';
       }
@@ -92,7 +98,7 @@ const CardTitle = React.forwardRef<View, CardTitleProps>(
 
     const titleClasses = `
       ${getVariantClasses()}
-      text-foreground-primary leading-tight
+      text-app-text-strong leading-tight
       ${className}
     `.trim();
 
@@ -118,7 +124,7 @@ const CardDescription = React.forwardRef<View, CardDescriptionProps>(
   ({ className = '', style, children, ...props }, ref) => (
     <View ref={ref} {...props}>
       <Text
-        className={`mt-1.5 text-sm leading-relaxed text-foreground-muted ${className}`}
+        className={`mt-1.5 text-sm leading-relaxed text-app-text-faint ${className}`}
         style={style}>
         {children}
       </Text>

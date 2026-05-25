@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Card, CardContent } from '../components/Card';
+import { AppText } from '@/components/AppText';
 import { useAppData } from './_layout';
 import { useTransactions } from '../context/DataContext';
 import {
@@ -207,52 +208,53 @@ export default function TransactionsModal() {
   };
 
   return (
-    <View className="flex-1 bg-app-background">
+    <View className="flex-1 bg-app-canvas">
       <View className="px-5" style={{ paddingTop: Math.max(insets.top + 8, 24) }}>
         <View className="mb-4 flex-row items-center justify-between">
           <View className="flex-row items-center">
             <TouchableOpacity
               onPress={handleClose}
               accessibilityLabel="Close transactions"
-              className="mr-3 h-10 w-10 items-center justify-center rounded-full border border-app-border bg-app-surface shadow-xs">
-              <Ionicons name="close" size={20} color="#0F172A" />
+              className="mr-3 h-10 w-10 items-center justify-center rounded-full border border-app-border-strong bg-app-surface-2 shadow-xs">
+              <Ionicons name="close" size={20} color="#8190B3" />
             </TouchableOpacity>
             <View>
-              <Text className="text-xl font-semibold text-app-text">All transactions</Text>
-              <Text className="mt-1 text-xs text-app-text-muted">
+              <AppText variant="page-title" className="text-app-text-strong">All transactions</AppText>
+              <AppText variant="hint" className="mt-1 text-app-text-faint">
                 {filteredTransactions.length} item{filteredTransactions.length === 1 ? '' : 's'}
-              </Text>
+              </AppText>
             </View>
           </View>
           <TouchableOpacity
             onPress={() => router.push('/add-transaction')}
             className="h-10 items-center justify-center rounded-full bg-primary-500 px-4"
             accessibilityLabel="Add transaction">
-            <Text className="text-xs font-semibold text-white">Add</Text>
+              <Text className="text-xs font-semibold text-white">Add</Text>
           </TouchableOpacity>
         </View>
 
-        <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-md">
+        <View className="mb-6 rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-5 shadow-md">
           <View className="flex-row items-center justify-between">
             <View className="flex-1 pr-3">
-              <Text className="text-sm font-medium text-app-text-muted">Quick filters</Text>
-              <Text className="mt-1 text-base font-semibold text-app-text">
+              <AppText variant="form-label" className="text-app-text-faint">Quick filters</AppText>
+              <AppText variant="title" className="mt-1 text-app-text-strong">
                 Zero in on the transactions you need
-              </Text>
+              </AppText>
             </View>
             <TouchableOpacity
               onPress={handleAutoCategorize}
               disabled={isAutoCategorizing}
               className={`rounded-full px-4 py-2 ${
                 isAutoCategorizing
-                  ? 'border border-app-border bg-app-surface opacity-60'
-                  : 'bg-primary-50'
+                  ? 'border border-app-border-strong bg-app-surface-1 opacity-60'
+                  : 'bg-app-surface-2'
               }`}
               accessibilityLabel="Auto categorize">
-              <Text
-                className={`text-xs font-semibold ${isAutoCategorizing ? 'text-app-text-muted' : 'text-primary-700'}`}>
+              <AppText
+                variant="caption"
+                className={isAutoCategorizing ? 'text-app-text-faint' : 'text-app-text-soft'}>
                 {isAutoCategorizing ? 'Categorizing…' : 'Auto-categorize'}
-              </Text>
+              </AppText>
             </TouchableOpacity>
           </View>
           <ScrollView
@@ -269,26 +271,24 @@ export default function TransactionsModal() {
                     onPress={() => setFilter(button.key as any)}
                     className={`flex-row items-center gap-2 rounded-full border px-4 py-2 ${
                       isActive
-                        ? 'border-primary-500 bg-primary-50'
-                        : 'border-app-border bg-app-surface-alt'
+                        ? 'border-app-border-contrast bg-app-surface-3'
+                        : 'border-app-border-strong bg-app-surface-2'
                     }`}>
-                    <Text
-                      className={`text-sm font-medium ${
-                        isActive ? 'text-primary-700' : 'text-app-text-secondary'
-                      }`}>
+                    <AppText
+                      variant="form-label"
+                      className={isActive ? 'text-app-text-strong' : 'text-app-text-soft'}>
                       {button.label}
-                    </Text>
+                    </AppText>
                     {button.count > 0 && (
                       <View
                         className={`rounded-full px-2 py-0.5 ${
-                          isActive ? 'bg-primary-100' : 'bg-app-border-muted'
+                          isActive ? 'bg-app-surface-2' : 'bg-app-border-muted'
                         }`}>
-                        <Text
-                          className={`text-xs font-semibold ${
-                            isActive ? 'text-primary-700' : 'text-app-text-muted'
-                          }`}>
+                        <AppText
+                          variant="caption"
+                          className={isActive ? 'text-app-text-strong' : 'text-app-text-faint'}>
                           {button.count}
-                        </Text>
+                        </AppText>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -304,14 +304,14 @@ export default function TransactionsModal() {
         {filteredTransactions.length === 0 ? (
           <View className="items-center py-12">
             <Ionicons name="receipt-outline" size={48} color="#9CA3AF" />
-            <Text className="mt-4 text-center text-lg text-app-text-secondary">
+            <AppText variant="section" className="mt-4 text-center text-app-text-soft">
               No transactions found
-            </Text>
-            <Text className="mt-1 text-center text-app-text-muted">
+            </AppText>
+            <AppText variant="body" className="mt-1 text-center text-app-text-faint">
               {filter === 'uncategorized'
                 ? 'All your transactions are categorized!'
                 : 'Start adding transactions to see them here'}
-            </Text>
+            </AppText>
           </View>
         ) : (
           <View className="space-y-3 pb-6">
@@ -365,7 +365,7 @@ export default function TransactionsModal() {
                       </TouchableOpacity>
                     </View>
                   )}>
-                  <Card variant="default" className="bg-app-surface">
+                  <Card variant="default" className="bg-app-surface-1">
                     <CardContent className="p-4">
                       <View className="flex-row items-center justify-between">
                         <View className="min-w-0 flex-1 flex-row items-center">
@@ -377,49 +377,49 @@ export default function TransactionsModal() {
                             </Text>
                           </View>
                           <View className="min-w-0 flex-1">
-                            <Text className="text-base font-medium text-app-text" numberOfLines={1}>
+                            <AppText variant="title" className="text-app-text-strong" numberOfLines={1}>
                               {transaction.description}
-                            </Text>
+                            </AppText>
                             <View className="mt-1 flex-row items-center">
-                              <Text
-                                className={`text-sm ${
+                              <AppText
+                                variant="body"
+                                className={`${
                                   needsCategorization
-                                    ? 'text-orange-600'
-                                    : 'text-app-text-secondary'
+                                    ? 'text-warning-600'
+                                    : 'text-app-text-soft'
                                 }`}>
                                 {getCategoryName(transaction.categoryId)}
-                              </Text>
+                              </AppText>
                               {isUpdating ? (
-                                <View className="ml-2 rounded-full bg-blue-100 px-2 py-0.5">
-                                  <Text className="text-xs font-medium text-blue-600">
+                                <View className="ml-2 rounded-full bg-primary-100 px-2 py-0.5">
+                                  <AppText variant="caption" className="text-primary-600">
                                     Updating...
-                                  </Text>
+                                  </AppText>
                                 </View>
                               ) : needsCategorization ? (
-                                <View className="ml-2 rounded-full bg-orange-100 px-2 py-0.5">
-                                  <Text className="text-xs font-medium text-orange-600">
+                                <View className="ml-2 rounded-full bg-warning-100 px-2 py-0.5">
+                                  <AppText variant="caption" className="text-warning-600">
                                     Needs category
-                                  </Text>
+                                  </AppText>
                                 </View>
                               ) : null}
                             </View>
-                            <Text className="mt-1 text-xs text-app-text-muted">
+                            <AppText variant="hint" className="mt-1 text-app-text-faint">
                               {formatDate(transaction.date)}
-                            </Text>
+                            </AppText>
                           </View>
                         </View>
                         <View className="ml-3 flex-shrink-0 items-end">
-                          <Text
-                            className={`text-lg font-semibold ${
-                              isExpense ? 'text-financial-negative' : 'text-financial-positive'
-                            }`}>
+                          <AppText
+                            variant="metric-lg"
+                            className={isExpense ? 'text-financial-negative' : 'text-financial-positive'}>
                             {isExpense ? '-' : '+'}$
                             {Math.abs(parseFloat(transaction.amount)).toFixed(2)}
-                          </Text>
+                          </AppText>
                           {isUpdating && (
-                            <Text className="mt-1 text-xs font-medium text-gray-400">
+                            <AppText variant="hint" className="mt-1 text-app-text-faint">
                               Updating...
-                            </Text>
+                            </AppText>
                           )}
                         </View>
                       </View>
@@ -438,34 +438,34 @@ export default function TransactionsModal() {
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={handleCloseCategoryModal}>
-        <View className="flex-1 bg-app-background">
+        <View className="flex-1 bg-app-canvas">
           <View className="px-5" style={{ paddingTop: Math.max(insets.top + 8, 24) }}>
             <View className="mb-4 flex-row items-center justify-between">
               <View>
-                <Text className="text-xl font-semibold text-app-text">Select category</Text>
+                <AppText variant="title" className="text-app-text-strong">Select category</AppText>
                 {selectedTransaction && (
-                  <Text className="mt-1 text-xs text-app-text-muted">
+                  <AppText variant="hint" className="mt-1 text-app-text-faint">
                     ${Math.abs(parseFloat(selectedTransaction.amount)).toFixed(2)} •{' '}
                     {formatDate(selectedTransaction.date)}
-                  </Text>
+                  </AppText>
                 )}
               </View>
               <TouchableOpacity
                 onPress={handleCloseCategoryModal}
                 accessibilityLabel="Close category selector"
-                className="h-10 w-10 items-center justify-center rounded-full border border-app-border bg-app-surface shadow-xs">
-                <Ionicons name="close" size={20} color="#0F172A" />
+                className="h-10 w-10 items-center justify-center rounded-full border border-app-border-strong bg-app-surface-2 shadow-xs">
+                <Ionicons name="close" size={20} color="#8190B3" />
               </TouchableOpacity>
             </View>
 
             {selectedTransaction && (
-              <View className="mb-6 rounded-2xl border border-app-border bg-app-surface px-4 py-3">
-                <Text className="text-sm font-medium text-app-text">
+              <View className="mb-6 rounded-2xl border border-app-border-strong bg-app-surface-1 px-4 py-3">
+                <AppText variant="body" className="text-app-text-strong">
                   {selectedTransaction.description}
-                </Text>
-                <Text className="mt-1 text-xs text-app-text-muted">
+                </AppText>
+                <AppText variant="hint" className="mt-1 text-app-text-faint">
                   Choose the best matching category below
-                </Text>
+                </AppText>
               </View>
             )}
           </View>
@@ -479,7 +479,7 @@ export default function TransactionsModal() {
                     key={category.id}
                     onPress={() => handleCategorySelect(category.id)}
                     disabled={updatingTransactions.size > 0}
-                    className={`flex-row items-center justify-between rounded-2xl border border-app-border bg-app-surface px-4 py-4 shadow-xs ${
+                    className={`flex-row items-center justify-between rounded-2xl border border-app-border-strong bg-app-surface-1 px-4 py-4 shadow-xs ${
                       updatingTransactions.size > 0 ? 'opacity-50' : ''
                     }`}>
                     <View className="flex-row items-center">
@@ -489,16 +489,16 @@ export default function TransactionsModal() {
                         <Text className="text-base">{category.icon}</Text>
                       </View>
                       <View>
-                        <Text className="text-base font-semibold text-app-text">
+                        <AppText variant="title" className="text-app-text-strong">
                           {category.name}
-                        </Text>
-                        <Text className="text-xs text-app-text-muted">
+                        </AppText>
+                        <AppText variant="hint" className="text-app-text-faint">
                           Budget ${parseFloat(category.budget).toFixed(2)}
-                        </Text>
+                        </AppText>
                       </View>
                     </View>
                     {updatingTransactions.size > 0 ? (
-                      <Text className="text-xs text-app-text-muted">Updating…</Text>
+                      <AppText variant="hint" className="text-app-text-faint">Updating…</AppText>
                     ) : (
                       <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
                     )}
@@ -509,7 +509,7 @@ export default function TransactionsModal() {
         </View>
       </Modal>
 
-      <StatusBar style={Platform.OS === 'ios' ? 'dark' : 'auto'} />
+      <StatusBar style="light" />
     </View>
   );
 }

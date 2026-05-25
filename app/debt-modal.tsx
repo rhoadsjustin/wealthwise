@@ -233,7 +233,7 @@ export default function DebtModal() {
   }, [debtId, deleteDebt, refreshAppData, router, toast]);
 
   return (
-    <View className="flex-1 bg-background-primary">
+    <View className="flex-1 bg-app-canvas">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1">
@@ -242,11 +242,11 @@ export default function DebtModal() {
           className="flex-1"
           contentContainerStyle={{ paddingBottom: insets.bottom + 160 }}
           keyboardShouldPersistTaps="handled">
-          <View className="border-b border-border-default bg-background-primary px-6 pb-4 pt-6">
-            <Text className="text-xl font-semibold text-foreground-primary">
+          <View className="border-b border-app-border-strong bg-app-surface-1 px-6 pb-4 pt-6">
+            <Text className="text-xl font-semibold text-app-text-strong">
               {isEditing ? 'Edit debt' : 'Add debt'}
             </Text>
-            <Text className="mt-1 text-sm text-foreground-muted">
+            <Text className="mt-1 text-sm text-app-text-faint">
               Capture balances, minimums, and payoff cadence to accelerate progress.
             </Text>
           </View>
@@ -263,6 +263,7 @@ export default function DebtModal() {
                     placeholder="e.g. Chase Sapphire"
                     value={value}
                     onChangeText={onChange}
+                    variant="dark"
                     errorText={errors.name?.message}
                   />
                 )}
@@ -279,6 +280,7 @@ export default function DebtModal() {
                     keyboardType="numeric"
                     value={value}
                     onChangeText={onChange}
+                    variant="dark"
                     helperText="Starting balance when you began tracking"
                     errorText={errors.totalAmount?.message}
                   />
@@ -295,6 +297,7 @@ export default function DebtModal() {
                     keyboardType="numeric"
                     value={value}
                     onChangeText={onChange}
+                    variant="dark"
                     helperText="Leave blank to match the original amount"
                   />
                 )}
@@ -310,6 +313,7 @@ export default function DebtModal() {
                     keyboardType="numeric"
                     value={value}
                     onChangeText={onChange}
+                    variant="dark"
                     helperText="Optional monthly minimum"
                   />
                 )}
@@ -325,6 +329,7 @@ export default function DebtModal() {
                     keyboardType="numeric"
                     value={value}
                     onChangeText={onChange}
+                    variant="dark"
                     helperText="APR as a percentage"
                   />
                 )}
@@ -340,6 +345,7 @@ export default function DebtModal() {
                     keyboardType="numeric"
                     value={value}
                     onChangeText={onChange}
+                    variant="dark"
                     helperText="Day of month (1-31)"
                   />
                 )}
@@ -350,7 +356,7 @@ export default function DebtModal() {
                 name="categoryId"
                 render={({ field: { value, onChange } }) => (
                   <View>
-                    <Label className="mb-2 text-sm font-medium text-foreground-primary">
+                    <Label className="mb-2 text-sm font-medium text-app-text-strong">
                       Category
                     </Label>
                     <Select value={value} onValueChange={onChange}>
@@ -365,7 +371,7 @@ export default function DebtModal() {
                       <SelectContent>
                         {(categories || []).map((category: any) => (
                           <SelectItem key={category.id} value={String(category.id)}>
-                            <Text className="text-sm text-foreground-primary">{category.name}</Text>
+                            <Text className="text-sm text-app-text-strong">{category.name}</Text>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -383,6 +389,7 @@ export default function DebtModal() {
                     placeholder="Payment strategy, contact info, etc."
                     value={value}
                     onChangeText={onChange}
+                    variant="dark"
                     multiline
                     numberOfLines={3}
                   />
@@ -393,7 +400,7 @@ export default function DebtModal() {
         </ScrollView>
 
         <View
-          className="border-border-default bg-background-primary px-6 pb-6 pt-4"
+          className="border-t border-app-border-strong bg-app-surface-1 px-6 pb-6 pt-4"
           style={{ paddingBottom: Math.max(insets.bottom + 16, 24) }}>
           {isEditing ? (
             <Button variant="outline" className="mb-3" onPress={handleDelete} title="Delete debt" />
@@ -401,6 +408,7 @@ export default function DebtModal() {
           <Button
             onPress={handleSubmit(onSubmit)}
             title={isEditing ? 'Save changes' : 'Add debt'}
+            variant="primary-solid"
             disabled={isSubmitting || initializing}
           />
         </View>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Input } from './Input';
+import { AppText } from '@/components/AppText';
 import { Ionicons } from '@expo/vector-icons';
 
 interface CategoryListItemProps {
@@ -70,9 +71,9 @@ export default function CategoryListItem({
             style={{ backgroundColor: category.color + '20' }}>
             <Text className="text-lg">{category.icon}</Text>
           </View>
-          <Text className="flex-1 text-base font-medium text-gray-700" numberOfLines={1}>
+          <AppText variant="title" className="flex-1 text-app-text-strong" numberOfLines={1}>
             {category.name}
-          </Text>
+          </AppText>
         </View>
       );
     }
@@ -86,13 +87,13 @@ export default function CategoryListItem({
           <Text className="text-lg">{category.icon}</Text>
         </View>
         <View className="flex-1">
-          <Text className="text-base font-semibold text-foreground-primary">{category.name}</Text>
+          <AppText variant="title" className="text-app-text-strong">{category.name}</AppText>
           <View className="flex-row items-center gap-3">
-            <Text className="text-sm text-foreground-secondary">
+            <AppText variant="body" className="text-app-text-soft">
               Budget: ${parseFloat(category.budget).toFixed(2)}/month
-            </Text>
+            </AppText>
             {mode === 'display' && spent > 0 && (
-              <Text className="text-sm text-foreground-secondary">Spent: ${spent.toFixed(2)}</Text>
+              <AppText variant="body" className="text-app-text-soft">Spent: ${spent.toFixed(2)}</AppText>
             )}
           </View>
         </View>
@@ -141,9 +142,9 @@ export default function CategoryListItem({
               style={{ backgroundColor: category.color + '20' }}>
               <Text className="text-lg">{category.icon}</Text>
             </View>
-            <Text className="flex-1 text-base font-medium text-gray-700" numberOfLines={1}>
+            <AppText variant="title" className="flex-1 text-app-text-strong" numberOfLines={1}>
               {category.name}
-            </Text>
+            </AppText>
           </View>
           <View className="flex-shrink-0 flex-row items-center gap-1">
             <Text className="text-base font-medium text-gray-700">$</Text>

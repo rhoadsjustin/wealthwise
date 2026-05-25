@@ -7,6 +7,7 @@ import {
   Platform,
   TouchableOpacity,
 } from 'react-native';
+import { AppText } from '@/components/AppText';
 import { Button } from './Button';
 import { Input } from './Input';
 import { Label } from './Label';
@@ -178,7 +179,7 @@ export default function CreateCategoryModal({
               <Button variant="ghost" size="sm" onPress={onClose} className="px-0">
                 <Ionicons name="close" size={24} color="#6B7280" />
               </Button>
-              <Text className="text-xl font-semibold text-foreground-primary">Create Category</Text>
+              <AppText variant="page-title" className="text-app-text-strong">Create Category</AppText>
               <View className="w-10" />
             </View>
           </View>
@@ -198,9 +199,9 @@ export default function CreateCategoryModal({
                   variant="outline"
                 />
                 {errors.name && (
-                  <Text className="mt-1 text-xs text-error-600">
+                  <AppText variant="hint" className="mt-1 text-error-600">
                     {errors.name.message as string}
-                  </Text>
+                  </AppText>
                 )}
               </View>
 
@@ -270,9 +271,9 @@ export default function CreateCategoryModal({
                   variant="outline"
                 />
                 {errors.budget && (
-                  <Text className="mt-1 text-xs text-error-600">
+                  <AppText variant="hint" className="mt-1 text-error-600">
                     {errors.budget.message as string}
-                  </Text>
+                  </AppText>
                 )}
               </View>
 

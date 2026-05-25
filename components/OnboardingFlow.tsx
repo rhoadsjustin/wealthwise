@@ -29,34 +29,34 @@ interface FeatureSlide {
 
 const features: FeatureSlide[] = [
   {
-    icon: <MaterialIcons name="psychology" size={48} color="#000000" />,
+    icon: <MaterialIcons name="psychology" size={48} color="#8190B3" />,
     title: 'AI-Powered Insights',
     description:
       'Get private, on-device recommendations and automatic expense categorization without sending your budget data to a server',
     highlight: 'Private insights built for daily budgeting',
   },
   {
-    icon: <Ionicons name="wallet" size={48} color="#000000" />,
+    icon: <Ionicons name="wallet" size={48} color="#8190B3" />,
     title: 'Smart Budgeting',
     description:
       'Set budgets that adapt to your spending patterns and help you save more effectively',
     highlight: 'Achieve your financial goals faster',
   },
   {
-    icon: <Ionicons name="trending-up" size={48} color="#000000" />,
+    icon: <Ionicons name="trending-up" size={48} color="#8190B3" />,
     title: 'Detailed Analytics',
     description: 'Beautiful charts and reports give you deep insights into your spending habits',
     highlight: 'Make data-driven financial decisions',
   },
   {
-    icon: <Ionicons name="shield-checkmark" size={48} color="#000000" />,
+    icon: <Ionicons name="shield-checkmark" size={48} color="#8190B3" />,
     title: 'Privacy First',
     description:
       'Your financial data stays on your device with local storage, optional app lock, and on-device AI assistance',
     highlight: 'Your budget stays on your device',
   },
   {
-    icon: <Ionicons name="flag" size={48} color="#000000" />,
+    icon: <Ionicons name="flag" size={48} color="#8190B3" />,
     title: 'Savings Goals',
     description:
       'Track emergency funds, vacations, and other goals with progress updates and monthly contribution planning',
@@ -198,16 +198,18 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   const renderFeatureSlide = (feature: FeatureSlide) => (
     <View className="items-center gap-6 p-8">
-      <View className="h-24 w-24 items-center justify-center rounded-full bg-gray-100 shadow-md">
+      <View className="h-24 w-24 items-center justify-center rounded-full bg-app-canvas-elevated">
         {feature.icon}
       </View>
       <View className="items-center gap-4">
-        <Text className="text-center text-2xl font-bold text-black">{feature.title}</Text>
-        <Text className="max-w-xs text-center text-lg leading-7 text-gray-700">
+        <Text className="text-center text-2xl font-bold text-app-text-strong">{feature.title}</Text>
+        <Text className="max-w-xs text-center text-base leading-6 text-app-text-soft">
           {feature.description}
         </Text>
-        <View className="mt-2 rounded-lg bg-black px-3 py-3">
-          <Text className="text-center text-sm font-medium text-white">{feature.highlight}</Text>
+        <View className="mt-2 rounded-xl bg-app-surface-2 px-3 py-2">
+          <Text className="text-center text-sm font-medium text-app-text-strong">
+            {feature.highlight}
+          </Text>
         </View>
       </View>
     </View>
@@ -215,27 +217,27 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   const renderAccountSetup = () => (
     <View className="items-center gap-6 p-8">
-      <View className="h-24 w-24 items-center justify-center rounded-full bg-gray-100 shadow-md">
-        <Ionicons name="phone-portrait-outline" size={48} color="#000000" />
+      <View className="h-24 w-24 items-center justify-center rounded-full bg-app-canvas-elevated">
+        <Ionicons name="phone-portrait-outline" size={48} color="#8190B3" />
       </View>
       <View className="max-w-xs items-center gap-4">
-        <Text className="text-center text-2xl font-bold text-black">Create Your Account</Text>
-        <Text className="max-w-xs text-center text-lg leading-7 text-gray-700">
+        <Text className="text-center text-2xl font-bold text-app-text-strong">
+          Create Your Account
+        </Text>
+        <Text className="max-w-xs text-center text-base leading-6 text-app-text-soft">
           Choose a username for your local account. Your data stays private on your device.
         </Text>
         <View className="w-full gap-3">
-          <Text className="self-start text-base font-medium text-black">Username</Text>
+          <Text className="self-start text-sm font-medium text-app-text-faint">Username</Text>
           <Input
+            variant="dark"
             value={username}
             onChangeText={setUsername}
             placeholder="Enter your username"
-            className="w-full rounded-md border-gray-400 px-3 text-base"
-            style={{ color: 'black' }}
             maxLength={20}
-            {...{ placeholderTextColor: '#9CA3AF', selectionColor: 'black' }}
           />
           {username ? (
-            <Text className="self-start text-sm text-gray-500">
+            <Text className="self-start text-xs text-app-text-faint">
               {username.length}/20 characters
             </Text>
           ) : null}
@@ -246,17 +248,20 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   const renderIncomeSetup = () => (
     <View className="items-center gap-6 p-8">
-      <View className="h-24 w-24 items-center justify-center rounded-full bg-gray-100 shadow-md">
-        <Ionicons name="cash-outline" size={48} color="#000000" />
+      <View className="h-24 w-24 items-center justify-center rounded-full bg-app-canvas-elevated">
+        <Ionicons name="cash-outline" size={48} color="#8190B3" />
       </View>
       <View className="max-w-xs items-center gap-4">
-        <Text className="text-center text-2xl font-bold text-black">Monthly Household Income</Text>
-        <Text className="max-w-xs text-center text-lg leading-7 text-gray-700">
+        <Text className="text-center text-2xl font-bold text-app-text-strong">
+          Monthly Household Income
+        </Text>
+        <Text className="max-w-xs text-center text-base leading-6 text-app-text-soft">
           This helps us benchmark your budgets and flag categories that use too much of your income.
         </Text>
         <View className="w-full gap-3">
-          <Text className="self-start text-base font-medium text-black">Monthly income</Text>
+          <Text className="self-start text-sm font-medium text-app-text-faint">Monthly income</Text>
           <Input
+            variant="dark"
             value={incomeInput}
             onChangeText={(text) => {
               setIncomeInput(text);
@@ -264,12 +269,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             }}
             keyboardType="numeric"
             placeholder="e.g. 5500"
-            className="w-full rounded-md border-gray-400 px-3 text-base"
-            style={{ color: 'black' }}
             helperText="Enter totals for your household after taxes"
             errorText={incomeError || undefined}
             maxLength={12}
-            {...{ placeholderTextColor: '#9CA3AF', selectionColor: 'black' }}
           />
         </View>
       </View>
@@ -278,43 +280,44 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   const renderBiometricsSetup = () => (
     <View className="items-center gap-6 p-8">
-      <View className="h-24 w-24 items-center justify-center rounded-full bg-gray-100 shadow-md">
-        <MaterialIcons name="fingerprint" size={48} color="#000000" />
+      <View className="h-24 w-24 items-center justify-center rounded-full bg-app-canvas-elevated">
+        <MaterialIcons name="fingerprint" size={48} color="#8190B3" />
       </View>
       <View className="items-center gap-4">
-        <Text className="text-center text-2xl font-bold text-black">Secure Access</Text>
+        <Text className="text-center text-2xl font-bold text-app-text-strong">Secure Access</Text>
         {biometricsSupported ? (
           <>
-            <Text className="max-w-xs text-center text-lg leading-7 text-gray-700">
+            <Text className="max-w-xs text-center text-base leading-6 text-app-text-soft">
               Enable FaceID or TouchID for quick and secure access to your account.
             </Text>
             {biometricsEnabled ? (
-              <View className="mt-4 flex-row items-center gap-2 rounded-lg border border-green-500 bg-green-50 p-4">
-                <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                <Text className="font-medium text-green-800">
+              <View className="mt-4 flex-row items-center gap-2 rounded-xl border border-success-500 bg-success-500/10 p-4">
+                <Ionicons name="checkmark-circle" size={24} color="#4ade80" />
+                <Text className="font-medium text-success-400">
                   Biometric authentication enabled!
                 </Text>
               </View>
             ) : (
               <Button
+                variant="primary-solid"
+                size="md"
                 onPress={setupBiometrics}
-                disabled={isLoading}
-                className="rounded-md bg-black px-6 py-3">
-                <Text className="font-medium text-white">
-                  {isLoading ? 'Setting up...' : 'Enable Biometrics'}
-                </Text>
-              </Button>
+                loading={isLoading}
+                title={isLoading ? 'Setting up...' : 'Enable Biometrics'}
+              />
             )}
           </>
         ) : (
           <View className="items-center gap-4">
-            <Text className="max-w-xs text-center text-lg leading-7 text-gray-700">
+            <Text className="max-w-xs text-center text-base leading-6 text-app-text-soft">
               Biometric authentication is not available on this device. You will use your username
               to access the app.
             </Text>
-            <View className="mt-4 flex-row items-center gap-2 rounded-lg border border-gray-300 bg-gray-50 p-4">
-              <Ionicons name="shield-checkmark" size={24} color="#6B7280" />
-              <Text className="text-gray-700">Your account will be secured with your username</Text>
+            <View className="mt-4 flex-row items-center gap-2 rounded-xl border border-app-border bg-app-surface-1 p-4">
+              <Ionicons name="shield-checkmark" size={24} color="#8190B3" />
+              <Text className="text-app-text-soft">
+                Your account will be secured with your username
+              </Text>
             </View>
           </View>
         )}
@@ -327,16 +330,16 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   // Sticky header/footer layout with Reanimated transitions between steps
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-white"
+      className="flex-1 bg-app-canvas"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ paddingTop: top / 2 }}>
       {/* Sticky Header */}
-      <View className="bg-white px-6 pb-2 pt-6">
+      <View className="bg-app-canvas px-6 pb-2 pt-6">
         <View className="mb-2 flex-row items-center justify-between">
-          <Text className="text-sm text-gray-500">
+          <Text className="text-sm text-app-text-faint">
             Step {currentStep + 1} of {totalSteps}
           </Text>
-          <Text className="text-sm text-gray-500">{Math.round(progress)}%</Text>
+          <Text className="text-sm text-app-text-faint">{Math.round(progress)}%</Text>
         </View>
         {/* Smooth progress animation */}
         <Progress value={progress} style={{ height: 8 }} />
@@ -355,7 +358,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             entering={FadeIn.duration(250)}
             exiting={FadeOut.duration(200)}
             className="w-full max-w-md">
-            <Card className="w-full border border-gray-400 bg-white shadow-lg">
+            <Card variant="glass-dark" className="w-full">
               <CardContent className="p-0">
                 {currentStep < features.length && (
                   <Animated.View
@@ -393,7 +396,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
       {/* Sticky Footer */}
       <View
-        className="bg-white px-6 pb-6 pt-4"
+        className="bg-app-canvas px-6 pb-6 pt-4"
         style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
         <View className="flex-row items-center justify-between">
           <Button

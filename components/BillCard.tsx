@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
+import { AppText } from '@/components/AppText';
 import { Card, CardContent } from './Card';
 import { Button } from './Button';
 import type { Bill, Category } from '@/context/DataContext';
@@ -61,11 +62,18 @@ const getPaidStatus = (bill: Bill) => {
   return `Last paid ${paidDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 };
 
-const toneClasses: Record<string, string> = {
-  error: 'bg-error-100 text-error-700',
-  warning: 'bg-warning-100 text-warning-700',
-  info: 'bg-info-100 text-info-700',
-  muted: 'bg-secondary-100 text-foreground-secondary',
+const toneBg: Record<string, string> = {
+  error: 'bg-error-100',
+  warning: 'bg-warning-100',
+  info: 'bg-info-100',
+  muted: 'bg-secondary-100',
+};
+
+const toneText: Record<string, string> = {
+  error: 'text-error-700',
+  warning: 'text-warning-700',
+  info: 'text-info-700',
+  muted: 'text-app-text-soft',
 };
 
 export function BillCard({ bill, category, onPressPay, onPressEdit, isProcessing }: BillCardProps) {
@@ -78,12 +86,12 @@ export function BillCard({ bill, category, onPressPay, onPressEdit, isProcessing
       <CardContent className="gap-4">
         <View className="flex-row items-start justify-between">
           <View className="flex-1 pr-4">
-            <Text className="text-lg font-semibold text-foreground-primary">{bill.name}</Text>
-            <Text className="mt-1 text-sm text-foreground-muted">{amountLabel}</Text>
+            <AppText variant="section" className="text-app-text-strong">{bill.name}</AppText>
+            <AppText variant="body" className="mt-1 text-app-text-faint">{amountLabel}</AppText>
           </View>
           {bill.autoPay ? (
             <View className="rounded-full bg-success-100 px-3 py-1">
-              <Text className="text-xs font-medium text-success-700">Auto-pay</Text>
+              <AppText variant="caption" className="text-success-700">Auto-pay</AppText>
             </View>
           ) : null}
         </View>
@@ -93,17 +101,17 @@ export function BillCard({ bill, category, onPressPay, onPressEdit, isProcessing
             <Text className="text-lg" accessibilityLabel={`${category.name} icon`}>
               {category.icon}
             </Text>
-            <Text className="text-sm font-medium text-foreground-secondary">{category.name}</Text>
+            <AppText variant="body" className="text-app-text-soft">{category.name}</AppText>
           </View>
         ) : null}
 
         <View className="flex-row flex-wrap items-center gap-3">
-          <View className={`rounded-full px-3 py-1 ${toneClasses[dueStatus.tone]}`}>
-            <Text className="text-xs font-semibold uppercase tracking-wide">{dueStatus.label}</Text>
+          <View className={`rounded-full px-3 py-1 ${toneBg[dueStatus.tone]}`}>
+            <AppText variant="label-sm" className={toneText[dueStatus.tone]}>{dueStatus.label}</AppText>
           </View>
           {paidStatus ? (
             <View className="rounded-full bg-success-50 px-3 py-1">
-              <Text className="text-xs font-medium text-success-700">{paidStatus}</Text>
+              <AppText variant="caption" className="text-success-700">{paidStatus}</AppText>
             </View>
           ) : null}
         </View>

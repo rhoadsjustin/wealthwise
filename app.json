@@ -28,7 +28,7 @@
       [
         "./modules/apple-finance-kit/app.plugin.js",
         {
-          "enabled": true,
+          "enabled": false,
           "usageDescription": "Allow $(PRODUCT_NAME) to read Apple Wallet financial data so it can import your Apple Card transactions and balances into your budget."
         }
       ],

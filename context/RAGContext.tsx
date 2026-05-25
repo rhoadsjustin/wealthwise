@@ -1,14 +1,19 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { AppState } from 'react-native';
-import { ExecuTorchEmbeddings, ExecuTorchLLM } from '@react-native-rag/executorch';
-import { ALL_MINILM_L6_V2, LLAMA3_2_1B } from 'react-native-executorch';
-import { MemoryVectorStore } from 'react-native-rag';
-import categorizer from '@/lib/ai/categorizer';
+import { AppState, Platform } from 'react-native';
+import { setVectorStore as setCategorizerVectorStore } from '@/lib/ai/categorizer';
 import * as FileSystem from 'expo-file-system/legacy';
 
+type VectorStoreInstance = {
+  unload?: () => Promise<void>;
+};
+
+type LlmInstance = {
+  unload?: () => Promise<void>;
+};
+
 const VectorStoreContext = createContext<{
-  vectorStore: MemoryVectorStore | null;
-  llm: ExecuTorchLLM | null;
+  vectorStore: VectorStoreInstance | null;
+  llm: LlmInstance | null;
   embeddingsProgress: number; // 0..1
   llmProgress: number; // 0..1
   embeddingsInstalled: boolean;
@@ -23,8 +28,8 @@ const VectorStoreContext = createContext<{
 });
 
 export const VectorStoreProvider = ({ children }: { children: React.ReactNode }) => {
-  const [vectorStore, setVectorStore] = useState<MemoryVectorStore | null>(null);
-  const [llm, setLlm] = useState<ExecuTorchLLM | null>(null);
+  const [vectorStore, setVectorStore] = useState<VectorStoreInstance | null>(null);
+  const [llm, setLlm] = useState<LlmInstance | null>(null);
   const [embeddingsProgress, setEmbeddingsProgress] = useState(0);
   const [llmProgress, setLlmProgress] = useState(0);
   const [embeddingsInstalled, setEmbeddingsInstalled] = useState(false);
@@ -50,6 +55,19 @@ export const VectorStoreProvider = ({ children }: { children: React.ReactNode })
   useEffect(() => {
     const initialize = async () => {
       try {
+        if (Platform.OS === 'web') {
+          return;
+        }
+
+        const [{ ExecuTorchEmbeddings, ExecuTorchLLM }, executorchModels, { MemoryVectorStore }] =
+          await Promise.all([
+            import('@react-native-rag/executorch'),
+            import('react-native-executorch'),
+            import('react-native-rag'),
+          ]);
+
+        const { ALL_MINILM_L6_V2, LLAMA3_2_1B } = executorchModels;
+
         // Preflight: check if resources already exist on disk
         try {
           const embeddingsModelFile = `${RNEDirectory}${getFilenameFromUri((ALL_MINILM_L6_V2 as any).modelSource)}`;
@@ -68,7 +86,7 @@ export const VectorStoreProvider = ({ children }: { children: React.ReactNode })
             (await fileExists(llmTokenizerConfigFile));
           setLlmInstalled(hasLLM);
           if (hasLLM) setLlmProgress(1);
-        } catch (e) {
+        } catch {
           // ignore preflight errors; downloads will proceed as normal later
         }
 
@@ -92,7 +110,7 @@ export const VectorStoreProvider = ({ children }: { children: React.ReactNode })
         } as any);
 
         setVectorStore(store);
-        categorizer.setVectorStore(store);
+        setCategorizerVectorStore(store as any);
         setLlm(llm);
       } catch (error) {
         console.error('Failed to initialize vector store:', error);
@@ -105,15 +123,19 @@ export const VectorStoreProvider = ({ children }: { children: React.ReactNode })
       setVectorStore(null);
       setLlm(null);
     };
-  }, []);
+  }, [RNEDirectory]);
 
   // Unload models when app goes to background; keep latest instances via deps
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (state) => {
       if (state !== 'active') {
         try {
-          await vectorStore?.unload();
-          await llm?.unload();
+          if (vectorStore?.unload) {
+            await vectorStore.unload();
+          }
+          if (llm?.unload) {
+            await llm.unload();
+          }
         } catch {
           // no-op
         }

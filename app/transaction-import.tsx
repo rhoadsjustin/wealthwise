@@ -10,6 +10,7 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { Button } from '@/components/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/Card';
 import { Input } from '@/components/Input';
+import { ToastMessage } from '@/components/Toast';
 import { useAppData } from '@/app/_layout';
 import { useData, type Category } from '@/context/DataContext';
 import { useToast } from '@/context/useToast';
@@ -58,6 +59,12 @@ export default function TransactionImportModal() {
   const [existingKeys, setExistingKeys] = useState<Set<string>>(new Set());
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [editingValues, setEditingValues] = useState<PreviewImportTransaction | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      ToastMessage.hide();
+    };
+  }, []);
 
   const previewRows = useMemo(
     () =>
@@ -289,7 +296,7 @@ export default function TransactionImportModal() {
         'Import complete',
         `${rowsToImport.length} transaction${rowsToImport.length === 1 ? '' : 's'} imported.`
       );
-      router.back();
+      router.replace('/activity' as any);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Transaction import failed.';
       showToast.error('Import failed', message);
@@ -348,7 +355,7 @@ export default function TransactionImportModal() {
   const bottomPadding = Math.max(insets.bottom + 18, 28);
 
   return (
-    <View className="flex-1 bg-app-background">
+    <View className="flex-1 bg-app-canvas">
       <Stack.Screen options={screenOptions} />
 
       <ScrollView
@@ -358,20 +365,20 @@ export default function TransactionImportModal() {
         <View className="px-5">
           <View className="mb-5 flex-row items-center justify-between">
             <View className="pr-4">
-              <Text className="text-xl font-semibold text-app-text">Import transactions</Text>
-              <Text className="mt-1 text-xs text-app-text-muted">
+              <Text className="text-3xl font-semibold text-app-text-strong">Statement import</Text>
+              <Text className="mt-1 text-sm text-app-text-faint">
                 Paste text, pick a file or photo, or scan statement text live with the camera.
               </Text>
             </View>
             <TouchableOpacity
               onPress={() => router.back()}
               accessibilityLabel="Close transaction import"
-              className="h-10 w-10 items-center justify-center rounded-full border border-app-border bg-app-surface shadow-xs">
-              <Ionicons name="close" size={18} color="#0F172A" />
+              className="h-11 w-11 items-center justify-center rounded-full border border-app-border bg-app-surface-1">
+              <Ionicons name="close" size={18} color="#F8FAFC" />
             </TouchableOpacity>
           </View>
 
-          <Card className="mb-4">
+          <Card variant="glass-dark" className="mb-4">
             <CardHeader className="pb-3">
               <CardTitle variant="small">Source</CardTitle>
               <CardDescription>
@@ -391,13 +398,13 @@ export default function TransactionImportModal() {
 
               <View className="mt-4 gap-3">
                 <Button
-                  variant="outline"
+                  variant="secondary-muted"
                   title={isLoadingSource ? 'Opening…' : 'Pick CSV, TXT, or PDF file'}
                   loading={isLoadingSource}
                   onPress={handlePickDocument}
                 />
                 <Button
-                  variant="outline"
+                  variant="secondary-muted"
                   title={
                     isLoadingSource ? 'Opening…' : 'Pick statement screenshot or receipt photo'
                   }
@@ -405,7 +412,7 @@ export default function TransactionImportModal() {
                   onPress={handlePickImage}
                 />
                 <Button
-                  variant="outline"
+                  variant="secondary-muted"
                   title={isLoadingSource ? 'Opening…' : 'Scan live with camera'}
                   disabled={isLoadingSource}
                   onPress={handleLiveScan}
@@ -415,6 +422,7 @@ export default function TransactionImportModal() {
               <Input
                 className="mt-4"
                 style={{ minHeight: 220 }}
+                variant="dark"
                 size="lg"
                 multiline
                 numberOfLines={12}
@@ -436,6 +444,7 @@ export default function TransactionImportModal() {
 
               <Button
                 className="mt-4"
+                variant="primary-solid"
                 title={isParsing ? 'Parsing…' : 'Build import preview'}
                 loading={isParsing}
                 onPress={handleParse}
@@ -444,7 +453,7 @@ export default function TransactionImportModal() {
           </Card>
 
           {parseWarnings.length ? (
-            <Card className="mb-4">
+            <Card variant="inset" className="mb-4">
               <CardHeader className="pb-3">
                 <CardTitle variant="small">Warnings</CardTitle>
               </CardHeader>
@@ -460,7 +469,7 @@ export default function TransactionImportModal() {
             </Card>
           ) : null}
 
-          <Card>
+          <Card variant="glass-dark">
             <CardHeader className="pb-3">
               <CardTitle variant="small">Preview</CardTitle>
               <CardDescription>
@@ -471,8 +480,8 @@ export default function TransactionImportModal() {
             </CardHeader>
             <CardContent>
               {!previewRows.length ? (
-                <View className="rounded-2xl border border-dashed border-app-border bg-app-surface-alt px-4 py-6">
-                  <Text className="text-sm leading-6 text-app-text-muted">
+                <View className="rounded-2xl border border-dashed border-app-border bg-app-canvas-elevated px-4 py-6">
+                  <Text className="text-sm leading-6 text-app-text-faint">
                     Paste a statement and build the preview to review imported rows here.
                   </Text>
                 </View>
@@ -483,10 +492,10 @@ export default function TransactionImportModal() {
                       key={row.id}
                       className={`rounded-2xl border px-4 py-3 ${
                         row.isDuplicate
-                          ? 'border-border-default bg-background-secondary opacity-70'
+                          ? 'border-app-border bg-app-canvas-elevated opacity-70'
                           : row.isSelected
-                            ? 'border-primary-400 bg-primary-50'
-                            : 'border-app-border bg-app-surface-alt'
+                            ? 'border-app-border-contrast bg-app-surface-2'
+                            : 'border-app-border bg-app-surface-1'
                       }`}>
                       <View className="flex-row items-start justify-between gap-3">
                         <View className="flex-1">
@@ -496,21 +505,21 @@ export default function TransactionImportModal() {
                               disabled={row.isDuplicate}
                               className={`h-6 w-6 items-center justify-center rounded-full border ${
                                 row.isSelected
-                                  ? 'border-primary-500 bg-primary-500'
-                                  : 'border-app-border bg-app-surface'
+                                  ? 'border-accent-savings bg-accent-savings'
+                                  : 'border-app-border bg-app-canvas-elevated'
                               }`}>
                               {row.isSelected ? (
                                 <Ionicons name="checkmark" size={14} color="#FFFFFF" />
                               ) : null}
                             </TouchableOpacity>
-                            <Text className="text-sm font-semibold text-app-text">
+                            <Text className="text-sm font-semibold text-app-text-strong">
                               {row.transaction.description}
                             </Text>
                           </View>
-                          <Text className="mt-1 text-xs text-app-text-muted">
+                          <Text className="mt-1 text-xs text-app-text-faint">
                             {row.transaction.date} · {row.transaction.type}
                           </Text>
-                          <Text className="mt-1 text-xs text-app-text-muted">
+                          <Text className="mt-1 text-xs text-app-text-faint">
                             Category:{' '}
                             {categoryLabel(row.transaction.categoryId, categories) ??
                               'Uncategorized'}
@@ -522,12 +531,12 @@ export default function TransactionImportModal() {
                           </Text>
                         </View>
                         <View className="items-end">
-                          <Text className="text-sm font-semibold text-app-text">
+                          <Text className="text-sm font-semibold text-app-text-strong">
                             {formatCurrency(Number.parseFloat(row.transaction.amount))}
                           </Text>
                           <Text
                             className={`mt-1 text-xs ${
-                              row.isDuplicate ? 'text-warning-700' : 'text-app-text-muted'
+                              row.isDuplicate ? 'text-warning-700' : 'text-app-text-faint'
                             }`}>
                             {row.isDuplicate
                               ? 'Already imported'
@@ -538,8 +547,8 @@ export default function TransactionImportModal() {
                           {!row.isDuplicate ? (
                             <TouchableOpacity
                               onPress={() => openEditor(row.id)}
-                              className="mt-2 rounded-full border border-app-border bg-app-surface px-3 py-1.5">
-                              <Text className="text-xs font-medium text-app-text">Review</Text>
+                              className="mt-2 rounded-full border border-app-border bg-app-canvas-elevated px-3 py-1.5">
+                              <Text className="text-xs font-medium text-app-text-soft">Review</Text>
                             </TouchableOpacity>
                           ) : null}
                         </View>
@@ -552,7 +561,7 @@ export default function TransactionImportModal() {
           </Card>
 
           {editingTransaction && editingValues ? (
-            <Card className="mt-4">
+            <Card variant="glass-dark" className="mt-4">
               <CardHeader className="pb-3">
                 <CardTitle variant="small">Review and correct</CardTitle>
                 <CardDescription>
@@ -562,6 +571,7 @@ export default function TransactionImportModal() {
               <CardContent>
                 <View className="gap-3">
                   <Input
+                    variant="dark"
                     label="Merchant or description"
                     value={editingValues.description}
                     onChangeText={(value) =>
@@ -574,6 +584,7 @@ export default function TransactionImportModal() {
                   <View className="flex-row gap-3">
                     <View className="flex-1">
                       <Input
+                        variant="dark"
                         label="Date"
                         value={editingValues.date}
                         onChangeText={(value) =>
@@ -587,6 +598,7 @@ export default function TransactionImportModal() {
                     </View>
                     <View className="flex-1">
                       <Input
+                        variant="dark"
                         label="Amount"
                         value={editingValues.amount}
                         onChangeText={(value) =>
@@ -625,7 +637,7 @@ export default function TransactionImportModal() {
                     />
                   </View>
                   <View>
-                    <Text className="mb-2 text-sm font-medium text-app-text">Category</Text>
+                    <Text className="mb-2 text-sm font-medium text-app-text-soft">Category</Text>
                     <Select
                       value={
                         editingValues.categoryId != null
@@ -673,12 +685,13 @@ export default function TransactionImportModal() {
                   <View className="flex-row gap-3">
                     <Button
                       className="flex-1"
-                      variant="outline"
+                      variant="secondary-muted"
                       title="Close review"
                       onPress={closeEditor}
                     />
                     <Button
                       className="flex-1"
+                      variant="primary-solid"
                       title="Save correction"
                       onPress={saveEditingTransaction}
                     />
@@ -694,6 +707,7 @@ export default function TransactionImportModal() {
         <Button
           className="w-full"
           size="lg"
+          variant="primary-solid"
           title={
             isImporting
               ? 'Importing…'
@@ -721,10 +735,14 @@ function SourceChip({
     <TouchableOpacity
       onPress={onPress}
       className={`rounded-full border px-4 py-2 ${
-        selected ? 'border-primary-400 bg-primary-50' : 'border-app-border bg-app-surface-alt'
+        selected
+          ? 'border-app-border-contrast bg-app-surface-2'
+          : 'border-app-border bg-app-canvas-elevated'
       }`}>
       <Text
-        className={selected ? 'text-sm font-semibold text-primary-700' : 'text-sm text-app-text'}>
+        className={
+          selected ? 'text-sm font-semibold text-app-text-strong' : 'text-sm text-app-text-faint'
+        }>
         {label}
       </Text>
     </TouchableOpacity>

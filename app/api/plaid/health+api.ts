@@ -1,5 +1,5 @@
-import { getPlaidEnv } from './_lib/env';
-import { errorResponse } from './_lib/errors';
+import { getPlaidEnv } from '@/lib/plaid-api/env';
+import { errorResponse } from '@/lib/plaid-api/errors';
 
 export function GET() {
   try {

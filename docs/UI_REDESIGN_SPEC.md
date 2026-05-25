@@ -38,6 +38,12 @@ Current primary tab surfaces:
 - [Insights](/Users/rhoads/budget-app/app/(tabs)/insights.tsx)
 - Native tabs layout: [app/(tabs)/_layout.tsx](/Users/rhoads/budget-app/app/(tabs)/_layout.tsx)
 
+Current import surfaces that now matter to the redesign:
+
+- [Statement import](/Users/rhoads/budget-app/app/transaction-import.tsx)
+- [Apple Card import](/Users/rhoads/budget-app/app/apple-card-import.tsx)
+- current entry points in [app/profile.tsx](/Users/rhoads/budget-app/app/profile.tsx)
+
 Supporting system constraints:
 
 - semantic tokens already live in [tailwind.config.js](/Users/rhoads/budget-app/tailwind.config.js)
@@ -310,6 +316,7 @@ Above the list:
 - total spent
 - transaction count
 - uncategorized count
+- import-ready count when relevant
 
 ### Transaction List
 
@@ -324,6 +331,35 @@ Required row actions:
 ### Search UX
 
 The reference uses a top search field as part of the primary frame. Bring transaction search forward visually.
+
+### Import Entry In Activity
+
+The new transaction import flow should no longer feel buried in `Profile`.
+
+Add an explicit import affordance inside `Activity`:
+
+- top-right `Import` pill or icon button
+- opens an import launcher sheet
+- launcher options:
+  - `Import statement`
+  - `Import Apple Card`
+
+Rationale:
+
+- imports are part of transaction acquisition, so they belong with `Activity`
+- `Profile` can keep a secondary access path, but should not be the primary discovery point
+
+### Post-Import Landing Behavior
+
+After import completes, do not just dismiss back with a toast.
+
+Recommended behavior:
+
+- return user to `Activity`
+- apply a temporary `Recently imported` filter or highlight
+- show a compact success banner with count imported
+
+This aligns the flow with the redesign principle that transaction management is a first-class surface.
 
 ## 3. Plan
 
@@ -465,6 +501,11 @@ Retain route-based modals for:
 - add/edit/fund savings goal
 - profile
 
+Retain import routes, but visually treat them as full workflow sheets rather than generic forms:
+
+- `app/transaction-import.tsx`
+- `app/apple-card-import.tsx`
+
 ### Modal Visual Refresh
 
 All modal surfaces should inherit the new dark shell:
@@ -473,6 +514,215 @@ All modal surfaces should inherit the new dark shell:
 - elevated sheet card
 - stronger title hierarchy
 - pill buttons instead of default light CTA bars
+
+Import workflows should go further than the standard modal refresh:
+
+- stronger step framing
+- visible progress between source -> review -> import
+- denser review rows that match `Activity`
+- import CTA pinned at bottom in the same visual language as the floating shell
+
+## Import Flow Spec
+
+## A. Import Launcher
+
+### Entry Points
+
+Primary:
+
+- `Activity` header action
+
+Secondary:
+
+- `Profile`
+- optional quick action on `Home`
+
+### Launcher Contents
+
+Present a small route-based sheet with two choices:
+
+1. `Statement import`
+2. `Apple Card import`
+
+Each choice should have:
+
+- icon
+- one-line description
+- expected source type
+
+This is better than placing two unrelated import cards deep inside profile settings.
+
+## B. Statement Import
+
+Current flow in [app/transaction-import.tsx](/Users/rhoads/budget-app/app/transaction-import.tsx):
+
+- choose source mode
+- acquire text from file/photo/camera/paste
+- parse
+- preview
+- review/correct
+- import
+
+That workflow is structurally good. The redesign should change presentation and navigation, not core logic.
+
+### Redesign Direction
+
+Reframe it as a 3-step flow:
+
+1. `Capture`
+2. `Review`
+3. `Import`
+
+### Capture Step
+
+Use stronger visual grouping for source choices:
+
+- `File`
+- `Photo`
+- `Scan`
+- `Paste`
+
+The current vertical outline buttons work, but they look like generic admin tools. Replace them with richer source tiles or pill-backed action rows.
+
+### Mode Selector
+
+Current `CSV` / `Statement / PDF text` toggle should become a segmented control matching the redesign system.
+
+### Raw Input Area
+
+Keep it, but visually demote it once preview exists.
+
+Recommended behavior:
+
+- expanded during capture
+- collapsible after parse succeeds
+
+### Preview Rows
+
+These should visually match the future `Activity` transaction rows:
+
+- same density
+- same icon treatment
+- same amount emphasis
+- same selection language
+
+Preview row metadata should prioritize:
+
+- merchant
+- date
+- amount
+- category
+- duplicate state
+
+### Duplicate Handling
+
+Current duplicate exclusion is correct. Redesign should make it more readable:
+
+- gray subdued row
+- `Already logged` badge
+- removed from primary selection count
+
+### Review / Correct
+
+This editor should feel like an inline detail drawer or elevated correction card, not a second generic form.
+
+Improvements:
+
+- open as inline expansion below selected row or as a focused bottom sheet
+- keep category suggestion chip prominent
+- show confidence as a compact badge, not buried in text
+
+### Batch Actions
+
+Add design space for:
+
+- `Select all new`
+- `Clear`
+- later: `Apply category to selected`
+
+The current logic already supports selection patterns; the redesign should make them feel intentional.
+
+## C. Apple Card Import
+
+Current flow in [app/apple-card-import.tsx](/Users/rhoads/budget-app/app/apple-card-import.tsx):
+
+- load availability and authorization state
+- connect FinanceKit
+- list eligible accounts
+- review transactions
+- import selection
+
+### Redesign Direction
+
+This should feel like a premium connected-source flow, not a diagnostic form.
+
+### Status Framing
+
+The current `Status` card is useful but too technical in first paint.
+
+Recommended first-screen order:
+
+1. hero state card
+2. connect CTA or review CTA
+3. technical status details in expandable section
+
+### Hero States
+
+Possible states:
+
+- `Wallet ready`
+- `Authorization needed`
+- `Wallet unavailable`
+- `Entitlement missing`
+
+Each state should have:
+
+- short title
+- one-line explanation
+- one clear CTA
+
+### Eligible Accounts
+
+Keep this section, but visually compress it. It is supporting context, not the hero.
+
+### Recent Transactions
+
+These rows should also reuse the `Activity` transaction-row language.
+
+Add recommended affordances:
+
+- grouped by recent date buckets if easy
+- imported badge for duplicates
+- selected count pinned near CTA
+
+### After Import
+
+Same as statement import:
+
+- navigate to `Activity`
+- show imported rows in context
+- optional `Imported from Apple Card` banner or filter state
+
+## Profile Updates
+
+Because imports are moving into the main app flow, [app/profile.tsx](/Users/rhoads/budget-app/app/profile.tsx) should be simplified.
+
+Recommended change:
+
+- keep one `Imports` row or card in Profile
+- tapping it opens the same import launcher
+- remove the feeling that imports are “settings features”
+
+## Shared Interaction Rules For Imports
+
+Apply these rules to both import flows:
+
+1. source acquisition should be step one, not mixed visually with review
+2. parsed preview should borrow the same row language as `Activity`
+3. duplicate states should be readable at a glance
+4. success should return the user to transaction context, not just close the sheet
+5. import counts and selected counts should stay visible near the bottom CTA
+6. dark shell, pills, and button variants must match the rest of the redesign
 
 ## Content Hierarchy Rules
 
@@ -497,6 +747,8 @@ Apply these consistently across screens:
 - redesign `Dashboard` into `Home`
 - introduce `Activity` surface
 - migrate transactions preview/search patterns
+- add import launcher in `Activity`
+- restyle import preview rows to match `Activity`
 
 ### Phase 3: Plan
 
@@ -515,6 +767,7 @@ Apply these consistently across screens:
 - haptics pass
 - dark-mode contrast audit
 - empty/loading/skeleton redesign
+- import success and import error state polish
 
 ## Data And State Notes
 
@@ -556,6 +809,9 @@ For this app, analytics should lead and conversation should support.
 - `Bills`, `Debts`, and `Savings` are unified under `Plan`
 - `Home` has a single dominant financial health story above the fold
 - `Activity` becomes a dedicated transaction surface with search and filters
+- transaction import is discoverable from `Activity`, not only `Profile`
+- both import flows visually match the redesigned app shell and row language
+- import completion returns the user to transaction context cleanly
 - `Insights` presents reports and coaching as one premium analytics experience
 - all redesigned surfaces use semantic tokens, not ad hoc colors
 - all business operations still flow through DataContext

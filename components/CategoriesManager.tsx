@@ -7,6 +7,7 @@ import { useData, Category } from '../context/DataContext';
 import { Ionicons } from '@expo/vector-icons';
 import CreateCategoryModal from './CreateCategoryModal';
 import CategoryListItem from './CategoryListItem';
+import { AppText } from '@/components/AppText';
 
 interface EditCategoryData {
   name: string;
@@ -157,7 +158,7 @@ export default function CategoriesManager() {
   if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center">
-        <Text className="text-foreground-secondary">Loading categories...</Text>
+        <AppText variant="body" className="text-app-text-soft">Loading categories...</AppText>
       </View>
     );
   }
@@ -171,10 +172,10 @@ export default function CategoriesManager() {
         <View className="border-b border-border-default bg-background-secondary px-6 py-4">
           <View className="flex-row items-center justify-between">
             <View>
-              <Text className="text-2xl font-bold text-foreground-primary">Categories</Text>
-              <Text className="text-sm text-foreground-secondary">
+              <AppText variant="page-title" className="text-app-text-strong">Categories</AppText>
+              <AppText variant="hint" className="text-app-text-soft">
                 ${totalBudget.toFixed(2)} total
-              </Text>
+              </AppText>
             </View>
             <Button
               onPress={() => setShowCreateCategory(true)}
@@ -191,12 +192,12 @@ export default function CategoriesManager() {
           {categories.length === 0 ? (
             <View className="items-center py-12">
               <Ionicons name="folder-open-outline" size={64} color="#9CA3AF" />
-              <Text className="mt-4 text-center text-lg text-foreground-secondary">
+              <AppText variant="section" className="mt-4 text-center text-app-text-soft">
                 No categories yet
-              </Text>
-              <Text className="mt-2 text-center text-foreground-muted">
+              </AppText>
+              <AppText variant="body" className="mt-2 text-center text-app-text-faint">
                 Create your first category to get started
-              </Text>
+              </AppText>
               <Button onPress={() => setShowCreateCategory(true)} className="mt-6">
                 <Text>Create Category</Text>
               </Button>
@@ -218,7 +219,7 @@ export default function CategoriesManager() {
                       onEdit={() => handleEditCategory(category)}
                       onDelete={() => handleDeleteCategory(category)}
                     />
-                    <Text className="px-2 text-xs text-foreground-muted">Budgets are monthly.</Text>
+                    <AppText variant="hint" className="px-2 text-app-text-faint">Budgets are monthly.</AppText>
                   </View>
                 );
               })}
@@ -237,7 +238,7 @@ export default function CategoriesManager() {
         <View className="flex-1 items-center justify-center bg-black/50 p-6">
           <View className="w-full max-w-md rounded-xl bg-background-primary p-6">
             <View className="mb-6 flex-row items-center justify-between">
-              <Text className="text-lg font-semibold text-foreground-primary">Edit Category</Text>
+              <AppText variant="title" className="text-app-text-strong">Edit Category</AppText>
               <TouchableOpacity onPress={() => setEditingCategory(null)}>
                 <Ionicons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
@@ -245,7 +246,7 @@ export default function CategoriesManager() {
 
             <View className="space-y-4">
               <View>
-                <Text className="mb-2 text-sm font-medium text-foreground-primary">Name</Text>
+                <AppText variant="form-label" className="mb-2 text-app-text-strong">Name</AppText>
                 <Input
                   value={editData.name}
                   onChangeText={(value) => setEditData({ ...editData, name: value })}
@@ -255,9 +256,9 @@ export default function CategoriesManager() {
               </View>
 
               <View>
-                <Text className="mb-2 text-sm font-medium text-foreground-primary">
+                <AppText variant="form-label" className="mb-2 text-app-text-strong">
                   Monthly Budget
-                </Text>
+                </AppText>
                 <Input
                   keyboardType="numeric"
                   value={editData.budget}

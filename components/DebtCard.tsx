@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
+import { AppText } from '@/components/AppText';
 import { Card, CardContent } from './Card';
 import { Button } from './Button';
 import { Progress } from './Progress';
@@ -39,11 +40,18 @@ const getDueStatus = (debt: Debt) => {
   };
 };
 
-const toneClasses: Record<string, string> = {
-  error: 'bg-error-100 text-error-700',
-  warning: 'bg-warning-100 text-warning-700',
-  info: 'bg-info-100 text-info-700',
-  muted: 'bg-secondary-100 text-foreground-secondary',
+const toneBg: Record<string, string> = {
+  error: 'bg-error-100',
+  warning: 'bg-warning-100',
+  info: 'bg-info-100',
+  muted: 'bg-secondary-100',
+};
+
+const toneText: Record<string, string> = {
+  error: 'text-error-700',
+  warning: 'text-warning-700',
+  info: 'text-info-700',
+  muted: 'text-app-text-soft',
 };
 
 export function DebtCard({
@@ -70,14 +78,14 @@ export function DebtCard({
       <CardContent className="gap-4">
         <View className="flex-row items-start justify-between">
           <View className="flex-1 pr-4">
-            <Text className="text-lg font-semibold text-foreground-primary">{debt.name}</Text>
-            <Text className="mt-1 text-sm text-foreground-muted">
+            <AppText variant="section" className="text-app-text-strong">{debt.name}</AppText>
+            <AppText variant="body" className="mt-1 text-app-text-faint">
               {toCurrency(debt.currentBalance)} outstanding of {toCurrency(debt.totalAmount)}
-            </Text>
+            </AppText>
           </View>
           {interestRateLabel ? (
             <View className="rounded-full bg-info-100 px-3 py-1">
-              <Text className="text-xs font-medium text-info-700">APR {interestRateLabel}</Text>
+              <AppText variant="caption" className="text-info-700">APR {interestRateLabel}</AppText>
             </View>
           ) : null}
         </View>
@@ -87,31 +95,31 @@ export function DebtCard({
             <Text className="text-lg" accessibilityLabel={`${category.name} icon`}>
               {category.icon}
             </Text>
-            <Text className="text-sm font-medium text-foreground-secondary">{category.name}</Text>
+            <AppText variant="body" className="text-app-text-soft">{category.name}</AppText>
           </View>
         ) : null}
 
         <View>
           <View className="mb-2 flex-row items-center justify-between">
-            <Text className="text-sm font-medium text-foreground-secondary">
+            <AppText variant="form-label" className="text-app-text-soft">
               {progress.toFixed(0)}% paid
-            </Text>
-            <Text className="text-sm text-foreground-muted">
+            </AppText>
+            <AppText variant="body" className="text-app-text-faint">
               {toCurrency(paidDown.toString())} paid off
-            </Text>
+            </AppText>
           </View>
           <Progress value={progress} color="#0EA5E9" backgroundColor="#E0F2FE" height={10} />
         </View>
 
         <View className="flex-row flex-wrap items-center gap-3">
-          <View className={`rounded-full px-3 py-1 ${toneClasses[dueStatus.tone]}`}>
-            <Text className="text-xs font-semibold uppercase tracking-wide">{dueStatus.label}</Text>
+          <View className={`rounded-full px-3 py-1 ${toneBg[dueStatus.tone]}`}>
+            <AppText variant="label-sm" className={toneText[dueStatus.tone]}>{dueStatus.label}</AppText>
           </View>
           {minimum > 0 ? (
             <View className="rounded-full bg-secondary-100 px-3 py-1">
-              <Text className="text-xs font-medium text-foreground-secondary">
+              <AppText variant="caption" className="text-app-text-soft">
                 Min payment {toCurrency(debt.minimumPayment)}
-              </Text>
+              </AppText>
             </View>
           ) : null}
         </View>

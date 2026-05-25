@@ -1,15 +1,15 @@
 import { z } from 'zod';
 
-import { ApiError, errorResponse } from './_lib/errors';
-import { plaidRequest } from './_lib/plaid';
-import { getPlaidItem } from './_lib/storage';
+import { ApiError, errorResponse } from '@/lib/plaid-api/errors';
+import { plaidRequest } from '@/lib/plaid-api/plaid';
+import { getPlaidItem } from '@/lib/plaid-api/storage';
 
 const accountsRequestSchema = z.object({
   itemId: z.string().min(1),
 });
 
 interface PlaidAccountsResponse {
-  accounts: Array<{
+  accounts: {
     account_id: string;
     name: string;
     official_name?: string | null;
@@ -21,7 +21,7 @@ interface PlaidAccountsResponse {
       current?: number | null;
       iso_currency_code?: string | null;
     };
-  }>;
+  }[];
   item: {
     institution_id?: string | null;
   };

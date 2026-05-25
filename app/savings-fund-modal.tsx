@@ -96,7 +96,7 @@ export default function SavingsFundModal() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View className="flex-1 bg-app-background">
+    <View className="flex-1 bg-app-canvas">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -108,34 +108,34 @@ export default function SavingsFundModal() {
           <View className="px-5" style={{ paddingTop: Math.max(insets.top + 8, 24) }}>
             <View className="mb-4 flex-row items-center justify-between">
               <View>
-                <Text className="text-xl font-semibold text-app-text">
+                <Text className="text-xl font-semibold text-app-text-strong">
                   {goal ? `Fund ${goal.name}` : 'Fund savings goal'}
                 </Text>
-                <Text className="mt-1 text-xs text-app-text-muted">
+                <Text className="mt-1 text-xs text-app-text-faint">
                   Log the contribution to keep your progress current.
                 </Text>
               </View>
               <TouchableOpacity
                 onPress={() => router.back()}
                 accessibilityLabel="Close fund modal"
-                className="h-10 w-10 items-center justify-center rounded-full border border-app-border bg-app-surface shadow-xs">
-                <Ionicons name="close" size={18} color="#0F172A" />
+                className="h-10 w-10 items-center justify-center rounded-full border border-app-border-strong bg-app-surface-2 shadow-xs">
+                <Ionicons name="close" size={18} color="#8190B3" />
               </TouchableOpacity>
             </View>
 
             {goal && (
-              <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-sm">
-                <Text className="text-sm font-medium text-app-text-muted">Current balance</Text>
-                <Text className="mt-1 text-2xl font-semibold text-app-text">
+              <View className="mb-6 rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-5 shadow-sm">
+                <Text className="text-sm font-medium text-app-text-faint">Current balance</Text>
+                <Text className="mt-1 text-2xl font-semibold text-app-text-strong">
                   {formatCurrency(parseFloat(goal.currentAmount ?? '0'))}
                 </Text>
-                <Text className="mt-3 text-xs text-app-text-muted">
+                <Text className="mt-3 text-xs text-app-text-faint">
                   Target {formatCurrency(parseFloat(goal.targetAmount ?? '0'))}
                 </Text>
               </View>
             )}
 
-            <View className="rounded-3xl border border-app-border bg-app-surface px-5 py-5 shadow-sm">
+            <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-5 shadow-sm">
               <View className="space-y-6">
                 <Controller
                   control={control}
@@ -148,6 +148,7 @@ export default function SavingsFundModal() {
                       keyboardType="numeric"
                       value={value}
                       onChangeText={onChange}
+                      variant="dark"
                       errorText={!value ? 'Amount is required' : undefined}
                     />
                   )}
@@ -162,6 +163,7 @@ export default function SavingsFundModal() {
                       placeholder="2024-04-15"
                       value={value || ''}
                       onChangeText={onChange}
+                      variant="dark"
                       helperText="Auto-filled with today"
                     />
                   )}
@@ -178,6 +180,7 @@ export default function SavingsFundModal() {
                       numberOfLines={3}
                       value={value || ''}
                       onChangeText={onChange}
+                      variant="dark"
                     />
                   )}
                 />
@@ -187,6 +190,7 @@ export default function SavingsFundModal() {
             <View className="mt-6">
               <Button
                 className="w-full"
+                variant="primary-solid"
                 title="Record contribution"
                 onPress={handleSubmit(onSubmit)}
                 loading={submitting}

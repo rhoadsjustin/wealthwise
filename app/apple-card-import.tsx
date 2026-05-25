@@ -76,9 +76,7 @@ export default function AppleCardImportModal() {
         setAccounts([]);
         setTransactions([]);
         setSelectedTransactionIds(new Set());
-        setAvailabilityError(
-          'This build is not signed with the Apple FinanceKit entitlement yet.'
-        );
+        setAvailabilityError('This build is not signed with the Apple FinanceKit entitlement yet.');
         return;
       }
 
@@ -163,8 +161,7 @@ export default function AppleCardImportModal() {
       }
       await loadFinanceKitState();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'FinanceKit authorization failed.';
+      const message = error instanceof Error ? error.message : 'FinanceKit authorization failed.';
       showToast.error('Authorization failed', message);
     } finally {
       setIsAuthorizing(false);
@@ -212,7 +209,7 @@ export default function AppleCardImportModal() {
         'Import complete',
         `${rowsToImport.length} Apple Card transaction${rowsToImport.length === 1 ? '' : 's'} added.`
       );
-      router.back();
+      router.replace('/activity' as any);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Import failed.';
       showToast.error('Import failed', message);
@@ -225,7 +222,7 @@ export default function AppleCardImportModal() {
   const bottomPadding = Math.max(insets.bottom + 18, 28);
 
   return (
-    <View className="flex-1 bg-app-background">
+    <View className="flex-1 bg-app-canvas">
       <Stack.Screen options={screenOptions} />
 
       <ScrollView
@@ -235,36 +232,36 @@ export default function AppleCardImportModal() {
         <View className="px-5">
           <View className="mb-5 flex-row items-center justify-between">
             <View className="pr-4">
-              <Text className="text-xl font-semibold text-app-text">Apple Card import</Text>
-              <Text className="mt-1 text-xs text-app-text-muted">
+              <Text className="text-3xl font-semibold text-app-text-strong">Apple Card import</Text>
+              <Text className="mt-1 text-sm text-app-text-faint">
                 Review recent Wallet transactions and bring them into your budget.
               </Text>
             </View>
             <TouchableOpacity
               onPress={() => router.back()}
               accessibilityLabel="Close Apple Card import"
-              className="h-10 w-10 items-center justify-center rounded-full border border-app-border bg-app-surface shadow-xs">
-              <Ionicons name="close" size={18} color="#0F172A" />
+              className="h-11 w-11 items-center justify-center rounded-full border border-app-border bg-app-surface-1">
+              <Ionicons name="close" size={18} color="#F8FAFC" />
             </TouchableOpacity>
           </View>
 
           {isLoading ? (
-            <Card>
+            <Card variant="glass-dark">
               <CardContent className="flex-row items-center py-2">
-                <ActivityIndicator size="small" color="#0EA5E9" />
-                <Text className="ml-3 text-sm text-app-text-muted">
+                <ActivityIndicator size="small" color="#59F7A5" />
+                <Text className="ml-3 text-sm text-app-text-faint">
                   Checking FinanceKit availability...
                 </Text>
               </CardContent>
             </Card>
           ) : (
             <>
-              <Card className="mb-4">
+              <Card variant="hero" className="mb-4">
                 <CardHeader className="pb-3">
                   <CardTitle variant="small">Status</CardTitle>
                   <CardDescription>
-                    FinanceKit is iPhone-only and requires iOS 17.4 or later with Wallet
-                    financial data available on this device.
+                    FinanceKit is iPhone-only and requires iOS 17.4 or later with Wallet financial
+                    data available on this device.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -299,7 +296,7 @@ export default function AppleCardImportModal() {
               </Card>
 
               {financeKitEntitled && authorizationStatus !== 'authorized' ? (
-                <Card className="mb-4">
+                <Card variant="glass-dark" className="mb-4">
                   <CardHeader className="pb-3">
                     <CardTitle variant="small">Connect Wallet</CardTitle>
                     <CardDescription>
@@ -308,6 +305,7 @@ export default function AppleCardImportModal() {
                   </CardHeader>
                   <CardContent>
                     <Button
+                      variant="primary-solid"
                       title="Authorize Apple Wallet access"
                       loading={isAuthorizing}
                       onPress={handleAuthorize}
@@ -318,7 +316,7 @@ export default function AppleCardImportModal() {
 
               {authorizationStatus === 'authorized' ? (
                 <>
-                  <Card className="mb-4">
+                  <Card variant="glass-dark" className="mb-4">
                     <CardHeader className="pb-3">
                       <CardTitle variant="small">Eligible accounts</CardTitle>
                       <CardDescription>
@@ -331,15 +329,15 @@ export default function AppleCardImportModal() {
                           {accounts.map((account) => (
                             <View
                               key={account.id}
-                              className="rounded-2xl border border-app-border bg-app-surface-alt px-4 py-3">
-                              <Text className="text-sm font-semibold text-app-text">
+                              className="rounded-2xl border border-app-border bg-app-canvas-elevated px-4 py-3">
+                              <Text className="text-sm font-semibold text-app-text-strong">
                                 {account.displayName}
                               </Text>
-                              <Text className="mt-1 text-xs text-app-text-muted">
-                                {account.institutionName} - {account.currencyCode}
+                              <Text className="mt-1 text-xs text-app-text-faint">
+                                {account.institutionName} · {account.currencyCode}
                               </Text>
                               {account.creditLimit?.amount ? (
-                                <Text className="mt-2 text-xs text-app-text-secondary">
+                                <Text className="mt-2 text-xs text-app-text-soft">
                                   Credit limit {formatCurrency(Number(account.creditLimit.amount))}
                                 </Text>
                               ) : null}
@@ -354,7 +352,7 @@ export default function AppleCardImportModal() {
                     </CardContent>
                   </Card>
 
-                  <Card>
+                  <Card variant="glass-dark">
                     <CardHeader className="pb-3">
                       <CardTitle variant="small">Recent transactions</CardTitle>
                       <CardDescription>
@@ -368,8 +366,13 @@ export default function AppleCardImportModal() {
                           {selectedCount} selected - {previewRows.length} loaded
                         </Text>
                         <View className="flex-row gap-2">
-                          <Button size="sm" variant="ghost" title="Select all" onPress={selectAll} />
-                          <Button size="sm" variant="ghost" title="Clear" onPress={clearSelection} />
+                          <Button
+                            size="sm"
+                            variant="secondary-muted"
+                            title="Select all"
+                            onPress={selectAll}
+                          />
+                          <Button size="sm" variant="pill" title="Clear" onPress={clearSelection} />
                         </View>
                       </View>
 
@@ -385,22 +388,22 @@ export default function AppleCardImportModal() {
                                 onPress={() => toggleTransaction(row.transaction.id)}
                                 className={`rounded-2xl border px-4 py-4 ${
                                   row.isDuplicate
-                                    ? 'border-border-default bg-app-surface opacity-60'
+                                    ? 'border-app-border bg-app-canvas-elevated opacity-60'
                                     : isSelected
-                                      ? 'border-primary-400 bg-primary-50'
-                                      : 'border-app-border bg-app-surface'
+                                      ? 'border-app-border-contrast bg-app-surface-2'
+                                      : 'border-app-border bg-app-surface-1'
                                 }`}>
                                 <View className="flex-row items-start justify-between">
                                   <View className="flex-1 pr-4">
-                                    <Text className="text-sm font-semibold text-app-text">
+                                    <Text className="text-sm font-semibold text-app-text-strong">
                                       {row.draft.description}
                                     </Text>
-                                    <Text className="mt-1 text-xs text-app-text-muted">
-                                      {formatDate(row.draft.date)} -{' '}
+                                    <Text className="mt-1 text-xs text-app-text-faint">
+                                      {formatDate(row.draft.date)} ·{' '}
                                       {row.account?.displayName ?? 'Wallet account'}
                                     </Text>
-                                    <Text className="mt-2 text-xs text-app-text-secondary">
-                                      {row.draft.type === 'expense' ? 'Expense' : 'Income'} -{' '}
+                                    <Text className="mt-2 text-xs text-app-text-soft">
+                                      {row.draft.type === 'expense' ? 'Expense' : 'Income'} ·{' '}
                                       {formatCurrency(Number(row.draft.amount))}
                                     </Text>
                                     {row.isDuplicate ? (
@@ -423,7 +426,7 @@ export default function AppleCardImportModal() {
                                         row.isDuplicate
                                           ? '#94A3B8'
                                           : isSelected
-                                            ? '#0EA5E9'
+                                            ? '#59F7A5'
                                             : '#94A3B8'
                                       }
                                     />
@@ -448,10 +451,11 @@ export default function AppleCardImportModal() {
       </ScrollView>
 
       <View
-        className="border-t border-app-border bg-app-surface px-5 pt-3"
+        className="border-t border-app-border bg-app-surface-1 px-5 pt-3"
         style={{ paddingBottom: bottomPadding }}>
         <Button
           size="lg"
+          variant="primary-solid"
           title={isImporting ? 'Importing...' : 'Import selected transactions'}
           loading={isImporting}
           disabled={authorizationStatus !== 'authorized' || selectedCount === 0}
@@ -473,14 +477,14 @@ function StatusRow({
 }) {
   const toneClass =
     tone === 'good'
-      ? 'text-success-700'
+      ? 'text-accent-income'
       : tone === 'bad'
-        ? 'text-error-600'
-        : 'text-app-text-secondary';
+        ? 'text-accent-expense'
+        : 'text-app-text-soft';
 
   return (
-    <View className="flex-row items-center justify-between rounded-2xl bg-app-surface-alt px-4 py-3">
-      <Text className="text-sm text-app-text">{label}</Text>
+    <View className="flex-row items-center justify-between rounded-2xl bg-app-canvas-elevated px-4 py-3">
+      <Text className="text-sm text-app-text-soft">{label}</Text>
       <Text className={`text-sm font-medium ${toneClass}`}>{value}</Text>
     </View>
   );

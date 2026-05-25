@@ -145,6 +145,26 @@ module.exports = {
         'app-text-secondary-dark': '#CBD5E1',
         'app-text-muted-dark': '#94A3B8',
 
+        // Dark redesign tokens
+        'app-canvas': '#050816',
+        'app-canvas-elevated': '#090D1E',
+        'app-surface-1': '#0D1325',
+        'app-surface-2': '#12192E',
+        'app-surface-3': '#182136',
+        'app-surface-overlay': 'rgba(8, 12, 26, 0.86)',
+        'app-card-glow': 'rgba(73, 255, 188, 0.12)',
+        'app-border-strong': '#2B3652',
+        'app-border-contrast': '#3A4767',
+        'app-text-strong': '#F8FAFC',
+        'app-text-soft': '#C8D3EA',
+        'app-text-faint': '#8190B3',
+        'accent-income': '#59F7A5',
+        'accent-expense': '#FF5D8F',
+        'accent-debt': '#FFB347',
+        'accent-savings': '#58B6FF',
+        'accent-insight': '#A78BFA',
+        'accent-neutral': '#91A3C7',
+
         // Financial shortcuts used in components
         'financial-positive': '#22C55E',
         'financial-negative': '#EF4444',
@@ -179,6 +199,7 @@ module.exports = {
       },
       // Typography
       fontSize: {
+        '2xs': ['11px', { lineHeight: '14px' }],
         xs: ['12px', { lineHeight: '16px' }],
         sm: ['14px', { lineHeight: '20px' }],
         base: ['16px', { lineHeight: '24px' }],
@@ -242,6 +263,8 @@ module.exports = {
         xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
         '2xl': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
         inner: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
+        glow: '0 14px 40px -18px rgba(88, 182, 255, 0.48)',
+        'glow-soft': '0 18px 45px -28px rgba(167, 139, 250, 0.5)',
       },
       // Component Sizes
       height: {

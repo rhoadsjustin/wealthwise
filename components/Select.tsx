@@ -81,7 +81,7 @@ export const SelectTrigger = React.forwardRef<TouchableOpacityRef, SelectTrigger
         ref={ref}
         onPress={onPress}
         activeOpacity={0.7}
-        className={`min-h-[40px] rounded-lg border border-border-default bg-background-primary px-3 py-2 ${className}`}
+        className={`min-h-[40px] rounded-lg border border-app-border-strong bg-app-surface-1 px-3 py-2 ${className}`}
         style={style}
         {...props}>
         <View className="flex-row items-center justify-between">
@@ -90,7 +90,7 @@ export const SelectTrigger = React.forwardRef<TouchableOpacityRef, SelectTrigger
             style={{
               transform: [{ rotate: isOpen ? '180deg' : '0deg' }],
             }}>
-            <Ionicons name="chevron-down" size={16} color="#9CA3AF" />
+            <Ionicons name="chevron-down" size={16} color="#8190B3" />
           </Animated.View>
         </View>
       </TouchableOpacity>
@@ -110,7 +110,7 @@ export const SelectValue = React.forwardRef<Text, SelectValueProps>(
     const { value } = useSelectContext();
 
     return (
-      <Text ref={ref} className="flex-1 text-sm text-foreground-primary" numberOfLines={1}>
+      <Text ref={ref} className="flex-1 text-sm text-app-text-strong" numberOfLines={1}>
         {value ? children || value : placeholder || 'Select an option'}
       </Text>
     );
@@ -131,7 +131,7 @@ export const SelectContent = React.forwardRef<View, SelectContentProps>(({ child
   return (
     <View
       ref={ref}
-      className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-border-default bg-background-primary shadow-md"
+      className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-app-border-strong bg-app-surface-2 shadow-md"
       style={{ maxHeight: 240 }}>
       <Animated.ScrollView
         showsVerticalScrollIndicator
@@ -173,11 +173,11 @@ export const SelectItem = React.forwardRef<TouchableOpacityRef, SelectItemProps>
         disabled={disabled}
         activeOpacity={0.7}
         className={`flex-row items-center px-3 py-3 ${
-          isSelected ? 'bg-primary-50' : 'bg-background-primary'
+          isSelected ? 'bg-app-surface-3' : 'bg-app-surface-2'
         } ${disabled ? 'opacity-50' : ''} ${className}`}
         {...props}>
         <View className="flex-1">{children}</View>
-        {isSelected && <Ionicons name="checkmark" size={16} color="#0EA5E9" />}
+        {isSelected && <Ionicons name="checkmark" size={16} color="#58B6FF" />}
       </TouchableOpacity>
     );
   }
@@ -194,7 +194,7 @@ export const SelectLabel = React.forwardRef<Text, SelectLabelProps>(
   ({ children, className = '', ...props }, ref) => (
     <Text
       ref={ref}
-      className={`px-3 py-2 text-xs font-medium uppercase tracking-wider text-foreground-muted ${className}`}
+      className={`px-3 py-2 text-xs font-medium uppercase tracking-wider text-app-text-faint ${className}`}
       {...props}>
       {children}
     </Text>
@@ -209,7 +209,7 @@ interface SelectSeparatorProps {
 
 export const SelectSeparator = React.forwardRef<View, SelectSeparatorProps>(
   ({ className = '', ...props }, ref) => (
-    <View ref={ref} className={`mx-2 h-px bg-border-default ${className}`} {...props} />
+    <View ref={ref} className={`mx-2 h-px bg-app-border-strong ${className}`} {...props} />
   )
 );
 

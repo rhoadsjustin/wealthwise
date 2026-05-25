@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import { ApiError, errorResponse } from './_lib/errors';
-import { plaidRequest } from './_lib/plaid';
-import { savePlaidItem } from './_lib/storage';
+import { ApiError, errorResponse } from '@/lib/plaid-api/errors';
+import { plaidRequest } from '@/lib/plaid-api/plaid';
+import { savePlaidItem } from '@/lib/plaid-api/storage';
 
 const exchangeRequestSchema = z.object({
   publicToken: z.string().min(1),
@@ -23,7 +23,12 @@ export async function POST(request: Request) {
     const input = exchangeRequestSchema.safeParse(json);
 
     if (!input.success) {
-      throw new ApiError(400, 'invalid_request', 'Invalid public token exchange payload', input.error.flatten());
+      throw new ApiError(
+        400,
+        'invalid_request',
+        'Invalid public token exchange payload',
+        input.error.flatten()
+      );
     }
 
     const response = await plaidRequest<PlaidExchangeResponse>('/item/public_token/exchange', {

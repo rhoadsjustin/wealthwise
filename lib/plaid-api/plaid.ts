@@ -37,8 +37,10 @@ export async function plaidRequest<TResponse>(
     const parsed = plaidErrorSchema.safeParse(json);
     throw new ApiError(
       response.status,
-      parsed.success ? parsed.data.error_code ?? 'plaid_error' : 'plaid_error',
-      parsed.success ? parsed.data.error_message ?? 'Plaid request failed' : 'Plaid request failed',
+      parsed.success ? (parsed.data.error_code ?? 'plaid_error') : 'plaid_error',
+      parsed.success
+        ? (parsed.data.error_message ?? 'Plaid request failed')
+        : 'Plaid request failed',
       parsed.success ? parsed.data : json
     );
   }

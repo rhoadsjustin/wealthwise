@@ -1,4 +1,4 @@
-import { MemoryVectorStore } from 'react-native-rag';
+import type { MemoryVectorStore } from 'react-native-rag';
 import { localStorage } from '@/lib/local-storage';
 
 export interface CategoryLite {

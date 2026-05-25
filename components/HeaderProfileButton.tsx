@@ -1,88 +1,51 @@
-import React, { useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React from 'react';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-type MenuItem = {
-  label: string;
-  route: string;
-  icon: keyof typeof Ionicons.glyphMap;
-};
-
-const MENU_ITEMS: MenuItem[] = [
-  { label: 'Profile', route: '/profile', icon: 'person-circle-outline' },
-  { label: 'Budget', route: '/categories', icon: 'pie-chart-outline' },
-];
-
 const TriggerIcon = () => (
-  <View className="h-9 w-9 items-center justify-center rounded-full bg-app-surface shadow-xs">
-    <Ionicons name="settings-outline" size={20} color="#0F172A" />
+  <View className="shadow-card" style={styles.trigger}>
+    <Ionicons name="person-outline" size={18} color="#F8FAFC" />
   </View>
 );
 
 export default function HeaderProfileButton() {
   const router = useRouter();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const handleSelect = (route: string) => {
-    setIsMenuOpen(false);
-    router.push(route as any);
-  };
+  const handlePress = () => router.push('/profile');
 
   if (Platform.OS === 'web') {
     return (
-      <TouchableOpacity onPress={() => router.push('/profile')} accessibilityLabel="Open profile">
+      <Pressable onPress={handlePress} accessibilityLabel="Open profile">
         <TriggerIcon />
-      </TouchableOpacity>
+      </Pressable>
     );
   }
 
   return (
-    <>
-      <TouchableOpacity
-        onPress={() => setIsMenuOpen(true)}
-        accessibilityLabel="Open profile menu"
-        activeOpacity={0.7}>
-        <TriggerIcon />
-      </TouchableOpacity>
-
-      <Modal
-        transparent
-        animationType="fade"
-        visible={isMenuOpen}
-        onRequestClose={() => setIsMenuOpen(false)}>
-        <Pressable style={styles.overlay} onPress={() => setIsMenuOpen(false)}>
-          <View className="w-48 rounded-2xl border border-app-border bg-app-surface shadow-lg">
-            {MENU_ITEMS.map((item) => (
-              <Pressable
-                key={item.route}
-                style={styles.menuItem}
-                onPress={() => handleSelect(item.route)}
-                accessibilityRole="menuitem">
-                <Ionicons name={item.icon} size={18} color="#0F172A" />
-                <Text className="ml-3 text-sm font-medium text-app-text">{item.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Pressable>
-      </Modal>
-    </>
+    <Pressable
+      accessibilityLabel="Open profile"
+      hitSlop={8}
+      onPress={handlePress}
+      style={({ pressed }) => [
+        {
+          opacity: pressed ? 0.92 : 1,
+          transform: [{ scale: pressed ? 0.96 : 1 }],
+        },
+      ]}>
+      <TriggerIcon />
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.3)',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-end',
-    paddingTop: 64,
-    paddingRight: 20,
-  },
-  menuItem: {
-    flexDirection: 'row',
+  trigger: {
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: '#10182B',
+    borderColor: '#2E4268',
+    borderRadius: 22,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
   },
 });

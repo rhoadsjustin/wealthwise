@@ -2,7 +2,18 @@ import * as React from 'react';
 import { Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 
 export interface ButtonProps {
-  variant?: 'default' | 'secondary' | 'outline' | 'ghost' | 'success' | 'warning' | 'error';
+  variant?:
+    | 'default'
+    | 'secondary'
+    | 'outline'
+    | 'ghost'
+    | 'success'
+    | 'warning'
+    | 'error'
+    | 'primary-solid'
+    | 'secondary-muted'
+    | 'pill'
+    | 'icon-dark';
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   loading?: boolean;
@@ -31,6 +42,14 @@ const Button = React.forwardRef<View, ButtonProps>(
   ) => {
     const getVariantClasses = () => {
       switch (variant) {
+        case 'primary-solid':
+          return 'border border-accent-savings bg-accent-savings shadow-glow';
+        case 'secondary-muted':
+          return 'border border-app-border bg-app-surface-2 active:bg-app-surface-3';
+        case 'pill':
+          return 'border border-app-border-contrast bg-app-canvas-elevated active:bg-app-surface-2';
+        case 'icon-dark':
+          return 'border border-app-border bg-app-surface-1 active:bg-app-surface-2';
         case 'secondary':
           return 'bg-secondary-100 border border-secondary-300 active:bg-secondary-200';
         case 'outline':
@@ -50,6 +69,12 @@ const Button = React.forwardRef<View, ButtonProps>(
 
     const getTextVariantClasses = () => {
       switch (variant) {
+        case 'primary-solid':
+          return 'text-app-canvas font-semibold';
+        case 'secondary-muted':
+        case 'pill':
+        case 'icon-dark':
+          return 'text-app-text-strong';
         case 'secondary':
           return 'text-secondary-700';
         case 'outline':
@@ -117,9 +142,14 @@ const Button = React.forwardRef<View, ButtonProps>(
             <ActivityIndicator
               size="small"
               color={
-                variant === 'outline' || variant === 'ghost' || variant === 'secondary'
+                variant === 'outline' ||
+                variant === 'ghost' ||
+                variant === 'secondary' ||
+                variant === 'primary-solid'
                   ? '#374151'
-                  : '#ffffff'
+                  : variant === 'secondary-muted' || variant === 'pill' || variant === 'icon-dark'
+                    ? '#F8FAFC'
+                    : '#ffffff'
               }
             />
           </View>

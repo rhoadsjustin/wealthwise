@@ -153,6 +153,26 @@ export const theme = {
       overlay: 'rgba(0, 0, 0, 0.5)', // Modal overlays
     },
 
+    redesign: {
+      canvas: '#050816',
+      canvasElevated: '#090D1E',
+      surface1: '#0D1325',
+      surface2: '#12192E',
+      surface3: '#182136',
+      surfaceOverlay: 'rgba(8, 12, 26, 0.86)',
+      borderStrong: '#2B3652',
+      borderContrast: '#3A4767',
+      textStrong: '#F8FAFC',
+      textSoft: '#C8D3EA',
+      textFaint: '#8190B3',
+      accentIncome: '#59F7A5',
+      accentExpense: '#FF5D8F',
+      accentDebt: '#FFB347',
+      accentSavings: '#58B6FF',
+      accentInsight: '#A78BFA',
+      accentNeutral: '#91A3C7',
+    },
+
     // Financial app specific colors
     financial: {
       positive: '#22C55E', // Green for income/gains

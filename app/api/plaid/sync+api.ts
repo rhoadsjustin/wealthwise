@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import { ApiError, errorResponse } from './_lib/errors';
-import { plaidRequest } from './_lib/plaid';
-import { getPlaidItem, updatePlaidCursor } from './_lib/storage';
+import { ApiError, errorResponse } from '@/lib/plaid-api/errors';
+import { plaidRequest } from '@/lib/plaid-api/plaid';
+import { getPlaidItem, updatePlaidCursor } from '@/lib/plaid-api/storage';
 
 const syncRequestSchema = z.object({
   itemId: z.string().min(1),
@@ -10,9 +10,9 @@ const syncRequestSchema = z.object({
 });
 
 interface PlaidTransactionsSyncResponse {
-  added: Array<Record<string, unknown>>;
-  modified: Array<Record<string, unknown>>;
-  removed: Array<Record<string, unknown>>;
+  added: Record<string, unknown>[];
+  modified: Record<string, unknown>[];
+  removed: Record<string, unknown>[];
   next_cursor: string;
   has_more: boolean;
   request_id: string;
