@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { requireNativeModule } from 'expo-modules-core';
+import { requireNativeModule } from 'expo';
 import { createAppleProvider } from '@react-native-ai/apple';
 import { generateText, tool, type CoreMessage } from 'ai';
 import { z } from 'zod';

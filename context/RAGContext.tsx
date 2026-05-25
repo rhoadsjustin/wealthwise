@@ -1,6 +1,8 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { AppState, Platform } from 'react-native';
 import { setVectorStore as setCategorizerVectorStore } from '@/lib/ai/categorizer';
+import { ExecuTorchEmbeddings, ExecuTorchLLM } from '@/lib/ai/executorchAdapters';
+import { initializeExecutorch } from '@/lib/ai/executorchInit';
 import * as FileSystem from 'expo-file-system/legacy';
 
 type VectorStoreInstance = {
@@ -59,12 +61,12 @@ export const VectorStoreProvider = ({ children }: { children: React.ReactNode })
           return;
         }
 
-        const [{ ExecuTorchEmbeddings, ExecuTorchLLM }, executorchModels, { MemoryVectorStore }] =
-          await Promise.all([
-            import('@react-native-rag/executorch'),
-            import('react-native-executorch'),
-            import('react-native-rag'),
-          ]);
+        await initializeExecutorch();
+
+        const [executorchModels, { MemoryVectorStore }] = await Promise.all([
+          import('react-native-executorch'),
+          import('react-native-rag'),
+        ]);
 
         const { ALL_MINILM_L6_V2, LLAMA3_2_1B } = executorchModels;
 
