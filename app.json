@@ -4,7 +4,6 @@
     "slug": "budget-app",
     "version": "1.0.0",
     "scheme": "budget-app",
-    "newArchEnabled": true,
     "web": {
       "bundler": "metro",
       "output": "server",
@@ -39,9 +38,11 @@
             "deploymentTarget": "17.4"
           }
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
+      "reactCompiler": true,
       "typedRoutes": true,
       "tsconfigPaths": true
     },
@@ -53,7 +54,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "icon": "./assets/WealthWise.icon",
       "supportsTablet": false,

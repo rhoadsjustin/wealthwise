@@ -1,6 +1,10 @@
 import * as React from 'react';
-import { View, Text } from 'react-native';
-import { TextInput, useNativeState, Host, type TextInputRef, type ObservableState } from '@expo/ui';
+import {
+  View,
+  Text,
+  TextInput as RNTextInput,
+  type TextInputProps as RNTextInputProps,
+} from 'react-native';
 
 export interface InputProps {
   variant?: 'default' | 'outline' | 'filled' | 'dark';
@@ -10,7 +14,6 @@ export interface InputProps {
   placeholder?: string;
   value?: string;
   onChangeText?: (text: string) => void;
-  nativeValue?: ObservableState<string>;
   onBlur?: () => void;
   onFocus?: () => void;
   keyboardType?: 'default' | 'numeric' | 'email-address' | 'phone-pad' | 'decimal-pad';
@@ -32,7 +35,7 @@ export interface InputProps {
   id?: string;
 }
 
-const Input = React.forwardRef<TextInputRef, InputProps>(
+const Input = React.forwardRef<RNTextInput, InputProps>(
   (
     {
       variant = 'default',
@@ -41,7 +44,6 @@ const Input = React.forwardRef<TextInputRef, InputProps>(
       disabled = false,
       placeholder,
       value,
-      nativeValue,
       onChangeText,
       onBlur,
       onFocus,
@@ -67,12 +69,6 @@ const Input = React.forwardRef<TextInputRef, InputProps>(
     ref
   ) => {
     const [isFocused, setIsFocused] = React.useState(false);
-
-    const internalNative = useNativeState(value ?? '');
-    React.useEffect(() => {
-      internalNative.value = value ?? '';
-    }, [value, internalNative]);
-    const activeNative = nativeValue ?? internalNative;
 
     const getVariantClasses = () => {
       switch (variant) {
@@ -185,31 +181,36 @@ const Input = React.forwardRef<TextInputRef, InputProps>(
           {leftIcon && <View className="ml-3">{leftIcon}</View>}
 
           {/* Text Input */}
-          <Host style={{ flex: 1 }}>
-            <TextInput
-              ref={ref}
-              value={activeNative}
-              style={{ paddingHorizontal: paddingH }}
-              textStyle={{ color: textColor, fontSize }}
-              placeholder={placeholder}
-              placeholderTextColor={variant === 'dark' ? '#8190B3' : '#9ca3af'}
-              onChangeText={onChangeText}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              keyboardType={keyboardType}
-              secureTextEntry={secureTextEntry}
-              autoCapitalize={autoCapitalize}
-              autoCorrect={autoCorrect}
-              returnKeyType={returnKeyType}
-              onSubmitEditing={onSubmitEditing}
-              multiline={multiline}
-              numberOfLines={numberOfLines}
-              maxLength={maxLength}
-              editable={!disabled}
-              selectTextOnFocus={!disabled}
-              testID={id}
-            />
-          </Host>
+          <RNTextInput
+            ref={ref}
+            value={value}
+            style={{
+              flex: 1,
+              paddingHorizontal: paddingH,
+              color: textColor,
+              fontSize,
+              paddingVertical: multiline ? 12 : 0,
+              textAlignVertical: multiline ? 'top' : 'center',
+            }}
+            placeholder={placeholder}
+            placeholderTextColor={variant === 'dark' ? '#8190B3' : '#9ca3af'}
+            onChangeText={onChangeText}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            keyboardType={keyboardType as RNTextInputProps['keyboardType']}
+            secureTextEntry={secureTextEntry}
+            autoCapitalize={autoCapitalize}
+            autoCorrect={autoCorrect}
+            returnKeyType={returnKeyType}
+            onSubmitEditing={(event) => onSubmitEditing?.(event.nativeEvent.text)}
+            multiline={multiline}
+            numberOfLines={numberOfLines}
+            maxLength={maxLength}
+            editable={!disabled}
+            selectTextOnFocus={!disabled}
+            testID={id}
+            {...props}
+          />
 
           {/* Right Icon */}
           {rightIcon && <View className="mr-3">{rightIcon}</View>}

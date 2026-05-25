@@ -9,11 +9,14 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { VectorStoreProvider } from '@/context/RAGContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { indexCategoryDocs } from '@/lib/ai/categorizer';
+import { initializeExecutorch } from '@/lib/ai/executorchInit';
 import { vexo } from 'vexo-analytics';
 
 if (!__DEV__) {
   vexo('7eeb416e-f5a5-4742-b75d-31939f29182d');
 }
+
+void initializeExecutorch();
 
 // Create context for sharing data across tabs
 interface AppDataContextType {
