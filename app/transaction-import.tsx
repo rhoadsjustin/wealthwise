@@ -10,7 +10,6 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { Button } from '@/components/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/Card';
 import { Input } from '@/components/Input';
-import { ToastMessage } from '@/components/Toast';
 import { useAppData } from '@/app/_layout';
 import { useData, type Category } from '@/context/DataContext';
 import { useToast } from '@/context/useToast';
@@ -60,11 +59,6 @@ export default function TransactionImportModal() {
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [editingValues, setEditingValues] = useState<PreviewImportTransaction | null>(null);
 
-  React.useEffect(() => {
-    return () => {
-      ToastMessage.hide();
-    };
-  }, []);
 
   const previewRows = useMemo(
     () =>

@@ -122,6 +122,14 @@ export interface Insight {
   createdAt?: string;
 }
 
+export interface InsightsMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  createdAt: string;
+  source?: 'rag' | 'apple' | 'seed' | 'system';
+}
+
 export interface BankAccount {
   id?: number;
   userId: number;

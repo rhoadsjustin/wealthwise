@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { setDataContext } from '@/lib/api';
 import { localStorage } from '@/lib/local-storage';
+import type { InsightsMessage as StoredInsightsMessage } from '@/lib/schema/schema';
 
 const debugLog = (...args: unknown[]) => {
   if (__DEV__) {
@@ -114,6 +115,8 @@ export interface Insight {
   severity: 'info' | 'warning' | 'error';
   createdAt: string;
 }
+
+export type InsightsMessage = StoredInsightsMessage;
 
 export interface BankAccount {
   id: number;
@@ -243,6 +246,9 @@ interface DataContextType {
   // Insights
   getInsights: () => Promise<Insight[]>;
   generateInsights: () => Promise<{ insights: Insight[] }>;
+  getInsightsThread: () => Promise<InsightsMessage[]>;
+  saveInsightsThread: (messages: InsightsMessage[]) => Promise<void>;
+  clearInsightsThread: () => Promise<void>;
 
   // Bank Accounts
   getBankAccounts: () => Promise<BankAccount[]>;
@@ -1689,7 +1695,7 @@ export function DataProvider({
       if (!assignedCategory && data.type === 'expense') {
         try {
           const cats = await localStorage.getItems<Category>('categories', currentUserId);
-          const { default: categorizer, suggestCategory } = await import('@/lib/ai/categorizer');
+          const { suggestCategory } = await import('@/lib/ai/categorizer');
           const suggestion = await suggestCategory({ description: data.description }, cats as any);
           if (suggestion.categoryId && suggestion.confidence >= 0.7) {
             assignedCategory = suggestion.categoryId;
@@ -1738,7 +1744,7 @@ export function DataProvider({
 
       return updated;
     },
-    [bumpVersion]
+    [bumpVersion, currentUserId]
   );
 
   const deleteTransaction = useCallback(
@@ -1754,6 +1760,23 @@ export function DataProvider({
   const getInsights = useCallback(async (): Promise<Insight[]> => {
     return localStorage.getItems<Insight>('insights', currentUserId);
   }, [currentUserId]);
+
+  const getInsightsThread = useCallback(async (): Promise<InsightsMessage[]> => {
+    const messages = await localStorage.getInsightsThread();
+    return messages.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  }, []);
+
+  const saveInsightsThread = useCallback(async (messages: InsightsMessage[]): Promise<void> => {
+    const normalized = messages.map((message) => ({
+      ...message,
+      createdAt: message.createdAt || new Date().toISOString(),
+    }));
+    await localStorage.saveInsightsThread(normalized);
+  }, []);
+
+  const clearInsightsThread = useCallback(async (): Promise<void> => {
+    await localStorage.clearInsightsThread();
+  }, []);
 
   const generateInsights = useCallback(async (): Promise<{ insights: Insight[] }> => {
     const [transactions, categories, savingsGoalsRaw] = await Promise.all([
@@ -1958,6 +1981,7 @@ export function DataProvider({
       localStorage.clearStore('debtPayments'),
     ]);
     await localStorage.setSetting('monthlyIncome', null);
+    await localStorage.clearInsightsThread();
     setMonthlyIncome(null);
     // Note: clearAllData functionality simplified for development
     debugLog('Data cleared');
@@ -1988,6 +2012,9 @@ export function DataProvider({
         deleteTransaction,
         getInsights,
         generateInsights,
+        getInsightsThread,
+        saveInsightsThread,
+        clearInsightsThread,
         getBankAccounts,
         createBankAccount,
         updateBankAccount,
@@ -2031,6 +2058,9 @@ export function DataProvider({
     deleteTransaction,
     getInsights,
     generateInsights,
+    getInsightsThread,
+    saveInsightsThread,
+    clearInsightsThread,
     getBankAccounts,
     createBankAccount,
     updateBankAccount,
@@ -2093,6 +2123,9 @@ export function DataProvider({
     // Insights
     getInsights,
     generateInsights,
+    getInsightsThread,
+    saveInsightsThread,
+    clearInsightsThread,
 
     // Bank Accounts
     getBankAccounts,

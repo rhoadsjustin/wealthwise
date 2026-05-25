@@ -54,7 +54,10 @@ export default function HomeTab() {
   const { openCurrentMonth } = useMonthOverview();
 
   const categoryMap = React.useMemo(
-    () => new Map<number, Category>((categories ?? []).map((category: Category) => [category.id, category])),
+    () =>
+      new Map<number, Category>(
+        (categories ?? []).map((category: Category) => [category.id, category])
+      ),
     [categories]
   );
 
@@ -181,7 +184,7 @@ export default function HomeTab() {
         label: insight.title,
         message: insight.description,
         tone: 'insight',
-        onPress: () => router.push('/insights'),
+        onPress: () => router.push('./insights'),
       });
     });
 
@@ -200,7 +203,11 @@ export default function HomeTab() {
   if (summaryLoading || !summary) {
     return (
       <View className="flex-1 bg-app-canvas">
-        <TopUtilityBar actionIcon="calendar-outline" actionLabel="Open current month" onPressAction={openCurrentMonth} />
+        <TopUtilityBar
+          actionIcon="calendar-outline"
+          actionLabel="Open current month"
+          onPressAction={openCurrentMonth}
+        />
         <ScrollView
           className="flex-1 bg-app-canvas"
           contentContainerStyle={{ paddingTop: 20, paddingBottom: insets.bottom + 120 }}
@@ -232,7 +239,7 @@ export default function HomeTab() {
           value={String(healthScore)}
           status={scoreStatus(healthScore)}
           updatedLabel="Updated from current month cash flow"
-          onPressDetails={() => router.push('/insights')}
+          onPressDetails={() => router.push('./insights')}
           metrics={[
             { label: 'Income', value: currency(totalIncome), tone: 'income' },
             { label: 'Expenses', value: currency(totalExpenses), tone: 'expense' },
@@ -248,7 +255,9 @@ export default function HomeTab() {
                     style={{ height: `${Math.max(bar.heightRatio * 100, 10)}%`, opacity: 0.92 }}
                   />
                 </View>
-                <AppText variant="label-xs" className="mt-2 text-app-text-faint">{bar.label}</AppText>
+                <AppText variant="label-xs" className="mt-2 text-app-text-faint">
+                  {bar.label}
+                </AppText>
               </View>
             ))}
           </View>
@@ -266,7 +275,11 @@ export default function HomeTab() {
             onPress={() => router.push('/imports' as any)}
           />
           <QuickAction icon="calendar-outline" label="Review month" onPress={openCurrentMonth} />
-          <QuickAction icon="flag-outline" label="Plan" onPress={() => router.push('/plan' as any)} />
+          <QuickAction
+            icon="flag-outline"
+            label="Plan"
+            onPress={() => router.push('/plan' as any)}
+          />
         </View>
 
         <Card variant="glass-dark" className="mt-6">
@@ -282,7 +295,9 @@ export default function HomeTab() {
                 <AppText variant="hero" className="text-app-text-strong">
                   {currency(totalExpenses)}
                 </AppText>
-                <AppText variant="body" className="mt-1 text-app-text-faint">Spent this month</AppText>
+                <AppText variant="body" className="mt-1 text-app-text-faint">
+                  Spent this month
+                </AppText>
               </View>
               <View className="rounded-full bg-app-canvas-elevated px-3 py-2">
                 <AppText variant="caption" className="text-app-text-soft">

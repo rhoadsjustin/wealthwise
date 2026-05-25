@@ -4,7 +4,8 @@ import { StatusBar, View } from 'react-native';
 import { AuthProvider } from '../context/useAuth';
 import { DataProvider, useData, Bill, Debt } from '../context/DataContext';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { ToastProvider } from '../components/Toast';
+import { ToastProvider } from '../context/ToastContext';
+import { Toaster } from '../components/Toaster';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { VectorStoreProvider } from '@/context/RAGContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -396,6 +397,7 @@ export default function RootLayout() {
           <AuthProvider>
             <ToastProvider>
               <AppContent />
+              <Toaster />
             </ToastProvider>
           </AuthProvider>
         </SafeAreaProvider>

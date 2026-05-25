@@ -1,145 +1,187 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Toast, { type ToastConfig as NativeToastConfig } from 'react-native-toast-message';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 
-// Custom Toast Components
-const SuccessToast = ({ text1, text2 }: any) => (
-  <View style={[styles.toastContainer, styles.successToast]}>
-    <View style={styles.toastContent}>
-      <View style={styles.iconContainer}>
-        <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-      </View>
-      <View style={styles.textContainer}>
-        <Text style={[styles.toastTitle, styles.successText]}>{text1}</Text>
-        {text2 && <Text style={[styles.toastDescription, styles.successDescription]}>{text2}</Text>}
-      </View>
-    </View>
-    <TouchableOpacity onPress={() => Toast.hide()} style={styles.closeButton}>
-      <Ionicons name="close" size={16} color="#6B7280" />
-    </TouchableOpacity>
-  </View>
-);
+import {
+  addToastImperative,
+  type ToastItem as ToastItemType,
+  type ToastVariant,
+} from '@/context/ToastContext';
 
-const ErrorToast = ({ text1, text2 }: any) => (
-  <View style={[styles.toastContainer, styles.errorToast]}>
-    <View style={styles.toastContent}>
-      <View style={styles.iconContainer}>
-        <Ionicons name="alert-circle" size={20} color="#EF4444" />
-      </View>
-      <View style={styles.textContainer}>
-        <Text style={[styles.toastTitle, styles.errorText]}>{text1}</Text>
-        {text2 && <Text style={[styles.toastDescription, styles.errorDescription]}>{text2}</Text>}
-      </View>
-    </View>
-    <TouchableOpacity onPress={() => Toast.hide()} style={styles.closeButton}>
-      <Ionicons name="close" size={16} color="#6B7280" />
-    </TouchableOpacity>
-  </View>
-);
+// ─── Theme color maps (values from tailwind.config.js) ───────────────────────
 
-const InfoToast = ({ text1, text2 }: any) => (
-  <View style={[styles.toastContainer, styles.infoToast]}>
-    <View style={styles.toastContent}>
-      <View style={styles.iconContainer}>
-        <Ionicons name="information-circle" size={20} color="#3B82F6" />
-      </View>
-      <View style={styles.textContainer}>
-        <Text style={[styles.toastTitle, styles.infoText]}>{text1}</Text>
-        {text2 && <Text style={[styles.toastDescription, styles.infoDescription]}>{text2}</Text>}
-      </View>
-    </View>
-    <TouchableOpacity onPress={() => Toast.hide()} style={styles.closeButton}>
-      <Ionicons name="close" size={16} color="#6B7280" />
-    </TouchableOpacity>
-  </View>
-);
+type ColorSet = { bg: string; accent: string; title: string; desc: string; icon: string };
 
-const WarningToast = ({ text1, text2 }: any) => (
-  <View style={[styles.toastContainer, styles.warningToast]}>
-    <View style={styles.toastContent}>
-      <View style={styles.iconContainer}>
-        <Ionicons name="warning" size={20} color="#F59E0B" />
-      </View>
-      <View style={styles.textContainer}>
-        <Text style={[styles.toastTitle, styles.warningText]}>{text1}</Text>
-        {text2 && <Text style={[styles.toastDescription, styles.warningDescription]}>{text2}</Text>}
-      </View>
-    </View>
-    <TouchableOpacity onPress={() => Toast.hide()} style={styles.closeButton}>
-      <Ionicons name="close" size={16} color="#6B7280" />
-    </TouchableOpacity>
-  </View>
-);
-
-// Toast configuration for react-native-toast-message
-export const toastConfig: NativeToastConfig = {
-  success: SuccessToast,
-  error: ErrorToast,
-  info: InfoToast,
-  warning: WarningToast,
-};
-
-// Toast utility functions
-export const showToast = {
-  success: (title: string, description?: string) => {
-    Toast.show({
-      type: 'success',
-      text1: title,
-      text2: description,
-      visibilityTime: 4000,
-      autoHide: true,
-      onPress: () => Toast.hide(),
-      topOffset: 60,
-    });
+const VARIANT_COLORS: Record<'light' | 'dark', Record<ToastVariant, ColorSet>> = {
+  light: {
+    success: { bg: '#f0fdf4', accent: '#22c55e', title: '#166534', desc: '#15803d', icon: '#22c55e' },
+    error:   { bg: '#fef2f2', accent: '#ef4444', title: '#991b1b', desc: '#b91c1c', icon: '#ef4444' },
+    warning: { bg: '#fffbeb', accent: '#f59e0b', title: '#92400e', desc: '#b45309', icon: '#f59e0b' },
+    info:    { bg: '#eff6ff', accent: '#3b82f6', title: '#1e3a8a', desc: '#1d4ed8', icon: '#3b82f6' },
   },
-
-  error: (title: string, description?: string) => {
-    Toast.show({
-      type: 'error',
-      text1: title,
-      text2: description,
-      visibilityTime: 5000,
-      autoHide: true,
-      onPress: () => Toast.hide(),
-      topOffset: 60,
-    });
-  },
-
-  info: (title: string, description?: string) => {
-    Toast.show({
-      type: 'info',
-      text1: title,
-      text2: description,
-      visibilityTime: 4000,
-      autoHide: true,
-      onPress: () => Toast.hide(),
-      topOffset: 60,
-    });
-  },
-
-  warning: (title: string, description?: string) => {
-    Toast.show({
-      type: 'warning',
-      text1: title,
-      text2: description,
-      visibilityTime: 4000,
-      autoHide: true,
-      onPress: () => Toast.hide(),
-      topOffset: 60,
-    });
+  dark: {
+    success: { bg: '#12192E', accent: '#59F7A5', title: '#86efac', desc: '#4ade80', icon: '#59F7A5' },
+    error:   { bg: '#12192E', accent: '#FF5D8F', title: '#fca5a5', desc: '#f87171', icon: '#FF5D8F' },
+    warning: { bg: '#12192E', accent: '#FFB347', title: '#fcd34d', desc: '#fbbf24', icon: '#FFB347' },
+    info:    { bg: '#12192E', accent: '#58B6FF', title: '#93c5fd', desc: '#60a5fa', icon: '#58B6FF' },
   },
 };
 
-// Compatibility types for existing codebase
+const BASE_COLORS = {
+  light: { border: '#e5e7eb', closeIcon: '#6b7280', shadowColor: '#000000' },
+  dark:  { border: '#1F2A3A', closeIcon: '#94A3B8', shadowColor: '#000000' },
+};
+
+const ICONS: Record<ToastVariant, React.ComponentProps<typeof Ionicons>['name']> = {
+  success: 'checkmark-circle',
+  error:   'alert-circle',
+  warning: 'warning',
+  info:    'information-circle',
+};
+
+// ─── ToastItem component ──────────────────────────────────────────────────────
+
+export interface ToastItemProps extends ToastItemType {
+  removeToast: (id: string) => void;
+}
+
+export function ToastItem({
+  id,
+  variant,
+  title,
+  description,
+  duration = 4000,
+  removeToast,
+}: ToastItemProps) {
+  const scheme = useColorScheme() ?? 'light';
+  const colors = VARIANT_COLORS[scheme][variant];
+  const base = BASE_COLORS[scheme];
+
+  const translateY = useSharedValue(60);
+  const opacity = useSharedValue(0);
+  const isDismissing = useRef(false);
+
+  // Enter animation on mount
+  useEffect(() => {
+    translateY.value = withSpring(0, { damping: 20, stiffness: 300 });
+    opacity.value = withTiming(1, { duration: 200 });
+  }, []);
+
+  const handleDismiss = useCallback(() => {
+    if (isDismissing.current) return;
+    isDismissing.current = true;
+    translateY.value = withTiming(60, { duration: 180 });
+    opacity.value = withTiming(0, { duration: 160 });
+    // Wait for exit animation before removing from state
+    setTimeout(() => removeToast(id), 200);
+  }, [id, removeToast, translateY, opacity]);
+
+  // Auto-dismiss timer
+  useEffect(() => {
+    const timer = setTimeout(handleDismiss, duration);
+    return () => clearTimeout(timer);
+  }, [duration, handleDismiss]);
+
+  const panGesture = Gesture.Pan()
+    .onChange((event) => {
+      // Only follow downward drag
+      if (event.translationY > 0) {
+        translateY.value = event.translationY;
+        opacity.value = Math.max(0, 1 - event.translationY / 120);
+      }
+    })
+    .onEnd((event) => {
+      if (!isDismissing.current && (event.translationY > 40 || event.velocityY > 500)) {
+        handleDismiss();
+      } else if (!isDismissing.current) {
+        // Snap back
+        translateY.value = withSpring(0, { damping: 20, stiffness: 300 });
+        opacity.value = withTiming(1, { duration: 150 });
+      }
+    })
+    .runOnJS(true);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <GestureDetector gesture={panGesture}>
+      <Animated.View style={animatedStyle}>
+        <TouchableOpacity
+          activeOpacity={0.92}
+          onPress={handleDismiss}
+          style={[
+            styles.container,
+            {
+              backgroundColor: colors.bg,
+              borderColor: base.border,
+              borderLeftColor: colors.accent,
+              shadowColor: base.shadowColor,
+            },
+          ]}
+          accessibilityRole="alert"
+          accessibilityLabel={`${variant}: ${title}${description ? `, ${description}` : ''}`}
+        >
+          <View style={styles.content}>
+            <Ionicons
+              name={ICONS[variant]}
+              size={20}
+              color={colors.icon}
+              style={styles.icon}
+            />
+            <View style={styles.textCol}>
+              <Text style={[styles.title, { color: colors.title }]} numberOfLines={2}>
+                {title}
+              </Text>
+              {description ? (
+                <Text style={[styles.desc, { color: colors.desc }]} numberOfLines={3}>
+                  {description}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+          <TouchableOpacity
+            onPress={handleDismiss}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityLabel="Dismiss notification"
+          >
+            <Ionicons name="close" size={16} color={base.closeIcon} />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Animated.View>
+    </GestureDetector>
+  );
+}
+
+// ─── Backward-compatible imperative API ──────────────────────────────────────
+
 export interface ToastProps {
   variant?: 'default' | 'destructive' | 'success' | 'info' | 'warning';
   title: string;
   description?: string;
 }
 
-// Legacy toast function for backward compatibility
-export const toast = ({ variant = 'default', title, description }: ToastProps) => {
+export const showToast = {
+  success: (title: string, description?: string) =>
+    addToastImperative({ variant: 'success', title, description }),
+  error: (title: string, description?: string) =>
+    addToastImperative({ variant: 'error', title, description, duration: 5000 }),
+  info: (title: string, description?: string) =>
+    addToastImperative({ variant: 'info', title, description }),
+  warning: (title: string, description?: string) =>
+    addToastImperative({ variant: 'warning', title, description }),
+};
+
+export const toast = ({ variant = 'default', title, description }: ToastProps): void => {
   switch (variant) {
     case 'destructive':
       showToast.error(title, description);
@@ -150,128 +192,51 @@ export const toast = ({ variant = 'default', title, description }: ToastProps) =
     case 'info':
       showToast.info(title, description);
       break;
-    case 'success':
-      showToast.success(title, description);
-      break;
     default:
       showToast.success(title, description);
       break;
   }
 };
 
-// Main Toast component (wrapper around react-native-toast-message)
-export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return (
-    <>
-      {children}
-      <Toast config={toastConfig} />
-    </>
-  );
-};
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
-// Export individual components for advanced usage
-export { Toast as ToastMessage };
-
-// Styles
 const styles = StyleSheet.create({
-  toastContainer: {
-    width: '90%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginHorizontal: 16,
+  container: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    borderRadius: 12,
+    borderWidth: 1,
     borderLeftWidth: 4,
+    paddingVertical: 12,
+    paddingLeft: 12,
+    paddingRight: 14,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  toastContent: {
+  content: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    marginRight: 10,
   },
-  iconContainer: {
-    marginRight: 12,
+  icon: {
+    marginRight: 10,
+    marginTop: 1,
   },
-  textContainer: {
+  textCol: {
     flex: 1,
   },
-  closeButton: {
-    marginLeft: 12,
-    padding: 4,
-  },
-  toastTitle: {
+  title: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 2,
+    lineHeight: 20,
   },
-  toastDescription: {
-    fontSize: 12,
-    opacity: 0.8,
-  },
-
-  // Success variant
-  successToast: {
-    borderLeftColor: '#10B981',
-    backgroundColor: '#F0FDF4',
-  },
-  successText: {
-    color: '#065F46',
-  },
-  successDescription: {
-    color: '#047857',
-  },
-
-  // Error variant
-  errorToast: {
-    borderLeftColor: '#EF4444',
-    backgroundColor: '#FEF2F2',
-  },
-  errorText: {
-    color: '#991B1B',
-  },
-  errorDescription: {
-    color: '#B91C1C',
-  },
-
-  // Info variant
-  infoToast: {
-    borderLeftColor: '#3B82F6',
-    backgroundColor: '#EFF6FF',
-  },
-  infoText: {
-    color: '#1E3A8A',
-  },
-  infoDescription: {
-    color: '#1D4ED8',
-  },
-
-  // Warning variant
-  warningToast: {
-    borderLeftColor: '#F59E0B',
-    backgroundColor: '#FFFBEB',
-  },
-  warningText: {
-    color: '#92400E',
-  },
-  warningDescription: {
-    color: '#B45309',
+  desc: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 2,
   },
 });
-
-// Default export for convenience
-export default {
-  ToastProvider,
-  showToast,
-  toast,
-  toastConfig,
-};

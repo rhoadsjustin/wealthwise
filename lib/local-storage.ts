@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import type { InsightsMessage } from '@/lib/schema/schema';
 
 const debugLog = (...args: unknown[]) => {
   if (__DEV__) {
@@ -9,6 +10,7 @@ const debugLog = (...args: unknown[]) => {
 class LocalStorage {
   private db: SQLite.SQLiteDatabase | null = null;
   private readonly dbName = 'BudgetApp.db';
+  private readonly insightsThreadKey = 'insightsThread';
 
   async init(): Promise<void> {
     if (this.db) return;
@@ -322,6 +324,29 @@ class LocalStorage {
       key,
       stringValue,
     ]);
+  }
+
+  async getInsightsThread(): Promise<InsightsMessage[]> {
+    const stored = await this.getSetting(this.insightsThreadKey);
+    if (!Array.isArray(stored)) return [];
+
+    return stored.filter((message): message is InsightsMessage => {
+      return (
+        !!message &&
+        typeof message.id === 'string' &&
+        typeof message.role === 'string' &&
+        typeof message.content === 'string' &&
+        typeof message.createdAt === 'string'
+      );
+    });
+  }
+
+  async saveInsightsThread(messages: InsightsMessage[]): Promise<void> {
+    await this.setSetting(this.insightsThreadKey, messages);
+  }
+
+  async clearInsightsThread(): Promise<void> {
+    await this.setSetting(this.insightsThreadKey, null);
   }
 
   // Custom query method

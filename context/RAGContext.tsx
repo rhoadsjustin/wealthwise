@@ -68,7 +68,7 @@ export const VectorStoreProvider = ({ children }: { children: React.ReactNode })
           import('react-native-rag'),
         ]);
 
-        const { ALL_MINILM_L6_V2, LLAMA3_2_1B } = executorchModels;
+        const { ALL_MINILM_L6_V2, LFM2_5_1_2B_INSTRUCT_QUANTIZED } = executorchModels;
 
         // Preflight: check if resources already exist on disk
         try {
@@ -79,9 +79,9 @@ export const VectorStoreProvider = ({ children }: { children: React.ReactNode })
           setEmbeddingsInstalled(hasEmbeddings);
           if (hasEmbeddings) setEmbeddingsProgress(1);
 
-          const llmModelFile = `${RNEDirectory}${getFilenameFromUri((LLAMA3_2_1B as any).modelSource)}`;
-          const llmTokenizerFile = `${RNEDirectory}${getFilenameFromUri((LLAMA3_2_1B as any).tokenizerSource)}`;
-          const llmTokenizerConfigFile = `${RNEDirectory}${getFilenameFromUri((LLAMA3_2_1B as any).tokenizerConfigSource)}`;
+          const llmModelFile = `${RNEDirectory}${getFilenameFromUri((LFM2_5_1_2B_INSTRUCT_QUANTIZED as any).modelSource)}`;
+          const llmTokenizerFile = `${RNEDirectory}${getFilenameFromUri((LFM2_5_1_2B_INSTRUCT_QUANTIZED as any).tokenizerSource)}`;
+          const llmTokenizerConfigFile = `${RNEDirectory}${getFilenameFromUri((LFM2_5_1_2B_INSTRUCT_QUANTIZED as any).tokenizerConfigSource)}`;
           const hasLLM =
             (await fileExists(llmModelFile)) &&
             (await fileExists(llmTokenizerFile)) &&
@@ -99,15 +99,15 @@ export const VectorStoreProvider = ({ children }: { children: React.ReactNode })
         } as any);
         const store = new MemoryVectorStore({ embeddings });
 
-        // Configure the LLM with conservative generation settings to reduce memory
+        // Prefer the newer built-in instruct model while keeping the same one-time download flow.
         const llm = new ExecuTorchLLM({
-          ...(LLAMA3_2_1B as any),
+          ...(LFM2_5_1_2B_INSTRUCT_QUANTIZED as any),
           onDownloadProgress: (p: number) => setLlmProgress(p),
           chatConfig: {
             maxTokens: 256,
-            temperature: 0.3,
+            temperature: 0.2,
             topK: 20,
-            topP: 0.9,
+            topP: 0.85,
           },
         } as any);
 
