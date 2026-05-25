@@ -10,6 +10,7 @@
     "build:preview": "eas build --profile preview",
     "build:prod": "eas build --profile production",
     "prebuild": "expo prebuild",
+    "postinstall": "node scripts/fix-react-native-executorch-package.js",
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
     "format": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
     "web": "expo start --web"
