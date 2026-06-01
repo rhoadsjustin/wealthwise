@@ -66,7 +66,7 @@ export function HeroMetricCard({
 
         {children ? <View className="mt-5">{children}</View> : null}
 
-        <View className="mt-5 flex-row flex-wrap gap-2">
+        <View className="mt-5 flex-row gap-1">
           {metrics.map((metric) => (
             <MetricChip
               key={metric.label}

@@ -1,14 +1,12 @@
 import React from 'react';
 import { ScrollView, View, Text, RefreshControl, TouchableOpacity } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import HeaderProfileButton from '@/components/HeaderProfileButton';
 import { BillCard } from '@/components/BillCard';
 import { Skeleton } from '@/components/Skeleton';
 import { Button } from '@/components/Button';
-import { useAppData } from '../_layout';
+import { useActivityData, useSummaryData } from '../_layout';
 import { useBills } from '@/context/DataContext';
 import type { Category } from '@/context/DataContext';
 import { useToast } from '@/context/useToast';
@@ -16,17 +14,13 @@ import { useToast } from '@/context/useToast';
 export default function BillsTab() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { bills, categories, summaryLoading, refreshAppData } = useAppData();
-  const { markBillPaid, getBills } = useBills();
+  const { bills, summaryLoading, refreshSummaryData } = useSummaryData();
+  const { categories, refreshActivityData } = useActivityData();
+  const { markBillPaid } = useBills();
   const { toast } = useToast();
 
   const [refreshing, setRefreshing] = React.useState(false);
   const [payingBillId, setPayingBillId] = React.useState<number | null>(null);
-  const [localBills, setLocalBills] = React.useState(bills || []);
-
-  React.useEffect(() => {
-    setLocalBills(bills || []);
-  }, [bills]);
 
   const categoryMap = React.useMemo(() => {
     const list: Category[] = Array.isArray(categories) ? categories : [];
@@ -36,13 +30,11 @@ export default function BillsTab() {
   const handleRefresh = React.useCallback(async () => {
     try {
       setRefreshing(true);
-      await refreshAppData();
-      const latest = await getBills();
-      setLocalBills(latest);
+      await refreshSummaryData();
     } finally {
       setRefreshing(false);
     }
-  }, [getBills, refreshAppData]);
+  }, [refreshSummaryData]);
 
   const handleAddBill = React.useCallback(() => {
     router.push('/bill-modal');
@@ -66,9 +58,7 @@ export default function BillsTab() {
           description: `${bill.name} marked as paid for this month.`,
           variant: 'success',
         });
-        await refreshAppData();
-        const next = await getBills();
-        setLocalBills(next);
+        await Promise.all([refreshSummaryData(), refreshActivityData()]);
       } catch (error) {
         console.error('Failed to mark bill paid', error);
         toast({
@@ -80,10 +70,11 @@ export default function BillsTab() {
         setPayingBillId(null);
       }
     },
-    [getBills, markBillPaid, refreshAppData, toast]
+    [markBillPaid, refreshActivityData, refreshSummaryData, toast]
   );
 
-  const hasBills = localBills && localBills.length > 0;
+  const visibleBills = bills ?? [];
+  const hasBills = visibleBills.length > 0;
 
   return (
     <View className="flex-1 bg-app-background">
@@ -94,9 +85,7 @@ export default function BillsTab() {
           <View className="mb-6 rounded-3xl border border-app-border bg-app-surface px-6 py-7 shadow-md">
             <Text className="text-sm font-medium text-app-text-muted">Monthly bills overview</Text>
             <Text className="mt-1 text-3xl font-semibold text-app-text">
-              {hasBills
-                ? `${localBills.length} active bill${localBills.length === 1 ? '' : 's'}`
-                : 'No bills yet'}
+              {hasBills ? `${visibleBills.length} active bill${visibleBills.length === 1 ? '' : 's'}` : 'No bills yet'}
             </Text>
             <Text className="mt-2 text-sm text-app-text-muted">
               Track recurring expenses by due date and stay ahead of upcoming payments.
@@ -136,7 +125,7 @@ export default function BillsTab() {
 
           {hasBills ? (
             <View className="space-y-4">
-              {localBills.map((bill: any) => (
+              {visibleBills.map((bill: any) => (
                 <BillCard
                   key={bill.id}
                   bill={bill}

@@ -29,6 +29,59 @@ export interface Transaction {
   createdAt?: string;
 }
 
+export type ImportCaptureSource = 'csv' | 'pdf' | 'image' | 'scan' | 'paste' | 'text';
+
+export interface ImportCaptureChunk {
+  id: string;
+  source: ImportCaptureSource;
+  label: string;
+  text: string;
+  pageNumber?: number;
+}
+
+export interface ImportCapturePayload {
+  source: ImportCaptureSource;
+  rawText: string;
+  chunks: ImportCaptureChunk[];
+  fileName?: string | null;
+}
+
+export type ImportParseMethod = 'csv' | 'rule-based' | 'apple-ai';
+
+export type ImportWarningCode =
+  | 'capture_empty'
+  | 'chunk_split'
+  | 'chunk_failed'
+  | 'row_skipped_invalid_amount'
+  | 'row_skipped_invalid_date'
+  | 'row_skipped_missing_description'
+  | 'duplicate_row'
+  | 'model_schema_recovered'
+  | 'model_chunk_fallback'
+  | 'parse_failed';
+
+export interface ImportWarning {
+  code: ImportWarningCode;
+  message: string;
+  severity: 'info' | 'warning';
+  chunkId?: string;
+  chunkLabel?: string;
+}
+
+export interface ImportPreviewRow {
+  id: string;
+  description: string;
+  amount: string;
+  type: 'income' | 'expense';
+  date: string;
+  categoryId: number | null;
+  suggestedCategoryId: number | null;
+  categoryConfidence: number | null;
+  parseMethod: ImportParseMethod;
+  sourceChunkId?: string;
+  sourceLabel?: string;
+}
+
 export interface Budget {
   id?: number;
   userId: number;
@@ -59,6 +112,33 @@ export interface SavingsContribution {
   amount: string; // Stored as TEXT for decimal support
   contributedOn: string;
   sourceTransactionId?: number | null;
+  notes?: string | null;
+  createdAt?: string;
+}
+
+export type IncomeFrequency = 'weekly' | 'biweekly' | 'semimonthly' | 'monthly';
+
+export interface IncomeSource {
+  id?: number;
+  userId: number;
+  name: string;
+  grossAmount: string;
+  netAmount: string;
+  taxAmount?: string | null;
+  deductionAmount?: string | null;
+  frequency: IncomeFrequency;
+  nextPayDate?: string | null;
+  isActive?: boolean;
+  notes?: string | null;
+  createdAt?: string;
+}
+
+export interface SavingsAccount {
+  id?: number;
+  userId: number;
+  name: string;
+  balance: string;
+  linkedGoalId?: number | null;
   notes?: string | null;
   createdAt?: string;
 }
@@ -381,6 +461,8 @@ export type TableName =
   | 'settings'
   | 'savingsGoals'
   | 'savingsContributions'
+  | 'incomeSources'
+  | 'savingsAccounts'
   | 'bills'
   | 'billPayments'
   | 'debts'

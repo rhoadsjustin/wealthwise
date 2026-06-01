@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import CreateCategoryModal from './CreateCategoryModal';
 import CategoryListItem from './CategoryListItem';
 import { AppText } from '@/components/AppText';
+import { useAppData, useCategoryData } from '@/app/_layout';
 
 interface EditCategoryData {
   name: string;
@@ -16,39 +17,14 @@ interface EditCategoryData {
 
 export default function CategoriesManager() {
   const { toast } = useToast();
-  const {
-    getCategories,
-    updateCategory,
-    deleteCategory,
-    getTransactions,
-    updateTransaction,
-    isInitialized,
-    dataVersion,
-  } = useData();
+  const { updateCategory, deleteCategory, updateTransaction } = useData();
+  const { categories, transactions, categorySpendMap, categoryLoading, refreshCategoryData } =
+    useCategoryData();
+  const { refreshSummaryData } = useAppData();
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editData, setEditData] = useState<EditCategoryData>({ name: '', budget: '' });
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-
-  const load = async () => {
-    setIsLoading(true);
-    try {
-      const [cats, txs] = await Promise.all([getCategories(), getTransactions()]);
-      setCategories(cats);
-      setTransactions(txs);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!isInitialized) return;
-    load();
-    // re-run when underlying data changes (adds/edits/deletes)
-  }, [isInitialized, dataVersion]);
 
   const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
@@ -87,13 +63,13 @@ export default function CategoriesManager() {
       name: editData.name.trim(),
       budget: editData.budget || '0',
     })
-      .then((updated) => {
+      .then(async (updated) => {
         toast({
           title: 'Category Updated',
           description: `${updated.name} has been updated successfully.`,
         });
         setEditingCategory(null);
-        load();
+        await Promise.all([refreshCategoryData(), refreshSummaryData()]);
       })
       .catch((error) => {
         console.error('Category update error:', error);
@@ -121,22 +97,22 @@ export default function CategoriesManager() {
           onPress: () => {
             setIsSaving(true);
             // Move transactions to uncategorized (null) then delete category
-            getTransactions()
-              .then(async (txs) => {
-                const affected = txs.filter((t: any) => t.categoryId === category.id);
-                for (const t of affected) {
-                  try {
-                    await updateTransaction(t.id, { categoryId: null } as any);
-                  } catch (e) {}
-                }
+            Promise.resolve()
+              .then(async () => {
+                const affected = transactions.filter((t) => t.categoryId === category.id);
+                await Promise.allSettled(
+                  affected.map((transaction) =>
+                    updateTransaction(transaction.id, { categoryId: null } as any)
+                  )
+                );
                 await deleteCategory(category.id);
               })
-              .then(() => {
+              .then(async () => {
                 toast({
                   title: 'Category Deleted',
                   description: 'Transactions moved to Uncategorized.',
                 });
-                load();
+                await Promise.all([refreshCategoryData(), refreshSummaryData()]);
               })
               .catch((error) => {
                 console.error('Category deletion error:', error);
@@ -155,10 +131,12 @@ export default function CategoriesManager() {
 
   const totalBudget = categories.reduce((sum, category) => sum + parseFloat(category.budget), 0);
 
-  if (isLoading) {
+  if (categoryLoading) {
     return (
       <View className="flex-1 items-center justify-center">
-        <AppText variant="body" className="text-app-text-soft">Loading categories...</AppText>
+        <AppText variant="body" className="text-app-text-soft">
+          Loading categories...
+        </AppText>
       </View>
     );
   }
@@ -172,7 +150,9 @@ export default function CategoriesManager() {
         <View className="border-b border-border-default bg-background-secondary px-6 py-4">
           <View className="flex-row items-center justify-between">
             <View>
-              <AppText variant="page-title" className="text-app-text-strong">Categories</AppText>
+              <AppText variant="page-title" className="text-app-text-strong">
+                Categories
+              </AppText>
               <AppText variant="hint" className="text-app-text-soft">
                 ${totalBudget.toFixed(2)} total
               </AppText>
@@ -205,10 +185,7 @@ export default function CategoriesManager() {
           ) : (
             <View className="space-y-3">
               {categories.map((category) => {
-                // Calculate spent amount for this category
-                const spent = transactions
-                  .filter((t) => t.type === 'expense' && t.categoryId === category.id)
-                  .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+                const spent = categorySpendMap.get(category.id) || 0;
 
                 return (
                   <View key={category.id} className="space-y-1">
@@ -219,7 +196,9 @@ export default function CategoriesManager() {
                       onEdit={() => handleEditCategory(category)}
                       onDelete={() => handleDeleteCategory(category)}
                     />
-                    <AppText variant="hint" className="px-2 text-app-text-faint">Budgets are monthly.</AppText>
+                    <AppText variant="hint" className="px-2 text-app-text-faint">
+                      Budgets are monthly.
+                    </AppText>
                   </View>
                 );
               })}
@@ -238,7 +217,9 @@ export default function CategoriesManager() {
         <View className="flex-1 items-center justify-center bg-black/50 p-6">
           <View className="w-full max-w-md rounded-xl bg-background-primary p-6">
             <View className="mb-6 flex-row items-center justify-between">
-              <AppText variant="title" className="text-app-text-strong">Edit Category</AppText>
+              <AppText variant="title" className="text-app-text-strong">
+                Edit Category
+              </AppText>
               <TouchableOpacity onPress={() => setEditingCategory(null)}>
                 <Ionicons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
@@ -246,7 +227,9 @@ export default function CategoriesManager() {
 
             <View className="space-y-4">
               <View>
-                <AppText variant="form-label" className="mb-2 text-app-text-strong">Name</AppText>
+                <AppText variant="form-label" className="mb-2 text-app-text-strong">
+                  Name
+                </AppText>
                 <Input
                   value={editData.name}
                   onChangeText={(value) => setEditData({ ...editData, name: value })}

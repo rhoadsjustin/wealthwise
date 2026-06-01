@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { setDataContext } from '@/lib/api';
+import { DEMO_MODE_ENABLED_KEY, DEMO_MODE_SCALE_KEY, generateDemoModeScale } from '@/lib/demoMode';
 import { localStorage } from '@/lib/local-storage';
 import type { InsightsMessage as StoredInsightsMessage } from '@/lib/schema/schema';
 
@@ -17,13 +18,20 @@ export interface DashboardSummary {
   remainingBudget: number;
   totalSavingsPlanned: number;
   totalSavingsProgress: number;
+  totalSavingsBalance: number;
   netIncomeAfterSavings: number;
   incomeBaseline: number;
   incomeRemaining: number;
   actualIncome: number;
+  recurringGrossIncome: number;
+  recurringNetIncome: number;
+  recurringTaxWithheld: number;
+  recurringDeductions: number;
+  oneOffIncome: number;
   monthlyIncome: number | null;
   categoryBreakdown: CategoryBreakdown[];
   savingsGoals: SavingsGoalSummary[];
+  savingsAccounts: SavingsAccountSummary[];
   recentTransactions: Transaction[];
 }
 
@@ -83,6 +91,57 @@ export interface SavingsContribution {
   sourceTransactionId?: number | null;
   notes?: string | null;
   createdAt: string;
+}
+
+export type IncomeFrequency = 'weekly' | 'biweekly' | 'semimonthly' | 'monthly';
+
+export interface IncomeSource {
+  id: number;
+  userId: number;
+  name: string;
+  grossAmount: string;
+  netAmount: string;
+  taxAmount?: string | null;
+  deductionAmount?: string | null;
+  frequency: IncomeFrequency;
+  nextPayDate?: string | null;
+  isActive: boolean;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface IncomeProjection {
+  grossMonthly: number;
+  netMonthly: number;
+  taxesMonthly: number;
+  deductionsMonthly: number;
+  activeSourceCount: number;
+}
+
+export interface SavingsAccount {
+  id: number;
+  userId: number;
+  name: string;
+  balance: string;
+  linkedGoalId?: number | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface SavingsAccountSummary {
+  id: number;
+  name: string;
+  balance: number;
+  linkedGoalId?: number | null;
+}
+
+export interface ReminderSettings {
+  enabled: boolean;
+  monthlySnapshotEnabled: boolean;
+  cadence: 'daily' | 'weekly' | 'monthly';
+  hour: number;
+  minute: number;
+  lastScheduledAt?: string | null;
 }
 
 export interface SavingsGoalSummary {
@@ -189,12 +248,32 @@ interface DataContextType {
   currentUserId: number;
   dataVersion: number;
   monthlyIncome: number | null;
+  isDemoMode: boolean;
+  demoModeScale: number | null;
 
   // Dashboard
   getDashboardSummary: () => Promise<DashboardSummary>;
   refreshDashboard: () => Promise<void>;
   getMonthlyIncome: () => Promise<number | null>;
   updateMonthlyIncome: (value: number | null) => Promise<void>;
+  setDemoMode: (enabled: boolean) => Promise<void>;
+
+  // Income sources
+  getIncomeSources: () => Promise<IncomeSource[]>;
+  createIncomeSource: (data: {
+    name: string;
+    grossAmount: string;
+    netAmount: string;
+    taxAmount?: string | null;
+    deductionAmount?: string | null;
+    frequency: IncomeFrequency;
+    nextPayDate?: string | null;
+    isActive?: boolean;
+    notes?: string | null;
+  }) => Promise<IncomeSource>;
+  updateIncomeSource: (id: number, updates: Partial<IncomeSource>) => Promise<IncomeSource>;
+  deleteIncomeSource: (id: number) => Promise<{ success: boolean }>;
+  getIncomeProjection: () => Promise<IncomeProjection>;
 
   // User
   getUserProfile: () => Promise<User>;
@@ -209,6 +288,7 @@ interface DataContextType {
 
   // Savings goals
   getSavingsGoals: () => Promise<SavingsGoal[]>;
+  getSavingsGoalById: (id: number) => Promise<SavingsGoal | null>;
   createSavingsGoal: (data: {
     name: string;
     targetAmount: string;
@@ -231,8 +311,24 @@ interface DataContextType {
   ) => Promise<SavingsGoal>;
   getSavingsContributions: (goalId: number) => Promise<SavingsContribution[]>;
 
+  // Savings accounts
+  getSavingsAccounts: () => Promise<SavingsAccount[]>;
+  createSavingsAccount: (data: {
+    name: string;
+    balance: string;
+    linkedGoalId?: number | null;
+    notes?: string | null;
+  }) => Promise<SavingsAccount>;
+  updateSavingsAccount: (id: number, updates: Partial<SavingsAccount>) => Promise<SavingsAccount>;
+  deleteSavingsAccount: (id: number) => Promise<{ success: boolean }>;
+
+  // Reminder settings
+  getReminderSettings: () => Promise<ReminderSettings>;
+  updateReminderSettings: (settings: ReminderSettings) => Promise<void>;
+
   // Transactions
   getTransactions: () => Promise<Transaction[]>;
+  getTransactionById: (id: number) => Promise<Transaction | null>;
   createTransaction: (data: {
     description: string;
     amount: string;
@@ -260,6 +356,7 @@ interface DataContextType {
 
   // Bills
   getBills: () => Promise<Bill[]>;
+  getBillById: (id: number) => Promise<Bill | null>;
   createBill: (data: {
     name: string;
     amount: string;
@@ -282,6 +379,7 @@ interface DataContextType {
 
   // Debts
   getDebts: () => Promise<Debt[]>;
+  getDebtById: (id: number) => Promise<Debt | null>;
   createDebt: (data: {
     name: string;
     totalAmount: string;
@@ -312,6 +410,52 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
+const REMINDER_SETTINGS_KEY = 'notificationReminderSettings';
+
+const DEFAULT_REMINDER_SETTINGS: ReminderSettings = {
+  enabled: false,
+  monthlySnapshotEnabled: true,
+  cadence: 'weekly',
+  hour: 9,
+  minute: 0,
+  lastScheduledAt: null,
+};
+
+const frequencyMonthlyMultiplier: Record<IncomeFrequency, number> = {
+  weekly: 52 / 12,
+  biweekly: 26 / 12,
+  semimonthly: 2,
+  monthly: 1,
+};
+
+function safeAmount(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : parseFloat(String(value ?? '0'));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function projectIncomeSources(sources: IncomeSource[]): IncomeProjection {
+  return sources.reduce<IncomeProjection>(
+    (projection, source) => {
+      if (!source.isActive) return projection;
+
+      const multiplier = frequencyMonthlyMultiplier[source.frequency] ?? 1;
+      projection.grossMonthly += safeAmount(source.grossAmount) * multiplier;
+      projection.netMonthly += safeAmount(source.netAmount) * multiplier;
+      projection.taxesMonthly += safeAmount(source.taxAmount) * multiplier;
+      projection.deductionsMonthly += safeAmount(source.deductionAmount) * multiplier;
+      projection.activeSourceCount += 1;
+      return projection;
+    },
+    {
+      grossMonthly: 0,
+      netMonthly: 0,
+      taxesMonthly: 0,
+      deductionsMonthly: 0,
+      activeSourceCount: 0,
+    }
+  );
+}
+
 interface DataProviderProps {
   children: React.ReactNode;
   userId?: number;
@@ -328,6 +472,8 @@ export function DataProvider({
   const [currentUserId] = useState(userId);
   const [dataVersion, setDataVersion] = useState(0);
   const [monthlyIncome, setMonthlyIncome] = useState<number | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [demoModeScale, setDemoModeScale] = useState<number | null>(null);
   const bumpVersion = useCallback(() => setDataVersion((v) => v + 1), []);
 
   // Development/demo seed flag (set via EXPO_PUBLIC_SEED_DEMO="true|1" for local/dev)
@@ -376,6 +522,43 @@ export function DataProvider({
           : contribution.sourceTransactionId,
       notes: contribution.notes ?? null,
       createdAt: contribution.createdAt ?? new Date().toISOString(),
+    };
+  }, []);
+
+  const normalizeIncomeSource = useCallback((source: any): IncomeSource => {
+    if (!source) {
+      throw new Error('Invalid income source record');
+    }
+
+    return {
+      id: source.id,
+      userId: source.userId,
+      name: source.name,
+      grossAmount: source.grossAmount,
+      netAmount: source.netAmount,
+      taxAmount: source.taxAmount ?? null,
+      deductionAmount: source.deductionAmount ?? null,
+      frequency: source.frequency ?? 'monthly',
+      nextPayDate: source.nextPayDate ?? null,
+      isActive: source.isActive === undefined || source.isActive === 1 || source.isActive === true,
+      notes: source.notes ?? null,
+      createdAt: source.createdAt ?? new Date().toISOString(),
+    };
+  }, []);
+
+  const normalizeSavingsAccount = useCallback((account: any): SavingsAccount => {
+    if (!account) {
+      throw new Error('Invalid savings account record');
+    }
+
+    return {
+      id: account.id,
+      userId: account.userId,
+      name: account.name,
+      balance: account.balance,
+      linkedGoalId: account.linkedGoalId ?? null,
+      notes: account.notes ?? null,
+      createdAt: account.createdAt ?? new Date().toISOString(),
     };
   }, []);
 
@@ -881,6 +1064,21 @@ export function DataProvider({
         } catch (incomeError) {
           console.warn('Failed to load stored monthly income:', incomeError);
         }
+
+        try {
+          const storedDemoMode = await localStorage.getSetting(DEMO_MODE_ENABLED_KEY);
+          setIsDemoMode(Boolean(storedDemoMode));
+
+          const storedDemoScale = await localStorage.getSetting(DEMO_MODE_SCALE_KEY);
+          if (storedDemoScale !== null && storedDemoScale !== undefined && storedDemoScale !== '') {
+            const parsedScale = Number.parseFloat(String(storedDemoScale));
+            if (Number.isFinite(parsedScale)) {
+              setDemoModeScale(parsedScale);
+            }
+          }
+        } catch (demoModeError) {
+          console.warn('Failed to load demo mode settings:', demoModeError);
+        }
       } catch (error) {
         console.error('Failed to initialize data storage:', error);
       } finally {
@@ -895,29 +1093,66 @@ export function DataProvider({
     async (
       transactions: Transaction[],
       categories: Category[],
-      savingsGoals: SavingsGoal[]
+      savingsGoals: SavingsGoal[],
+      incomeSources: IncomeSource[],
+      savingsAccounts: SavingsAccount[]
     ): Promise<DashboardSummary> => {
-      const actualIncome = transactions
-        .filter((t) => t.type === 'income')
-        .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+      const categorySpend = new Map<number, number>();
+      let actualIncome = 0;
+      let totalExpenses = 0;
 
-      const totalExpenses = transactions
-        .filter((t) => t.type === 'expense')
-        .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+      for (const transaction of transactions) {
+        const amountValue = parseFloat(transaction.amount || '0');
+        if (!Number.isFinite(amountValue)) continue;
 
-      const totalBudget = categories.reduce((sum, c) => sum + parseFloat(c.budget), 0);
+        if (transaction.type === 'income') {
+          actualIncome += amountValue;
+          continue;
+        }
 
-      const baselineIncome = monthlyIncome ?? actualIncome;
+        totalExpenses += amountValue;
+        if (transaction.categoryId != null) {
+          categorySpend.set(
+            transaction.categoryId,
+            (categorySpend.get(transaction.categoryId) || 0) + amountValue
+          );
+        }
+      }
 
-      const totalSavingsPlanned = savingsGoals.reduce((sum, goal) => {
+      let totalBudget = 0;
+      for (const category of categories) {
+        const budgetValue = parseFloat(category.budget || '0');
+        if (Number.isFinite(budgetValue)) {
+          totalBudget += budgetValue;
+        }
+      }
+
+      const incomeProjection = projectIncomeSources(incomeSources);
+      const recurringNetIncome = incomeProjection.netMonthly;
+      const oneOffIncome = Math.max(actualIncome - recurringNetIncome, 0);
+      const baselineIncome =
+        recurringNetIncome > 0
+          ? recurringNetIncome + oneOffIncome
+          : (monthlyIncome ?? actualIncome);
+      let totalSavingsPlanned = 0;
+      let totalSavingsProgress = 0;
+      let totalSavingsBalance = 0;
+
+      for (const goal of savingsGoals) {
         const monthlyContribution = parseFloat(goal.monthlyContribution ?? '0');
-        return sum + (Number.isFinite(monthlyContribution) ? monthlyContribution : 0);
-      }, 0);
+        if (Number.isFinite(monthlyContribution)) {
+          totalSavingsPlanned += monthlyContribution;
+        }
 
-      const totalSavingsProgress = savingsGoals.reduce((sum, goal) => {
         const current = parseFloat(goal.currentAmount ?? '0');
-        return sum + (Number.isFinite(current) ? current : 0);
-      }, 0);
+        if (Number.isFinite(current)) {
+          totalSavingsProgress += current;
+        }
+      }
+
+      for (const account of savingsAccounts) {
+        totalSavingsBalance += safeAmount(account.balance);
+      }
 
       const netIncomeAfterSavings = baselineIncome - totalSavingsPlanned;
 
@@ -926,11 +1161,8 @@ export function DataProvider({
 
       // Calculate category breakdown
       const categoryBreakdown: CategoryBreakdown[] = categories.map((category) => {
-        const spent = transactions
-          .filter((t) => t.categoryId === category.id && t.type === 'expense')
-          .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-
-        const budget = parseFloat(category.budget);
+        const spent = categorySpend.get(category.id) || 0;
+        const budget = parseFloat(category.budget || '0');
         const percentage = budget > 0 ? (spent / budget) * 100 : 0;
         const incomeShare = baselineIncome > 0 ? spent / baselineIncome : 0;
         const incomeWarning = incomeShare >= 0.25;
@@ -966,8 +1198,16 @@ export function DataProvider({
         };
       });
 
+      const savingsAccountSummaries: SavingsAccountSummary[] = savingsAccounts.map((account) => ({
+        id: account.id,
+        name: account.name,
+        balance: safeAmount(account.balance),
+        linkedGoalId: account.linkedGoalId ?? null,
+      }));
+
       // Get recent transactions (last 10)
       const recentTransactions = transactions
+        .slice()
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 10);
 
@@ -978,13 +1218,20 @@ export function DataProvider({
         remainingBudget,
         totalSavingsPlanned,
         totalSavingsProgress,
+        totalSavingsBalance,
         netIncomeAfterSavings,
         incomeBaseline: baselineIncome,
         incomeRemaining,
         actualIncome,
+        recurringGrossIncome: incomeProjection.grossMonthly,
+        recurringNetIncome,
+        recurringTaxWithheld: incomeProjection.taxesMonthly,
+        recurringDeductions: incomeProjection.deductionsMonthly,
+        oneOffIncome,
         monthlyIncome: monthlyIncome ?? null,
         categoryBreakdown,
         savingsGoals: savingsGoalSummaries,
+        savingsAccounts: savingsAccountSummaries,
         recentTransactions,
       };
     },
@@ -996,11 +1243,14 @@ export function DataProvider({
     debugLog('🔍 getDashboardSummary called for userId:', currentUserId);
 
     try {
-      const [transactions, categories, savingsGoalsRaw] = await Promise.all([
-        localStorage.getItems<Transaction>('transactions', currentUserId),
-        localStorage.getItems<Category>('categories', currentUserId),
-        localStorage.getItems<any>('savingsGoals', currentUserId),
-      ]);
+      const [transactions, categories, savingsGoalsRaw, incomeSourcesRaw, savingsAccountsRaw] =
+        await Promise.all([
+          localStorage.getItems<Transaction>('transactions', currentUserId),
+          localStorage.getItems<Category>('categories', currentUserId),
+          localStorage.getItems<any>('savingsGoals', currentUserId),
+          localStorage.getItems<any>('incomeSources', currentUserId),
+          localStorage.getItems<any>('savingsAccounts', currentUserId),
+        ]);
 
       debugLog('📊 Data loaded:', {
         transactionCount: transactions.length,
@@ -1011,13 +1261,29 @@ export function DataProvider({
       });
 
       const savingsGoals = savingsGoalsRaw.map((goal: any) => normalizeSavingsGoal(goal));
+      const incomeSources = incomeSourcesRaw.map((source: any) => normalizeIncomeSource(source));
+      const savingsAccounts = savingsAccountsRaw.map((account: any) =>
+        normalizeSavingsAccount(account)
+      );
 
-      return calculateDashboardSummary(transactions, categories, savingsGoals);
+      return calculateDashboardSummary(
+        transactions,
+        categories,
+        savingsGoals,
+        incomeSources,
+        savingsAccounts
+      );
     } catch (error) {
       console.error('❌ Error in getDashboardSummary:', error);
       throw error;
     }
-  }, [currentUserId, calculateDashboardSummary, normalizeSavingsGoal]);
+  }, [
+    currentUserId,
+    calculateDashboardSummary,
+    normalizeSavingsGoal,
+    normalizeIncomeSource,
+    normalizeSavingsAccount,
+  ]);
 
   const refreshDashboard = useCallback(async (): Promise<void> => {
     // No-op since we no longer use a query cache
@@ -1192,6 +1458,100 @@ export function DataProvider({
     [bumpVersion]
   );
 
+  const setDemoMode = useCallback(
+    async (enabled: boolean): Promise<void> => {
+      try {
+        let nextScale = demoModeScale;
+
+        if (enabled && !Number.isFinite(nextScale ?? NaN)) {
+          nextScale = generateDemoModeScale();
+          await localStorage.setSetting(DEMO_MODE_SCALE_KEY, nextScale);
+          setDemoModeScale(nextScale);
+        }
+
+        await localStorage.setSetting(DEMO_MODE_ENABLED_KEY, enabled);
+        setIsDemoMode(enabled);
+        bumpVersion();
+      } catch (error) {
+        console.error('Failed to update demo mode:', error);
+        throw error;
+      }
+    },
+    [bumpVersion, demoModeScale]
+  );
+
+  const getIncomeSources = useCallback(async (): Promise<IncomeSource[]> => {
+    const results = await localStorage.getItems<any>('incomeSources', currentUserId);
+    return results.map((source) => normalizeIncomeSource(source));
+  }, [currentUserId, normalizeIncomeSource]);
+
+  const createIncomeSource = useCallback(
+    async (data: {
+      name: string;
+      grossAmount: string;
+      netAmount: string;
+      taxAmount?: string | null;
+      deductionAmount?: string | null;
+      frequency: IncomeFrequency;
+      nextPayDate?: string | null;
+      isActive?: boolean;
+      notes?: string | null;
+    }): Promise<IncomeSource> => {
+      const record = {
+        userId: currentUserId,
+        name: data.name.trim(),
+        grossAmount: data.grossAmount,
+        netAmount: data.netAmount,
+        taxAmount: data.taxAmount ?? null,
+        deductionAmount: data.deductionAmount ?? null,
+        frequency: data.frequency,
+        nextPayDate: data.nextPayDate ?? null,
+        isActive: data.isActive === false ? 0 : 1,
+        notes: data.notes ?? null,
+        createdAt: new Date().toISOString(),
+      };
+
+      const saved = await localStorage.saveItem('incomeSources', record);
+      bumpVersion();
+      return normalizeIncomeSource(saved);
+    },
+    [bumpVersion, currentUserId, normalizeIncomeSource]
+  );
+
+  const updateIncomeSource = useCallback(
+    async (id: number, updates: Partial<IncomeSource>): Promise<IncomeSource> => {
+      const existing = await localStorage.getItem<any>('incomeSources', id);
+      if (!existing) {
+        throw new Error('Income source not found');
+      }
+
+      const updated = {
+        ...existing,
+        ...updates,
+        isActive:
+          updates.isActive === undefined ? existing.isActive : updates.isActive === false ? 0 : 1,
+      };
+      const saved = await localStorage.saveItem('incomeSources', updated);
+      bumpVersion();
+      return normalizeIncomeSource(saved);
+    },
+    [bumpVersion, normalizeIncomeSource]
+  );
+
+  const deleteIncomeSource = useCallback(
+    async (id: number): Promise<{ success: boolean }> => {
+      await localStorage.deleteItem('incomeSources', id);
+      bumpVersion();
+      return { success: true };
+    },
+    [bumpVersion]
+  );
+
+  const getIncomeProjection = useCallback(async (): Promise<IncomeProjection> => {
+    const sources = await getIncomeSources();
+    return projectIncomeSources(sources);
+  }, [getIncomeSources]);
+
   // Savings goal methods
   const getSavingsGoals = useCallback(async (): Promise<SavingsGoal[]> => {
     const results = await localStorage.getItems<any>('savingsGoals', currentUserId);
@@ -1202,6 +1562,14 @@ export function DataProvider({
       return dateA - dateB;
     });
   }, [currentUserId, normalizeSavingsGoal]);
+
+  const getSavingsGoalById = useCallback(
+    async (id: number): Promise<SavingsGoal | null> => {
+      const result = await localStorage.getItem<any>('savingsGoals', id);
+      return result ? normalizeSavingsGoal(result) : null;
+    },
+    [normalizeSavingsGoal]
+  );
 
   const createSavingsGoal = useCallback(
     async (data: {
@@ -1336,6 +1704,81 @@ export function DataProvider({
     [currentUserId, normalizeSavingsContribution]
   );
 
+  const getSavingsAccounts = useCallback(async (): Promise<SavingsAccount[]> => {
+    const results = await localStorage.getItems<any>('savingsAccounts', currentUserId);
+    return results.map((account) => normalizeSavingsAccount(account));
+  }, [currentUserId, normalizeSavingsAccount]);
+
+  const createSavingsAccount = useCallback(
+    async (data: {
+      name: string;
+      balance: string;
+      linkedGoalId?: number | null;
+      notes?: string | null;
+    }): Promise<SavingsAccount> => {
+      const record = {
+        userId: currentUserId,
+        name: data.name.trim(),
+        balance: data.balance,
+        linkedGoalId: data.linkedGoalId ?? null,
+        notes: data.notes ?? null,
+        createdAt: new Date().toISOString(),
+      };
+
+      const saved = await localStorage.saveItem('savingsAccounts', record);
+      bumpVersion();
+      return normalizeSavingsAccount(saved);
+    },
+    [bumpVersion, currentUserId, normalizeSavingsAccount]
+  );
+
+  const updateSavingsAccount = useCallback(
+    async (id: number, updates: Partial<SavingsAccount>): Promise<SavingsAccount> => {
+      const existing = await localStorage.getItem<any>('savingsAccounts', id);
+      if (!existing) {
+        throw new Error('Savings account not found');
+      }
+
+      const saved = await localStorage.saveItem('savingsAccounts', {
+        ...existing,
+        ...updates,
+      });
+      bumpVersion();
+      return normalizeSavingsAccount(saved);
+    },
+    [bumpVersion, normalizeSavingsAccount]
+  );
+
+  const deleteSavingsAccount = useCallback(
+    async (id: number): Promise<{ success: boolean }> => {
+      await localStorage.deleteItem('savingsAccounts', id);
+      bumpVersion();
+      return { success: true };
+    },
+    [bumpVersion]
+  );
+
+  const getReminderSettings = useCallback(async (): Promise<ReminderSettings> => {
+    const stored = await localStorage.getSetting(REMINDER_SETTINGS_KEY);
+    return {
+      ...DEFAULT_REMINDER_SETTINGS,
+      ...(stored && typeof stored === 'object' ? stored : {}),
+    };
+  }, []);
+
+  const updateReminderSettings = useCallback(
+    async (settings: ReminderSettings): Promise<void> => {
+      await localStorage.setSetting(REMINDER_SETTINGS_KEY, {
+        ...settings,
+        hour: Math.min(Math.max(Math.round(settings.hour), 0), 23),
+        minute: Math.min(Math.max(Math.round(settings.minute), 0), 59),
+        lastScheduledAt: settings.lastScheduledAt ?? new Date().toISOString(),
+      });
+      bumpVersion();
+    },
+    [bumpVersion]
+  );
+
   // Bill methods
   const getBills = useCallback(async (): Promise<Bill[]> => {
     const records = await localStorage.getItems<any>('bills', currentUserId);
@@ -1347,6 +1790,14 @@ export function DataProvider({
         return aValue - bValue;
       });
   }, [currentUserId, normalizeBill]);
+
+  const getBillById = useCallback(
+    async (id: number): Promise<Bill | null> => {
+      const result = await localStorage.getItem<any>('bills', id);
+      return result ? normalizeBill(result) : null;
+    },
+    [normalizeBill]
+  );
 
   const createBill = useCallback(
     async (data: {
@@ -1508,6 +1959,14 @@ export function DataProvider({
         return bBalance - aBalance;
       });
   }, [currentUserId, normalizeDebt]);
+
+  const getDebtById = useCallback(
+    async (id: number): Promise<Debt | null> => {
+      const result = await localStorage.getItem<any>('debts', id);
+      return result ? normalizeDebt(result) : null;
+    },
+    [normalizeDebt]
+  );
 
   const createDebt = useCallback(
     async (data: {
@@ -1683,6 +2142,11 @@ export function DataProvider({
     }
   }, [currentUserId]);
 
+  const getTransactionById = useCallback(async (id: number): Promise<Transaction | null> => {
+    const result = await localStorage.getItem<Transaction>('transactions', id);
+    return result ?? null;
+  }, []);
+
   const createTransaction = useCallback(
     async (data: {
       description: string;
@@ -1695,8 +2159,9 @@ export function DataProvider({
       if (!assignedCategory && data.type === 'expense') {
         try {
           const cats = await localStorage.getItems<Category>('categories', currentUserId);
-          const { suggestCategory } = await import('@/lib/ai/categorizer');
-          const suggestion = await suggestCategory({ description: data.description }, cats as any);
+          const { indexCategoryDocs, suggestCategory } = await import('@/lib/ai/categorizer');
+          await indexCategoryDocs(cats);
+          const suggestion = await suggestCategory({ description: data.description }, cats);
           if (suggestion.categoryId && suggestion.confidence >= 0.7) {
             assignedCategory = suggestion.categoryId;
           }
@@ -1975,6 +2440,8 @@ export function DataProvider({
       localStorage.clearStore('bankAccounts'),
       localStorage.clearStore('savingsGoals'),
       localStorage.clearStore('savingsContributions'),
+      localStorage.clearStore('incomeSources'),
+      localStorage.clearStore('savingsAccounts'),
       localStorage.clearStore('bills'),
       localStorage.clearStore('billPayments'),
       localStorage.clearStore('debts'),
@@ -2000,13 +2467,27 @@ export function DataProvider({
         deleteCategory,
         getMonthlyIncome,
         updateMonthlyIncome,
+        setDemoMode,
+        getIncomeSources,
+        createIncomeSource,
+        updateIncomeSource,
+        deleteIncomeSource,
+        getIncomeProjection,
         getSavingsGoals,
+        getSavingsGoalById,
         createSavingsGoal,
         updateSavingsGoal,
         deleteSavingsGoal,
         recordSavingsContribution,
         getSavingsContributions,
+        getSavingsAccounts,
+        createSavingsAccount,
+        updateSavingsAccount,
+        deleteSavingsAccount,
+        getReminderSettings,
+        updateReminderSettings,
         getTransactions,
+        getTransactionById,
         createTransaction,
         updateTransaction,
         deleteTransaction,
@@ -2020,12 +2501,14 @@ export function DataProvider({
         updateBankAccount,
         deleteBankAccount,
         getBills,
+        getBillById,
         createBill,
         updateBill,
         deleteBill,
         markBillPaid,
         getBillPayments,
         getDebts,
+        getDebtById,
         createDebt,
         updateDebt,
         deleteDebt,
@@ -2046,13 +2529,27 @@ export function DataProvider({
     deleteCategory,
     getMonthlyIncome,
     updateMonthlyIncome,
+    setDemoMode,
+    getIncomeSources,
+    createIncomeSource,
+    updateIncomeSource,
+    deleteIncomeSource,
+    getIncomeProjection,
     getSavingsGoals,
+    getSavingsGoalById,
     createSavingsGoal,
     updateSavingsGoal,
     deleteSavingsGoal,
     recordSavingsContribution,
     getSavingsContributions,
+    getSavingsAccounts,
+    createSavingsAccount,
+    updateSavingsAccount,
+    deleteSavingsAccount,
+    getReminderSettings,
+    updateReminderSettings,
     getTransactions,
+    getTransactionById,
     createTransaction,
     updateTransaction,
     deleteTransaction,
@@ -2066,12 +2563,14 @@ export function DataProvider({
     updateBankAccount,
     deleteBankAccount,
     getBills,
+    getBillById,
     createBill,
     updateBill,
     deleteBill,
     markBillPaid,
     getBillPayments,
     getDebts,
+    getDebtById,
     createDebt,
     updateDebt,
     deleteDebt,
@@ -2088,12 +2587,22 @@ export function DataProvider({
     currentUserId,
     dataVersion,
     monthlyIncome,
+    isDemoMode,
+    demoModeScale,
 
     // Dashboard
     getDashboardSummary,
     refreshDashboard,
     getMonthlyIncome,
     updateMonthlyIncome,
+    setDemoMode,
+
+    // Income sources
+    getIncomeSources,
+    createIncomeSource,
+    updateIncomeSource,
+    deleteIncomeSource,
+    getIncomeProjection,
 
     // User
     getUserProfile,
@@ -2108,14 +2617,26 @@ export function DataProvider({
 
     // Savings goals
     getSavingsGoals,
+    getSavingsGoalById,
     createSavingsGoal,
     updateSavingsGoal,
     deleteSavingsGoal,
     recordSavingsContribution,
     getSavingsContributions,
 
+    // Savings accounts
+    getSavingsAccounts,
+    createSavingsAccount,
+    updateSavingsAccount,
+    deleteSavingsAccount,
+
+    // Reminder settings
+    getReminderSettings,
+    updateReminderSettings,
+
     // Transactions
     getTransactions,
+    getTransactionById,
     createTransaction,
     updateTransaction,
     deleteTransaction,
@@ -2135,6 +2656,7 @@ export function DataProvider({
 
     // Bills
     getBills,
+    getBillById,
     createBill,
     updateBill,
     deleteBill,
@@ -2143,6 +2665,7 @@ export function DataProvider({
 
     // Debts
     getDebts,
+    getDebtById,
     createDebt,
     updateDebt,
     deleteDebt,
@@ -2189,10 +2712,17 @@ export function useDashboard() {
 }
 
 export function useTransactions() {
-  const { getTransactions, createTransaction, updateTransaction, deleteTransaction } = useData();
+  const {
+    getTransactions,
+    getTransactionById,
+    createTransaction,
+    updateTransaction,
+    deleteTransaction,
+  } = useData();
 
   return {
     getTransactions,
+    getTransactionById,
     createTransaction,
     updateTransaction,
     deleteTransaction,
@@ -2218,6 +2748,7 @@ export function useInsights() {
 export function useSavings() {
   const {
     getSavingsGoals,
+    getSavingsGoalById,
     createSavingsGoal,
     updateSavingsGoal,
     deleteSavingsGoal,
@@ -2227,6 +2758,7 @@ export function useSavings() {
 
   return {
     getSavingsGoals,
+    getSavingsGoalById,
     createSavingsGoal,
     updateSavingsGoal,
     deleteSavingsGoal,
@@ -2236,10 +2768,19 @@ export function useSavings() {
 }
 
 export function useBills() {
-  const { getBills, createBill, updateBill, deleteBill, markBillPaid, getBillPayments } = useData();
+  const {
+    getBills,
+    getBillById,
+    createBill,
+    updateBill,
+    deleteBill,
+    markBillPaid,
+    getBillPayments,
+  } = useData();
 
   return {
     getBills,
+    getBillById,
     createBill,
     updateBill,
     deleteBill,
@@ -2249,11 +2790,19 @@ export function useBills() {
 }
 
 export function useDebts() {
-  const { getDebts, createDebt, updateDebt, deleteDebt, recordDebtPayment, getDebtPayments } =
-    useData();
+  const {
+    getDebts,
+    getDebtById,
+    createDebt,
+    updateDebt,
+    deleteDebt,
+    recordDebtPayment,
+    getDebtPayments,
+  } = useData();
 
   return {
     getDebts,
+    getDebtById,
     createDebt,
     updateDebt,
     deleteDebt,

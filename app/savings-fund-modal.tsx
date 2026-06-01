@@ -8,13 +8,13 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { useSavings, SavingsGoal } from '@/context/DataContext';
 import { useToast } from '@/context/useToast';
-import { useAppData } from './_layout';
+import { useSummaryData } from './_layout';
 import { formatCurrency } from '@/lib/utils';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -30,7 +30,7 @@ export default function SavingsFundModal() {
   const goalIdParam = typeof params.goalId === 'string' ? Number(params.goalId) : undefined;
   const { toast } = useToast();
   const { recordSavingsContribution, getSavingsGoals } = useSavings();
-  const { refreshAppData } = useAppData();
+  const { refreshSummaryData } = useSummaryData();
   const [goal, setGoal] = React.useState<SavingsGoal | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -78,7 +78,7 @@ export default function SavingsFundModal() {
         contributedOn: values.contributedOn,
         notes: values.notes,
       });
-      await refreshAppData();
+      await refreshSummaryData();
       toast({ title: 'Contribution recorded', description: 'Savings balance updated.' });
       router.back();
     } catch (error) {

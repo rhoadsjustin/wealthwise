@@ -16,16 +16,16 @@ export default function ImportsLauncherModal() {
       style={{ paddingTop: insets.top + 24, paddingBottom: Math.max(insets.bottom + 20, 32) }}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View className="mb-6 flex-row items-center justify-between">
-        <View className="flex-1 pr-4">
+      <View className="relative mb-6 pr-14">
+        <View className="pr-2">
           <Text className="text-3xl font-semibold text-app-text-strong">Import</Text>
-          <Text className="mt-1 text-sm text-app-text-faint">
+          <Text className="mt-2 text-sm leading-7 text-app-text-faint">
             Bring new transactions into Activity from statements or Apple Wallet.
           </Text>
         </View>
         <TouchableOpacity
           onPress={() => router.back()}
-          className="h-11 w-11 items-center justify-center rounded-full border border-app-border bg-app-surface-1">
+          className="absolute right-0 top-0 h-11 w-11 items-center justify-center rounded-full border border-app-border bg-app-surface-1">
           <Ionicons name="close" size={18} color="#F8FAFC" />
         </TouchableOpacity>
       </View>

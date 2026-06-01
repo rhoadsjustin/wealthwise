@@ -1,13 +1,11 @@
 import React from 'react';
 import { ScrollView, View, Text, TouchableOpacity, RefreshControl } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import FAB from '@/components/FAB';
-import HeaderProfileButton from '@/components/HeaderProfileButton';
 import { Skeleton } from '@/components/Skeleton';
-import { useAppData } from '../_layout';
+import { useActivityData, useSummaryData } from '../_layout';
 import type { Transaction } from '@/context/DataContext';
 import {
   IncomeCard,
@@ -25,18 +23,18 @@ const formatAccentCurrency = (value: number) => {
 
 export default function ReportsTab() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { summary, transactions, summaryLoading, refreshAppData } = useAppData();
+  const { summary, summaryLoading, refreshSummaryData } = useSummaryData();
+  const { transactions } = useActivityData();
   const [refreshing, setRefreshing] = React.useState(false);
 
   const handleRefresh = React.useCallback(async () => {
     try {
       setRefreshing(true);
-      await refreshAppData();
+      await refreshSummaryData();
     } finally {
       setRefreshing(false);
     }
-  }, [refreshAppData]);
+  }, [refreshSummaryData]);
 
   if (summaryLoading || !summary) {
     return (
@@ -143,7 +141,10 @@ export default function ReportsTab() {
             />
             <SpendingTrendCard monthlyData={monthlyData} />
             <CategoryBreakdownCard
-              categoryBreakdown={summary.categoryBreakdown}
+              categoryBreakdown={summary.categoryBreakdown.map((item) => ({
+                ...item,
+                id: String(item.id),
+              }))}
               totalExpenses={summary.totalExpenses}
               incomeBaseline={summary.incomeBaseline}
             />
@@ -154,7 +155,10 @@ export default function ReportsTab() {
             <MonthlySummaryCard
               transactions={transactions}
               totalExpenses={totalExpenses}
-              categoryBreakdown={summary.categoryBreakdown}
+              categoryBreakdown={summary.categoryBreakdown.map((item) => ({
+                id: String(item.id),
+                spent: item.spent,
+              }))}
               plannedSavings={plannedSavings}
             />
           </View>

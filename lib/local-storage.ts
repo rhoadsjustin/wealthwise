@@ -132,6 +132,37 @@ class LocalStorage {
         );
       `);
 
+      // Create income sources table
+      this.db.execSync(`
+        CREATE TABLE IF NOT EXISTS incomeSources (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId INTEGER NOT NULL,
+          name TEXT NOT NULL,
+          grossAmount TEXT NOT NULL,
+          netAmount TEXT NOT NULL,
+          taxAmount TEXT,
+          deductionAmount TEXT,
+          frequency TEXT NOT NULL,
+          nextPayDate TEXT,
+          isActive INTEGER DEFAULT 1,
+          notes TEXT,
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // Create manual savings accounts table
+      this.db.execSync(`
+        CREATE TABLE IF NOT EXISTS savingsAccounts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId INTEGER NOT NULL,
+          name TEXT NOT NULL,
+          balance TEXT NOT NULL,
+          linkedGoalId INTEGER,
+          notes TEXT,
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
       // Create settings table for app configuration
       this.db.execSync(`
         CREATE TABLE IF NOT EXISTS settings (

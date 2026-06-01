@@ -8,6 +8,7 @@ import {
   Modal,
   TouchableOpacity,
 } from 'react-native';
+import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -19,12 +20,13 @@ import { useForm, Controller, useWatch } from 'react-hook-form';
 // Removed react-query; use DataContext directly
 import { useToast } from '../context/useToast';
 import { useData } from '../context/DataContext';
-import { useAppData } from '@/app/_layout';
+import { useActivityData, useAppData } from '@/app/_layout';
 import { Ionicons } from '@expo/vector-icons';
 import CreateCategoryModal from './CreateCategoryModal';
 import { selection, success as hapticSuccess } from '../lib/haptics';
 import type { Transaction as Tx } from '@/lib/schema/schema';
-import categorizer from '@/lib/ai/categorizer';
+import { indexCategoryDocs, normalizeMerchant, suggestCategory } from '@/lib/ai/categorizer';
+import { TopUtilityBar } from './TopUtilityBar';
 
 interface TransactionFormData {
   description: string;
@@ -38,16 +40,19 @@ interface AddTransactionModalProps {
   onClose: () => void;
   mode?: 'create' | 'edit';
   initialTransaction?: Tx | null;
+  refreshScope?: 'app' | 'activity-summary';
 }
 
 export default function AddTransactionModal({
   onClose,
   mode = 'create',
   initialTransaction = null,
+  refreshScope = 'app',
 }: AddTransactionModalProps) {
   const { toast } = useToast();
   const { createTransaction, updateTransaction, getCategories } = useData();
-  const { refreshAppData } = useAppData();
+  const { refreshAppData, refreshSummaryData } = useAppData();
+  const { refreshActivityData } = useActivityData();
   const [submitting, setSubmitting] = React.useState(false);
   const [categories, setCategories] = React.useState<any[]>([]);
   const [showCreateCategory, setShowCreateCategory] = React.useState(false);
@@ -56,6 +61,7 @@ export default function AddTransactionModal({
     name: string;
     confidence: number;
   } | null>(null);
+  const lastSuggestedMerchantRef = React.useRef<string | null>(null);
 
   // Load categories on component mount
   const loadCategories = React.useCallback(async () => {
@@ -74,7 +80,6 @@ export default function AddTransactionModal({
   const {
     handleSubmit,
     setValue,
-    watch,
     control,
     reset,
     formState: { errors },
@@ -87,6 +92,7 @@ export default function AddTransactionModal({
   const transactionType = useWatch({ control, name: 'type' }) || 'expense';
   const amountRaw = useWatch({ control, name: 'amount' }) || '';
   const description = useWatch({ control, name: 'description' }) || '';
+  const deferredDescription = React.useDeferredValue(description);
   const selectedCategoryId = useWatch({ control, name: 'categoryId' });
   const [amountFocused, setAmountFocused] = React.useState(false);
 
@@ -138,26 +144,53 @@ export default function AddTransactionModal({
 
   // Suggest category when description changes (expense only)
   useEffect(() => {
-    const run = async () => {
-      const desc = description || '';
-      if (!desc.trim() || transactionType !== 'expense') {
+    const handle = setTimeout(() => {
+      const desc = deferredDescription || '';
+      const normalizedMerchant = normalizeMerchant(desc);
+
+      if (
+        transactionType !== 'expense' ||
+        normalizedMerchant.length < 4 ||
+        normalizedMerchant === lastSuggestedMerchantRef.current
+      ) {
+        if (!normalizedMerchant.trim() || transactionType !== 'expense') {
+          lastSuggestedMerchantRef.current = null;
+        }
         setSuggestion(null);
         return;
       }
-      try {
-        const result = await categorizer.suggestCategory({ description: desc }, categories);
-        if (result.categoryId && result.confidence >= 0.4 && result.confidence < 0.7) {
-          const cat = categories.find((c) => c.id === result.categoryId);
-          if (cat) setSuggestion({ id: cat.id, name: cat.name, confidence: result.confidence });
-        } else {
+
+      void (async () => {
+        try {
+          lastSuggestedMerchantRef.current = normalizedMerchant;
+          await indexCategoryDocs(categories);
+          const result = await suggestCategory({ description: normalizedMerchant }, categories);
+          if (result.categoryId && result.confidence >= 0.4 && result.confidence < 0.7) {
+            const cat = categories.find((c) => c.id === result.categoryId);
+            if (cat) {
+              setSuggestion({ id: cat.id, name: cat.name, confidence: result.confidence });
+            }
+          } else {
+            setSuggestion(null);
+          }
+        } catch {
+          lastSuggestedMerchantRef.current = null;
           setSuggestion(null);
         }
-      } catch {
-        setSuggestion(null);
-      }
-    };
-    run();
-  }, [categories, description, transactionType]);
+      })();
+    }, 160);
+
+    return () => clearTimeout(handle);
+  }, [categories, deferredDescription, transactionType]);
+
+  const refreshAfterSave = React.useCallback(async () => {
+    if (refreshScope === 'activity-summary') {
+      await Promise.all([refreshActivityData(), refreshSummaryData()]);
+      return;
+    }
+
+    await refreshAppData();
+  }, [refreshActivityData, refreshAppData, refreshScope, refreshSummaryData]);
 
   const submitSave = async (data: TransactionFormData) => {
     try {
@@ -178,8 +211,7 @@ export default function AddTransactionModal({
       } else {
         await createTransaction(transactionData as any);
       }
-      // Ensure dashboard reflects the addition immediately
-      await refreshAppData();
+      await refreshAfterSave();
       hapticSuccess();
       toast({
         title: mode === 'edit' ? 'Transaction Updated' : 'Transaction Added',
@@ -240,20 +272,11 @@ export default function AddTransactionModal({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1">
         {/* Header (safe-area aware). Mark non-collapsable for formSheet+ScrollView layout rule */}
-        <SafeAreaView edges={['top']} className="bg-app-surface-1" collapsable={false}>
-          <View className="border-b border-app-border-strong px-6 pb-4 pt-2">
-            <View className="items-center">
-              <View
-                className="mb-3 h-1.5 w-12 rounded-full bg-app-border-strong"
-                accessibilityElementsHidden
-              />
-              <AppText variant="title" className="text-app-text-strong">
-                {mode === 'edit' ? 'Edit Transaction' : 'Add Transaction'}
-              </AppText>
-            </View>
-          </View>
-        </SafeAreaView>
-
+        <Stack.Screen options={{ headerShown: false }} />
+        <TopUtilityBar
+          hideProfileButton={mode === 'edit'}
+          badge={mode === 'edit' ? 'Edit Transaction' : 'Add Transaction'}
+        />
         {/* Content and footer as siblings for proper keyboard avoidance */}
         <View style={{ flex: 1 }}>
           <ScrollView
@@ -275,16 +298,12 @@ export default function AddTransactionModal({
                     if (transactionType !== 'expense') selection();
                     setValue('type', 'expense');
                   }}
-                  className={`flex-1 items-center rounded-lg px-4 py-2 ${
-                    transactionType === 'expense' ? 'bg-accent-expense' : 'bg-transparent'
-                  }`}>
+                  className={`flex-1 items-center rounded-lg px-4 py-2 ${transactionType === 'expense' ? 'bg-accent-expense' : 'bg-transparent'
+                    }`}>
                   <AppText
                     variant="caption"
-                    className={`${
-                      transactionType === 'expense'
-                        ? 'text-app-canvas'
-                        : 'text-app-text-soft'
-                    }`}>
+                    className={`${transactionType === 'expense' ? 'text-app-canvas' : 'text-app-text-soft'
+                      }`}>
                     Expense
                   </AppText>
                 </TouchableOpacity>
@@ -296,16 +315,12 @@ export default function AddTransactionModal({
                     if (transactionType !== 'income') selection();
                     setValue('type', 'income');
                   }}
-                  className={`flex-1 items-center rounded-lg px-4 py-2 ${
-                    transactionType === 'income' ? 'bg-accent-income' : 'bg-transparent'
-                  }`}>
+                  className={`flex-1 items-center rounded-lg px-4 py-2 ${transactionType === 'income' ? 'bg-accent-income' : 'bg-transparent'
+                    }`}>
                   <AppText
                     variant="caption"
-                    className={`${
-                      transactionType === 'income'
-                        ? 'text-app-canvas'
-                        : 'text-app-text-soft'
-                    }`}>
+                    className={`${transactionType === 'income' ? 'text-app-canvas' : 'text-app-text-soft'
+                      }`}>
                     Income
                   </AppText>
                 </TouchableOpacity>
@@ -395,9 +410,7 @@ export default function AddTransactionModal({
                       </View>
                     )}
                     <View className="mb-2 flex-row items-center justify-between">
-                      <Label className="text-sm font-medium text-app-text-strong">
-                        Category
-                      </Label>
+                      <Label className="text-sm font-medium text-app-text-strong">Category</Label>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -427,11 +440,15 @@ export default function AddTransactionModal({
                           {categories.find((c) => c.id === selectedCategoryId)?.name}
                         </AppText>
                         <TouchableOpacity onPress={() => setValue('categoryId', null)}>
-                          <AppText variant="hint" className="text-accent-savings">Clear</AppText>
+                          <AppText variant="hint" className="text-accent-savings">
+                            Clear
+                          </AppText>
                         </TouchableOpacity>
                       </View>
                     ) : (
-                      <AppText variant="hint" className="mb-2 text-app-text-faint">Optional</AppText>
+                      <AppText variant="hint" className="mb-2 text-app-text-faint">
+                        Optional
+                      </AppText>
                     )}
 
                     {/* Scrollable category list */}
@@ -449,9 +466,8 @@ export default function AddTransactionModal({
                                 setValue('categoryId', category.id, { shouldDirty: true })
                               }
                               activeOpacity={0.7}
-                              className={`flex-row items-center px-3 py-3 ${
-                                isSelected ? 'bg-app-surface-3' : 'bg-transparent'
-                              }`}>
+                              className={`flex-row items-center px-3 py-3 ${isSelected ? 'bg-app-surface-3' : 'bg-transparent'
+                                }`}>
                               <View
                                 className="mr-3 h-8 w-8 items-center justify-center rounded-lg"
                                 style={{ backgroundColor: category.color + '30' }}>

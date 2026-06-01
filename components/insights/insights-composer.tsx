@@ -24,8 +24,8 @@ export function InsightsComposer({
   const canSend = !disabled && !loading && !!value.trim();
 
   return (
-    <View className="border-t border-app-border bg-app-canvas px-5 pt-3">
-      <View className="rounded-[30px] border border-app-border bg-app-surface-1 px-3 py-2">
+    <View className="bg-app-canvas px-5 pb-2 pt-2">
+      <View className="rounded-[30px] border border-app-border bg-app-surface-1 px-4 py-2.5">
         <View className="flex-row items-end gap-2">
           <TextInput
             ref={inputRef}
@@ -33,7 +33,7 @@ export function InsightsComposer({
             onChangeText={onChangeText}
             placeholder={placeholder}
             placeholderTextColor="#8190B3"
-            className="max-h-32 flex-1 px-1 py-2 text-sm text-app-text-strong"
+            className="max-h-32 flex-1 px-1 py-2.5 text-sm leading-6 text-app-text-strong"
             editable={!disabled && !loading}
             multiline
             returnKeyType="send"
@@ -46,7 +46,7 @@ export function InsightsComposer({
             accessibilityLabel="Send insight message"
             disabled={!canSend}
             onPress={onSubmit}
-            className={`h-11 w-11 items-center justify-center rounded-full bg-accent-savings ${
+            className={`h-12 w-12 items-center justify-center rounded-full bg-accent-savings ${
               canSend ? '' : 'opacity-40'
             }`}
             style={({ pressed }) => ({

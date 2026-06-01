@@ -25,6 +25,10 @@ public class DocumentImportKitModule: Module {
       try Self.extractTextFromPdf(uri: uri)
     }
 
+    AsyncFunction("extractPdfPages") { (uri: String) throws -> [[String: Any]] in
+      try Self.extractPdfPages(uri: uri)
+    }
+
     AsyncFunction("extractTextFromImage") { (uri: String) async throws -> String in
       try await Self.extractTextFromImage(uri: uri)
     }
@@ -78,27 +82,39 @@ private extension DocumentImportKitModule {
   static var activeScannerCoordinator: AnyObject?
 
   static func extractTextFromPdf(uri: String) throws -> String {
+    let pages = try extractPdfPages(uri: uri)
+    let result = pages.compactMap { $0["text"] as? String }.joined(separator: "\n\n")
+    guard !result.isEmpty else {
+      throw DocumentImportKitError.noTextFound
+    }
+
+    return result
+  }
+
+  static func extractPdfPages(uri: String) throws -> [[String: Any]] {
     #if canImport(PDFKit)
     let fileURL = try resolveFileURL(uri)
     guard let document = PDFDocument(url: fileURL) else {
       throw DocumentImportKitError.unreadableDocument
     }
 
-    var pages: [String] = []
+    var pages: [[String: Any]] = []
     for index in 0..<document.pageCount {
       guard let page = document.page(at: index) else { continue }
       let text = page.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
       if !text.isEmpty {
-        pages.append(text)
+        pages.append([
+          "pageNumber": index + 1,
+          "text": text,
+        ])
       }
     }
 
-    let result = pages.joined(separator: "\n\n")
-    guard !result.isEmpty else {
+    guard !pages.isEmpty else {
       throw DocumentImportKitError.noTextFound
     }
 
-    return result
+    return pages
     #else
     throw DocumentImportKitError.frameworkUnavailable
     #endif

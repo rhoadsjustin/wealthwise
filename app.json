@@ -16,6 +16,7 @@
       "expo-sqlite",
       "expo-secure-store",
       "expo-font",
+      "expo-notifications",
       [
         "expo-image-picker",
         {
@@ -54,9 +55,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "icon": "./assets/WealthWise.icon",
       "supportsTablet": false,

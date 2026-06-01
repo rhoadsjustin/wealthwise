@@ -2,6 +2,8 @@
 
 This feature adds an on-device budget analysis option inside the Insights tab. A new segmented toggle lets a user switch from the chat assistant to "Apple coach". When selected, the UI trains and queries a native Create ML pipeline that lives in `BudgetInsightsModule` (Swift) and surfaces category classifications and budget adjustment recommendations.
 
+See also: [`docs/OFFLINE_FINANCE_ASSISTANT_STRATEGY.md`](./OFFLINE_FINANCE_ASSISTANT_STRATEGY.md)
+
 ## How it works
 
 - `lib/ai/appleBudgetAdvisor.ts` derives six months of category snapshots from DataContext transactions and budgets. Each snapshot includes spend totals, budget amount, and lightweight metadata.

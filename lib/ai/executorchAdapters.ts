@@ -1,4 +1,4 @@
-import { LLMModule, TextEmbeddingsModule, type ChatConfig } from 'react-native-executorch';
+import type { ChatConfig } from 'react-native-executorch';
 import type { Embeddings, LLM, Message, ResourceSource } from 'react-native-rag';
 
 interface ExecuTorchEmbeddingsParams {
@@ -8,7 +8,10 @@ interface ExecuTorchEmbeddingsParams {
 }
 
 export class ExecuTorchEmbeddings implements Embeddings {
-  private module: TextEmbeddingsModule | null = null;
+  private module: {
+    delete: () => void;
+    forward: (text: string) => PromiseLike<ArrayLike<number>>;
+  } | null = null;
   private modelSource: ResourceSource;
   private tokenizerSource: ResourceSource;
   private onDownloadProgress: (progress: number) => void;
@@ -26,6 +29,7 @@ export class ExecuTorchEmbeddings implements Embeddings {
 
   async load() {
     if (!this.isLoaded) {
+      const { TextEmbeddingsModule } = await import('react-native-executorch');
       this.module = await TextEmbeddingsModule.fromCustomModel(
         this.modelSource,
         this.tokenizerSource,
@@ -60,7 +64,13 @@ interface ExecuTorchLLMParams {
 }
 
 export class ExecuTorchLLM implements LLM {
-  private module: LLMModule | null = null;
+  private module: {
+    configure: (config: { chatConfig?: Partial<ChatConfig> }) => void;
+    interrupt: () => void;
+    delete: () => void;
+    setTokenCallback: (config: { tokenCallback: (token: string) => void }) => void;
+    generate: (messages: Message[]) => Promise<string>;
+  } | null = null;
   private modelSource: ResourceSource;
   private tokenizerSource: ResourceSource;
   private tokenizerConfigSource: ResourceSource;
@@ -88,6 +98,7 @@ export class ExecuTorchLLM implements LLM {
 
   async load() {
     if (!this.isLoaded) {
+      const { LLMModule } = await import('react-native-executorch');
       this.module = await LLMModule.fromCustomModel(
         this.modelSource,
         this.tokenizerSource,
@@ -95,7 +106,9 @@ export class ExecuTorchLLM implements LLM {
         this.onDownloadProgress,
         undefined,
         (messageHistory) => {
-          const assistantMessages = messageHistory.filter((message) => message.role === 'assistant');
+          const assistantMessages = messageHistory.filter(
+            (message) => message.role === 'assistant'
+          );
           const latestAssistant = assistantMessages[assistantMessages.length - 1];
           this.responseCallback(latestAssistant?.content ?? '');
         }

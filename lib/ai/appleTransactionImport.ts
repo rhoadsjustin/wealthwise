@@ -5,24 +5,36 @@ import { z } from 'zod';
 
 import type { ImportedTransactionDraft } from '@/lib/appleFinanceImport';
 
-const transactionSchema = z.object({
+const rawTransactionSchema = z.object({
   date: z.string().min(8),
   description: z.string().min(1),
-  amount: z.string().min(1),
+  amount: z.union([z.string().min(1), z.number()]),
   type: z.enum(['income', 'expense']),
 });
 
-const transactionListSchema = z.array(transactionSchema);
+const transactionListSchema = z.array(rawTransactionSchema);
+
+export interface AppleAIImportResult {
+  transactions: ImportedTransactionDraft[];
+  recoveredNumericAmount: boolean;
+}
 
 export async function extractTransactionsWithAppleAI(
   raw: string
 ): Promise<ImportedTransactionDraft[]> {
+  const result = await extractTransactionsWithAppleAIResult(raw);
+  return result.transactions;
+}
+
+export async function extractTransactionsWithAppleAIResult(
+  raw: string
+): Promise<AppleAIImportResult> {
   if (Platform.OS !== 'ios') {
     throw new Error('Apple on-device import is only available on iOS.');
   }
 
   const provider = createAppleProvider();
-  const prompt = buildStatementImportPrompt(raw.slice(0, 14000));
+  const prompt = buildStatementImportPrompt(raw);
 
   const result = await generateText({
     model: provider(),
@@ -32,12 +44,23 @@ export async function extractTransactionsWithAppleAI(
   });
 
   const parsed = parseJsonArray(result.text);
-  return parsed.map((item) => ({
-    date: normalizeDate(item.date),
-    description: item.description.trim(),
-    amount: normalizeAmount(item.amount),
-    type: item.type,
-  }));
+  let recoveredNumericAmount = false;
+
+  return {
+    transactions: parsed.map((item) => {
+      if (typeof item.amount === 'number') {
+        recoveredNumericAmount = true;
+      }
+
+      return {
+        date: normalizeDate(item.date),
+        description: item.description.trim(),
+        amount: normalizeAmount(item.amount),
+        type: item.type,
+      };
+    }),
+    recoveredNumericAmount,
+  };
 }
 
 function buildStatementImportPrompt(raw: string) {
@@ -86,10 +109,11 @@ function normalizeDate(value: string) {
   return `${isoMatch[1]}-${isoMatch[2]!.padStart(2, '0')}-${isoMatch[3]!.padStart(2, '0')}`;
 }
 
-function normalizeAmount(value: string) {
-  const parsed = Number.parseFloat(value.replace(/[^0-9.-]/g, ''));
+function normalizeAmount(value: string | number) {
+  const normalizedValue = typeof value === 'number' ? String(value) : value;
+  const parsed = Number.parseFloat(normalizedValue.replace(/[^0-9.-]/g, ''));
   if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new Error(`Invalid imported amount: ${value}`);
+    throw new Error(`Invalid imported amount: ${normalizedValue}`);
   }
 
   return parsed.toFixed(2);

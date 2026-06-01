@@ -1,6 +1,6 @@
 import { View, Text } from 'react-native';
 import { Card, CardContent } from '@/components/Card';
-import { Transaction } from '@/lib/schema/schema';
+import type { Transaction } from '@/context/DataContext';
 
 interface MonthlySummaryCardProps {
   transactions: Transaction[] | null;

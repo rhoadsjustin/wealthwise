@@ -11,11 +11,12 @@ import { SectionHeaderRow } from '@/components/SectionHeaderRow';
 import { Skeleton } from '@/components/Skeleton';
 import { TopUtilityBar } from '@/components/TopUtilityBar';
 import { TransactionRowDense } from '@/components/TransactionRowDense';
-import { useAppData } from '@/app/_layout';
+import { useActivityData, useInsightsData, useSummaryData } from '@/app/_layout';
 import { Card, CardContent } from '@/components/Card';
 import { AppText } from '@/components/AppText';
 import { useMonthOverview } from '@/lib/useMonthOverview';
 import type { Category, Insight, SavingsGoal, Transaction } from '@/context/DataContext';
+import { getTransactionCategoryLabel } from '@/lib/transactionPresentation';
 
 const currency = (value: number) =>
   new Intl.NumberFormat('en-US', {
@@ -41,16 +42,9 @@ const scoreStatus = (score: number) => {
 export default function HomeTab() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const {
-    summary,
-    insights,
-    bills,
-    debts,
-    savingsGoals,
-    transactions,
-    categories,
-    summaryLoading,
-  } = useAppData();
+  const { summary, bills, debts, savingsGoals, summaryLoading } = useSummaryData();
+  const { insights } = useInsightsData();
+  const { transactions, categories } = useActivityData();
   const { openCurrentMonth } = useMonthOverview();
 
   const categoryMap = React.useMemo(
@@ -63,7 +57,7 @@ export default function HomeTab() {
 
   const totalIncome = summary?.incomeBaseline || summary?.totalIncome || 0;
   const totalExpenses = summary?.totalExpenses || 0;
-  const totalSavings = summary?.totalSavingsProgress || 0;
+  const totalSavings = summary?.totalSavingsBalance || summary?.totalSavingsProgress || 0;
   const totalDebt = React.useMemo(
     () =>
       (debts ?? []).reduce((sum, debt) => {
@@ -83,9 +77,6 @@ export default function HomeTab() {
   }, [summary, totalDebt, totalExpenses, totalIncome, totalSavings]);
 
   const weeklyBars = React.useMemo(() => {
-    const expenseTransactions = (transactions ?? []).filter(
-      (item: Transaction) => item.type === 'expense'
-    );
     const today = new Date();
     const bars = Array.from({ length: 7 }, (_, index) => {
       const date = new Date(today);
@@ -97,13 +88,15 @@ export default function HomeTab() {
         total: 0,
       };
     });
+    const barIndexByDateKey = new Map(bars.map((bar, index) => [bar.key, index]));
 
-    expenseTransactions.forEach((transaction: Transaction) => {
+    (transactions ?? []).forEach((transaction: Transaction) => {
+      if (transaction.type !== 'expense') return;
       const key = transaction.date.slice(0, 10);
-      const bar = bars.find((entry) => entry.key === key);
-      if (!bar) return;
+      const barIndex = barIndexByDateKey.get(key);
+      if (barIndex == null) return;
       const amount = Number.parseFloat(transaction.amount || '0');
-      if (Number.isFinite(amount)) bar.total += amount;
+      if (Number.isFinite(amount)) bars[barIndex]!.total += amount;
     });
 
     const max = Math.max(...bars.map((bar) => bar.total), 1);
@@ -210,7 +203,7 @@ export default function HomeTab() {
         />
         <ScrollView
           className="flex-1 bg-app-canvas"
-          contentContainerStyle={{ paddingTop: 20, paddingBottom: insets.bottom + 120 }}
+          contentContainerStyle={{ paddingTop: 20, paddingBottom: insets.bottom + 156 }}
           contentContainerClassName="px-5 gap-4">
           <Skeleton className="h-64 rounded-3xl" />
           <Skeleton className="h-32 rounded-3xl" />
@@ -231,7 +224,7 @@ export default function HomeTab() {
       />
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingTop: 20, paddingBottom: insets.bottom + 120 }}
+        contentContainerStyle={{ paddingTop: 20, paddingBottom: insets.bottom + 156 }}
         contentContainerClassName="px-5">
         <HeroMetricCard
           eyebrow="Financial health score"
@@ -352,13 +345,13 @@ export default function HomeTab() {
                   key={transaction.id}
                   icon={category?.icon ?? (transaction.type === 'expense' ? '🧾' : '💸')}
                   title={transaction.description}
-                  subtitle={`${category?.name ?? 'Uncategorized'} • ${compactDate(transaction.date)}`}
+                  subtitle={`${getTransactionCategoryLabel(transaction, category)} • ${compactDate(transaction.date)}`}
                   amount={currency(amount)}
                   tone={transaction.type === 'income' ? 'income' : 'expense'}
                   onPress={() =>
                     router.push({
-                      pathname: '/transactions-modal',
-                      params: { highlightId: transaction.id },
+                      pathname: '/activity',
+                      params: { highlightId: String(transaction.id) },
                     })
                   }
                 />
@@ -367,7 +360,6 @@ export default function HomeTab() {
           </View>
         </View>
       </ScrollView>
-      <FAB onPress={() => router.push('/add-transaction')} />
     </View>
   );
 }

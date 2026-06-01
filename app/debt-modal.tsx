@@ -9,7 +9,7 @@ import { Button } from '@/components/Button';
 import { Label } from '@/components/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/Select';
 import { useDebts } from '@/context/DataContext';
-import { useAppData } from './_layout';
+import { useActivityData, useSummaryData } from './_layout';
 import { useToast } from '@/context/useToast';
 
 interface DebtFormData {
@@ -38,8 +38,9 @@ export default function DebtModal() {
   const debtId = params.debtId ? Number(params.debtId) : null;
   const isEditing = Number.isFinite(debtId);
 
-  const { debts, categories, refreshAppData } = useAppData();
-  const { createDebt, updateDebt, deleteDebt, getDebts } = useDebts();
+  const { debts, refreshSummaryData, isDemoMode } = useSummaryData();
+  const { categories } = useActivityData();
+  const { createDebt, updateDebt, deleteDebt, getDebtById } = useDebts();
   const { toast } = useToast();
 
   const scrollRef = React.useRef<import('react-native').ScrollView | null>(null);
@@ -83,7 +84,9 @@ export default function DebtModal() {
         return;
       }
 
-      const fromContext = (debts || []).find((debt: any) => debt.id === debtId);
+      const fromContext = !isDemoMode
+        ? (debts || []).find((debt: any) => debt.id === debtId)
+        : null;
       if (fromContext) {
         reset({
           name: fromContext.name,
@@ -100,9 +103,8 @@ export default function DebtModal() {
       }
 
       try {
-        const latest = await getDebts();
-        if (!isMounted) return;
-        const found = latest.find((debt: any) => debt.id === debtId);
+        const found = await getDebtById(debtId);
+        if (!isMounted || !found) return;
         if (found) {
           reset({
             name: found.name,
@@ -126,7 +128,7 @@ export default function DebtModal() {
     return () => {
       isMounted = false;
     };
-  }, [debts, debtId, getDebts, isEditing, reset, resetScrollPosition]);
+  }, [debts, debtId, getDebtById, isDemoMode, isEditing, reset, resetScrollPosition]);
 
   const onSubmit = React.useCallback(
     async (data: DebtFormData) => {
@@ -192,7 +194,7 @@ export default function DebtModal() {
           });
         }
 
-        await refreshAppData();
+        await refreshSummaryData();
         router.back();
       } catch (error) {
         console.error('Failed to save debt', error);
@@ -203,7 +205,7 @@ export default function DebtModal() {
         });
       }
     },
-    [createDebt, debtId, isEditing, refreshAppData, router, toast, updateDebt]
+    [createDebt, debtId, isEditing, refreshSummaryData, router, toast, updateDebt]
   );
 
   const handleDelete = React.useCallback(() => {
@@ -217,7 +219,7 @@ export default function DebtModal() {
           try {
             await deleteDebt(debtId);
             toast({ title: 'Debt removed' });
-            await refreshAppData();
+            await refreshSummaryData();
             router.back();
           } catch (error) {
             console.error('Failed to delete debt', error);
@@ -230,7 +232,7 @@ export default function DebtModal() {
         },
       },
     ]);
-  }, [debtId, deleteDebt, refreshAppData, router, toast]);
+  }, [debtId, deleteDebt, refreshSummaryData, router, toast]);
 
   return (
     <View className="flex-1 bg-app-canvas">

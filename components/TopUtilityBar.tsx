@@ -10,6 +10,7 @@ type TopUtilityBarProps = {
   actionIcon?: keyof typeof Ionicons.glyphMap;
   actionLabel?: string;
   onPressAction?: () => void;
+  hideProfileButton?: boolean;
 };
 
 const ACTION_SIZE = 44;
@@ -19,13 +20,14 @@ export function TopUtilityBar({
   actionIcon,
   actionLabel,
   onPressAction,
+  hideProfileButton = false,
 }: TopUtilityBarProps) {
   const insets = useSafeAreaInsets();
 
   return (
     <View className="bg-app-canvas px-5" style={{ paddingTop: insets.top + 10, paddingBottom: 6 }}>
       <View className="flex-row items-center justify-between">
-        <HeaderProfileButton />
+        {!hideProfileButton ? <HeaderProfileButton /> : <View style={styles.actionSpacer} />}
 
         <View className="rounded-full border border-app-border-contrast bg-app-surface-1 px-4 py-2 shadow-card">
           <Text className="text-xs font-semibold uppercase tracking-[0.12em] text-app-text-soft">

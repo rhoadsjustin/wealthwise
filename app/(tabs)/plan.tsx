@@ -9,7 +9,7 @@ import { SectionHeaderRow } from '@/components/SectionHeaderRow';
 import { Skeleton } from '@/components/Skeleton';
 import { TopUtilityBar } from '@/components/TopUtilityBar';
 import { AppText } from '@/components/AppText';
-import { useAppData } from '@/app/_layout';
+import { useSummaryData } from '@/app/_layout';
 import type { SavingsGoal } from '@/context/DataContext';
 
 const formatCurrency = (value: number) =>
@@ -22,7 +22,8 @@ const formatCurrency = (value: number) =>
 export default function PlanTab() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { bills, debts, savingsGoals, summary, summaryLoading, refreshAppData } = useAppData();
+  const { bills, debts, savingsGoals, summary, summaryLoading, refreshSummaryData } =
+    useSummaryData();
   const [refreshing, setRefreshing] = React.useState(false);
 
   const totals = React.useMemo(() => {
@@ -45,11 +46,11 @@ export default function PlanTab() {
   const handleRefresh = React.useCallback(async () => {
     try {
       setRefreshing(true);
-      await refreshAppData();
+      await refreshSummaryData();
     } finally {
       setRefreshing(false);
     }
-  }, [refreshAppData]);
+  }, [refreshSummaryData]);
 
   if (summaryLoading && !summary) {
     return (

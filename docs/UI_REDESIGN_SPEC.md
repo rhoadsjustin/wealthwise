@@ -71,7 +71,7 @@ Replace the current 5-tab structure with 4 tabs:
 ### Route Mapping
 
 - `app/(tabs)/index.tsx` -> `Home`
-- `app/transactions-modal.tsx` plus transaction search/filter patterns -> `Activity`
+- `app/(tabs)/activity.tsx` plus transaction search/filter patterns -> `Activity`
 - `app/(tabs)/bills.tsx`, `app/(tabs)/debts.tsx`, `app/(tabs)/savings.tsx` -> merged `Plan`
 - `app/(tabs)/insights.tsx` absorbs premium reporting entry points
 

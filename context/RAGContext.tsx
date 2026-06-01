@@ -20,6 +20,7 @@ const VectorStoreContext = createContext<{
   llmProgress: number; // 0..1
   embeddingsInstalled: boolean;
   llmInstalled: boolean;
+  localAssistantStatus: 'initializing' | 'ready' | 'unavailable';
 }>({
   vectorStore: null,
   llm: null,
@@ -27,6 +28,7 @@ const VectorStoreContext = createContext<{
   llmProgress: 0,
   embeddingsInstalled: false,
   llmInstalled: false,
+  localAssistantStatus: 'initializing',
 });
 
 export const VectorStoreProvider = ({ children }: { children: React.ReactNode }) => {
@@ -36,6 +38,9 @@ export const VectorStoreProvider = ({ children }: { children: React.ReactNode })
   const [llmProgress, setLlmProgress] = useState(0);
   const [embeddingsInstalled, setEmbeddingsInstalled] = useState(false);
   const [llmInstalled, setLlmInstalled] = useState(false);
+  const [localAssistantStatus, setLocalAssistantStatus] = useState<
+    'initializing' | 'ready' | 'unavailable'
+  >('initializing');
 
   // react-native-executorch stores files under documentDirectory/react-native-executorch
   const RNEDirectory = `${FileSystem.documentDirectory}react-native-executorch/`;
@@ -58,10 +63,15 @@ export const VectorStoreProvider = ({ children }: { children: React.ReactNode })
     const initialize = async () => {
       try {
         if (Platform.OS === 'web') {
+          setLocalAssistantStatus('unavailable');
           return;
         }
 
-        await initializeExecutorch();
+        const initialized = await initializeExecutorch();
+        if (!initialized) {
+          setLocalAssistantStatus('unavailable');
+          return;
+        }
 
         const [executorchModels, { MemoryVectorStore }] = await Promise.all([
           import('react-native-executorch'),
@@ -114,8 +124,10 @@ export const VectorStoreProvider = ({ children }: { children: React.ReactNode })
         setVectorStore(store);
         setCategorizerVectorStore(store as any);
         setLlm(llm);
+        setLocalAssistantStatus('ready');
       } catch (error) {
         console.error('Failed to initialize vector store:', error);
+        setLocalAssistantStatus('unavailable');
       }
     };
 
@@ -155,6 +167,7 @@ export const VectorStoreProvider = ({ children }: { children: React.ReactNode })
         llmProgress,
         embeddingsInstalled,
         llmInstalled,
+        localAssistantStatus,
       }}>
       {children}
     </VectorStoreContext.Provider>

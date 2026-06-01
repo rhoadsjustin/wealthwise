@@ -13,6 +13,10 @@ export async function extractTextFromPdf(uri: string) {
   return ensureIOS().extractTextFromPdf(uri);
 }
 
+export async function extractPdfPages(uri: string) {
+  return ensureIOS().extractPdfPages(uri);
+}
+
 export async function extractTextFromImage(uri: string) {
   return ensureIOS().extractTextFromImage(uri);
 }

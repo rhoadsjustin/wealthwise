@@ -187,14 +187,14 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-white"
+      className="flex-1 bg-app-canvas"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ paddingTop: top / 2 }}>
       {/* Sticky Header */}
-      <View className="bg-white px-6 pb-2 pt-6">
+      <View className="bg-app-canvas px-6 pb-2 pt-6">
         <View className="mb-2 flex-row items-center justify-between">
-          <Text className="text-sm text-gray-500">Budget setup</Text>
-          <Text className="text-sm text-gray-500">
+          <Text className="text-sm text-app-text-faint">Budget setup</Text>
+          <Text className="text-sm text-app-text-faint">
             {totalSteps > 0 ? `Step ${Math.min(stepIndex + 1, totalSteps)} of ${totalSteps}` : '—'}
           </Text>
         </View>
@@ -208,10 +208,10 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         <View className="flex-1 px-6 pt-6">
-          <Text className="mb-4 text-center text-2xl font-bold text-black">
+          <Text className="mb-4 text-center text-2xl font-bold text-app-text-strong">
             Set your starting budgets
           </Text>
-          <Text className="mb-6 text-center text-base text-gray-600">
+          <Text className="mb-6 text-center text-base text-app-text-soft">
             Quickly review the suggested categories. You can fine-tune or add more later.
           </Text>
 
@@ -219,11 +219,11 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
             <Animated.View
               entering={FadeIn.duration(200)}
               exiting={FadeOut.duration(150)}
-              className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              className="rounded-3xl border border-app-border-strong bg-app-surface-1 p-4">
               {/* Editable fields for emoji, title, and amount */}
               <View className="gap-4">
                 <View>
-                  <Text className="mb-2 text-sm font-medium text-gray-700">Emoji</Text>
+                  <Text className="mb-2 text-sm font-medium text-app-text-soft">Emoji</Text>
                   <Select
                     value={localEdits[currentCategory.id]?.icon || currentCategory.icon}
                     onValueChange={handleIconChange}>
@@ -275,24 +275,26 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
                 </View>
 
                 <View>
-                  <Text className="mb-2 text-sm font-medium text-gray-700">Title</Text>
+                  <Text className="mb-2 text-sm font-medium text-app-text-soft">Title</Text>
                   <Input
                     value={localEdits[currentCategory.id]?.name ?? currentCategory.name}
                     onChangeText={handleNameChange}
                     placeholder="Category name"
-                    variant="outline"
+                    variant="dark"
                   />
                   {/* Suggested names */}
                   <View className="mt-3">
-                    <Text className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500">
+                    <Text className="mb-2 text-xs font-medium uppercase tracking-wider text-app-text-faint">
                       Suggestions
                     </Text>
                     <View className="flex-row flex-wrap gap-2">
                       {['Housing', 'Utilities', 'Insurance', 'Cell Phone', 'Gas'].map((label) => (
-                        <View key={label} className="rounded-full border border-gray-300 bg-white">
+                        <View
+                          key={label}
+                          className="rounded-full border border-app-border-strong bg-app-surface-2">
                           <Text
                             onPress={() => applySuggestion(label)}
-                            className="px-3 py-1 text-sm text-gray-700">
+                            className="px-3 py-1 text-sm text-app-text-soft">
                             {label}
                           </Text>
                         </View>
@@ -302,22 +304,24 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
                 </View>
 
                 <View>
-                  <Text className="mb-2 text-sm font-medium text-gray-700">Monthly Amount</Text>
+                  <Text className="mb-2 text-sm font-medium text-app-text-soft">
+                    Monthly Amount
+                  </Text>
                   <View className="flex-row items-center gap-1">
-                    <Text className="text-base font-medium text-gray-700">$</Text>
+                    <Text className="text-base font-medium text-app-text-soft">$</Text>
                     <Input
                       value={localEdits[currentCategory.id]?.budget ?? currentCategory.budget}
                       onChangeText={handleBudgetChange}
                       keyboardType="numeric"
                       placeholder="0"
                       className="flex-1 text-base"
-                      variant="outline"
+                      variant="dark"
                     />
                   </View>
                 </View>
 
-                <View className="mt-2 rounded-lg bg-white p-4">
-                  <Text className="text-center text-gray-700">
+                <View className="mt-2 rounded-2xl bg-app-surface-2 p-4">
+                  <Text className="text-center text-app-text-faint">
                     Remaining categories: {Math.max(totalSteps - (stepIndex + 1), 0)}
                   </Text>
                 </View>
@@ -325,18 +329,18 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
             </Animated.View>
           ) : (
             <View className="items-center justify-center">
-              <Text className="text-gray-600">
+              <Text className="text-app-text-faint">
                 No categories found. Add a category to get started.
               </Text>
             </View>
           )}
 
           {/* Add more categories section */}
-          <View className="mt-8 rounded-xl border border-gray-200 bg-gray-50 p-4">
-            <Text className="mb-2 text-base font-semibold text-gray-800">
+          <View className="mt-8 rounded-3xl border border-app-border-strong bg-app-surface-1 p-4">
+            <Text className="mb-2 text-base font-semibold text-app-text-strong">
               Need more categories?
             </Text>
-            <Text className="mb-4 text-sm text-gray-600">
+            <Text className="mb-4 text-sm text-app-text-faint">
               You can add more now or anytime from the Categories tab.
             </Text>
             <Button
@@ -351,7 +355,7 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
 
       {/* Sticky Footer */}
       <View
-        className="bg-white px-6 pb-6 pt-4"
+        className="bg-app-canvas px-6 pb-6 pt-4"
         style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
         {stepIndex < totalSteps - 1 ? (
           <View className="flex-row items-center gap-3">
@@ -387,7 +391,7 @@ export default function BudgetSetupFlow({ onFinish }: BudgetSetupFlowProps) {
       </View>
 
       {showCreateModal && (
-        <View className="absolute inset-0 z-50 bg-white">
+        <View className="absolute inset-0 z-50 bg-app-canvas">
           <CreateCategoryModal onClose={() => setShowCreateModal(false)} />
         </View>
       )}

@@ -6,7 +6,7 @@ type SkeletonProps = React.ComponentProps<typeof View> & {
 };
 
 const Skeleton = React.forwardRef<View, SkeletonProps>(({ className = '', ...props }, ref) => {
-  return <View ref={ref} className={`rounded-md bg-app-surface-alt ${className}`} {...props} />;
+  return <View ref={ref} className={`rounded-md bg-app-text-secondary ${className}`} {...props} />;
 });
 
 Skeleton.displayName = 'Skeleton';

@@ -109,7 +109,7 @@ export default function CreateCategoryModal({
         icon: data.icon,
         color: data.color,
         budget: data.budget || '0',
-      } as any;
+      };
       const newCategory = await createCategory(categoryData);
       toast({
         title: 'Category Created',
@@ -163,7 +163,7 @@ export default function CreateCategoryModal({
   };
 
   return (
-    <View className="flex-1 bg-background-primary">
+    <View className="flex-1 bg-app-canvas">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1">
@@ -174,12 +174,14 @@ export default function CreateCategoryModal({
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
           {/* Header */}
-          <View className="border-b border-border-default bg-background-primary px-6 pb-4 pt-6">
+          <View className="border-b border-app-border-strong bg-app-canvas px-6 pb-4 pt-6">
             <View className="flex-row items-center justify-between">
               <Button variant="ghost" size="sm" onPress={onClose} className="px-0">
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close" size={24} color="#8190B3" />
               </Button>
-              <AppText variant="page-title" className="text-app-text-strong">Create Category</AppText>
+              <AppText variant="page-title" className="text-app-text-strong">
+                Create Category
+              </AppText>
               <View className="w-10" />
             </View>
           </View>
@@ -189,14 +191,12 @@ export default function CreateCategoryModal({
             <View className="space-y-6">
               {/* Category Name */}
               <View>
-                <Label className="mb-2 text-sm font-medium text-foreground-primary">
-                  Category Name
-                </Label>
+                <Label className="mb-2 text-sm font-medium text-app-text-soft">Category Name</Label>
                 <Input
                   value={watch('name') || ''}
                   onChangeText={(value) => setValue('name', value)}
                   placeholder="Enter category name"
-                  variant="outline"
+                  variant="dark"
                 />
                 {errors.name && (
                   <AppText variant="hint" className="mt-1 text-error-600">
@@ -207,9 +207,7 @@ export default function CreateCategoryModal({
 
               {/* Icon Selection */}
               <View>
-                <Label className="mb-2 text-sm font-medium text-foreground-primary">
-                  Select Icon
-                </Label>
+                <Label className="mb-2 text-sm font-medium text-app-text-soft">Select Icon</Label>
                 <View className="flex-row flex-wrap gap-2">
                   {DEFAULT_ICONS.map((icon, index) => (
                     <TouchableOpacity
@@ -218,8 +216,8 @@ export default function CreateCategoryModal({
                       activeOpacity={0.8}
                       className={`h-11 w-11 items-center justify-center rounded-xl border ${
                         selectedIcon === icon
-                          ? 'border-primary-400 bg-primary-50'
-                          : 'border-border-default bg-background-secondary'
+                          ? 'border-accent-savings bg-info-500/15'
+                          : 'border-app-border-strong bg-app-surface-2'
                       }`}>
                       <Text className="text-lg">{icon}</Text>
                     </TouchableOpacity>
@@ -229,9 +227,7 @@ export default function CreateCategoryModal({
 
               {/* Color Selection */}
               <View>
-                <Label className="mb-2 text-sm font-medium text-foreground-primary">
-                  Select Color
-                </Label>
+                <Label className="mb-2 text-sm font-medium text-app-text-soft">Select Color</Label>
                 <View className="flex-row flex-wrap gap-2">
                   {DEFAULT_COLORS.map((color, index) => (
                     <TouchableOpacity
@@ -239,7 +235,7 @@ export default function CreateCategoryModal({
                       onPress={() => setSelectedColor(color)}
                       activeOpacity={0.8}
                       className={`h-9 w-9 items-center justify-center rounded-full border-2 ${
-                        selectedColor === color ? 'border-gray-300' : 'border-transparent'
+                        selectedColor === color ? 'border-app-text-strong' : 'border-transparent'
                       }`}
                       style={{ backgroundColor: color }}>
                       {selectedColor === color && (
@@ -252,7 +248,7 @@ export default function CreateCategoryModal({
 
               {/* Budget Field */}
               <View>
-                <Label className="mb-2 text-sm font-medium text-foreground-primary">
+                <Label className="mb-2 text-sm font-medium text-app-text-soft">
                   Monthly Budget (Optional)
                 </Label>
                 <Input
@@ -268,7 +264,7 @@ export default function CreateCategoryModal({
                     setValue('budget', formatted);
                   }}
                   placeholder="0.00"
-                  variant="outline"
+                  variant="dark"
                 />
                 {errors.budget && (
                   <AppText variant="hint" className="mt-1 text-error-600">
@@ -279,8 +275,8 @@ export default function CreateCategoryModal({
 
               {/* Preview */}
               <View>
-                <Label className="mb-2 text-sm font-medium text-foreground-primary">Preview</Label>
-                <View className="rounded-lg border border-border-default bg-background-secondary p-4">
+                <Label className="mb-2 text-sm font-medium text-app-text-soft">Preview</Label>
+                <View className="rounded-2xl border border-app-border-strong bg-app-surface-1 p-4">
                   <View className="flex-row items-center">
                     <View
                       className="mr-3 h-12 w-12 items-center justify-center rounded-lg"
@@ -288,11 +284,11 @@ export default function CreateCategoryModal({
                       <Text className="text-lg">{selectedIcon}</Text>
                     </View>
                     <View className="flex-1">
-                      <Text className="text-base font-medium text-foreground-primary">
+                      <Text className="text-base font-medium text-app-text-strong">
                         {watch('name') || 'Category Name'}
                       </Text>
                       {watch('budget') && (
-                        <Text className="text-sm text-foreground-secondary">
+                        <Text className="text-sm text-app-text-faint">
                           Budget: ${watch('budget')}/month
                         </Text>
                       )}
@@ -306,7 +302,7 @@ export default function CreateCategoryModal({
 
         {/* Sticky Footer */}
         <View
-          className="border-t border-border-default bg-background-primary px-6 py-4"
+          className="border-t border-app-border-strong bg-app-canvas px-6 py-4"
           style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
           <View className="flex-row items-center gap-3">
             <Button

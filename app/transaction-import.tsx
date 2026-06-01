@@ -10,55 +10,57 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { Button } from '@/components/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/Card';
 import { Input } from '@/components/Input';
-import { useAppData } from '@/app/_layout';
+import { useActivityData, useAppData } from '@/app/_layout';
 import { useData, type Category } from '@/context/DataContext';
 import { useToast } from '@/context/useToast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/Select';
 import {
   buildExistingTransactionDedupSet,
   buildImportedDraftDedupKey,
-  type ImportedTransactionDraft,
 } from '@/lib/appleFinanceImport';
-import { extractTransactionsWithAppleAI } from '@/lib/ai/appleTransactionImport';
 import {
+  extractPdfPages,
   extractTextFromImage,
-  extractTextFromPdf,
   scanTextWithCamera,
 } from '@/lib/documentImportNative';
+import type {
+  ImportCapturePayload,
+  ImportParseMethod,
+  ImportPreviewRow,
+  ImportWarning,
+} from '@/lib/schema/schema';
+import { buildImportPreview } from '@/lib/transactionImportPreview';
 import { formatCurrency } from '@/lib/utils';
-import { looksLikeCsv, parseCsvTransactionDrafts } from '@/lib/transactionImport';
+import { looksLikeCsv } from '@/lib/transactionImport';
 
 const screenOptions = { headerShown: false } as const;
 
 type ImportMode = 'csv' | 'statement';
-type PreviewImportTransaction = ImportedTransactionDraft & {
-  id: string;
-  categoryId: number | null;
-  suggestedCategoryId: number | null;
-  categoryConfidence: number | null;
-};
 
 export default function TransactionImportModal() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { getTransactions, getCategories, createTransaction, isInitialized } = useData();
-  const { refreshAppData } = useAppData();
+  const { refreshActivityData } = useActivityData();
+  const { refreshSummaryData } = useAppData();
   const { showToast } = useToast();
 
   const [mode, setMode] = useState<ImportMode>('csv');
   const [rawInput, setRawInput] = useState('');
+  const [isInputExpanded, setIsInputExpanded] = useState(true);
   const [isParsing, setIsParsing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isLoadingSource, setIsLoadingSource] = useState(false);
-  const [parseWarnings, setParseWarnings] = useState<string[]>([]);
-  const [parseMethod, setParseMethod] = useState<string | null>(null);
+  const [showWarningDetails, setShowWarningDetails] = useState(false);
+  const [lastPayload, setLastPayload] = useState<ImportCapturePayload | null>(null);
+  const [parseWarnings, setParseWarnings] = useState<ImportWarning[]>([]);
+  const [parseMethods, setParseMethods] = useState<ImportParseMethod[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [previewTransactions, setPreviewTransactions] = useState<PreviewImportTransaction[]>([]);
+  const [previewTransactions, setPreviewTransactions] = useState<ImportPreviewRow[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [existingKeys, setExistingKeys] = useState<Set<string>>(new Set());
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
-  const [editingValues, setEditingValues] = useState<PreviewImportTransaction | null>(null);
-
+  const [editingValues, setEditingValues] = useState<ImportPreviewRow | null>(null);
 
   const previewRows = useMemo(
     () =>
@@ -75,92 +77,69 @@ export default function TransactionImportModal() {
     [existingKeys, previewTransactions, selectedIds]
   );
 
-  const importableRows = previewRows.filter((row) => !row.isDuplicate);
+  const importableRows = useMemo(
+    () => previewRows.filter((row) => !row.isDuplicate),
+    [previewRows]
+  );
+  const selectedImportableCount = importableRows.filter((row) => row.isSelected).length;
+  const duplicateCount = previewRows.length - importableRows.length;
   const editingTransaction = previewTransactions.find(
     (transaction) => transaction.id === editingTransactionId
   );
+  const warningCount = parseWarnings.filter((warning) => warning.severity === 'warning').length;
 
-  const parseImportedInput = async (input: string, sourceMode: ImportMode) => {
+  const parseImportedPayload = async (payload: ImportCapturePayload) => {
     setIsParsing(true);
     setParseWarnings([]);
+    setShowWarningDetails(false);
     setPreviewTransactions([]);
     setSelectedIds(new Set());
     setEditingTransactionId(null);
     setEditingValues(null);
 
     try {
-      const [existingTransactions, categories] = await Promise.all([
+      const [existingTransactions, nextCategories] = await Promise.all([
         getTransactions(),
         getCategories(),
       ]);
       const dedupSet = buildExistingTransactionDedupSet(existingTransactions);
       setExistingKeys(dedupSet);
-      setCategories(categories);
+      setCategories(nextCategories);
+      setLastPayload(payload);
 
-      let transactions: ImportedTransactionDraft[] = [];
-      let warnings: string[] = [];
-      let method: string = sourceMode;
+      const result = await buildImportPreview({
+        payload,
+        categories: nextCategories,
+      });
 
-      if (sourceMode === 'csv' && looksLikeCsv(input)) {
-        const result = parseCsvTransactionDrafts(input);
-        transactions = result.transactions;
-        warnings = result.warnings;
-        method = 'csv';
-      }
-
-      if (!transactions.length) {
-        const aiTransactions = await extractTransactionsWithAppleAI(input);
-        transactions = aiTransactions;
-        method = 'apple-ai';
-      }
-
-      const { suggestCategory } = await import('@/lib/ai/categorizer');
-      const uniqueTransactions = await Promise.all(
-        dedupeParsedTransactions(transactions).map(async (transaction, index) => {
-          let suggestedCategoryId: number | null = null;
-          let categoryConfidence: number | null = null;
-
-          if (transaction.type === 'expense') {
-            try {
-              const suggestion = await suggestCategory(
-                { description: transaction.description },
-                categories as any
-              );
-              suggestedCategoryId = suggestion.categoryId ?? null;
-              categoryConfidence = suggestion.categoryId ? suggestion.confidence : null;
-            } catch {}
-          }
-
-          return {
-            ...transaction,
-            id: createPreviewId(index),
-            categoryId: suggestedCategoryId,
-            suggestedCategoryId,
-            categoryConfidence,
-          };
-        })
-      );
-      setPreviewTransactions(uniqueTransactions);
-      setParseWarnings(warnings);
-      setParseMethod(method);
+      setPreviewTransactions(result.rows);
+      setParseWarnings(result.warnings);
+      setParseMethods(result.methods);
       setSelectedIds(
         new Set(
-          uniqueTransactions
+          result.rows
             .filter((transaction) => !dedupSet.has(buildImportedDraftDedupKey(transaction)))
             .map((transaction) => transaction.id)
         )
       );
+      setIsInputExpanded(result.rows.length === 0);
 
-      if (!uniqueTransactions.length) {
+      if (!result.rows.length) {
         showToast.info(
           'No transactions found',
-          'Try a cleaner CSV export or paste more complete statement text.'
+          'Try a cleaner export, a shorter page range, or correct the text before parsing again.'
         );
       }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unable to parse the imported statement.';
-      setParseWarnings([message]);
+      setParseWarnings([
+        {
+          code: 'parse_failed',
+          message,
+          severity: 'warning',
+        },
+      ]);
       showToast.error('Import parse failed', message);
     } finally {
       setIsParsing(false);
@@ -177,7 +156,7 @@ export default function TransactionImportModal() {
     }
 
     Keyboard.dismiss();
-    await parseImportedInput(trimmedInput, mode);
+    await parseImportedPayload(buildTextPayload(trimmedInput, mode));
   };
 
   const handlePickDocument = async () => {
@@ -196,14 +175,24 @@ export default function TransactionImportModal() {
       const asset = result.assets[0]!;
       const lowerName = asset.name.toLowerCase();
       const isPdf = asset.mimeType === 'application/pdf' || lowerName.endsWith('.pdf');
-      const extractedText = isPdf
-        ? await extractTextFromPdf(asset.uri)
-        : await FileSystemLegacy.readAsStringAsync(asset.uri);
 
+      if (isPdf) {
+        const pdfPages = await extractPdfPages(asset.uri);
+        const payload = buildPdfPayload(asset.name, pdfPages);
+        setMode('statement');
+        setRawInput(payload.rawText);
+        await parseImportedPayload(payload);
+        return;
+      }
+
+      const extractedText = await FileSystemLegacy.readAsStringAsync(asset.uri);
       const nextMode: ImportMode = looksLikeCsv(extractedText) ? 'csv' : 'statement';
       setMode(nextMode);
       setRawInput(extractedText);
-      await parseImportedInput(extractedText, nextMode);
+      await parseImportedPayload({
+        ...buildTextPayload(extractedText, nextMode),
+        fileName: asset.name,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to open the selected file.';
       showToast.error('File import failed', message);
@@ -235,9 +224,23 @@ export default function TransactionImportModal() {
       }
 
       const extractedText = await extractTextFromImage(result.assets[0]!.uri);
+      const payload: ImportCapturePayload = {
+        source: 'image',
+        rawText: extractedText,
+        fileName: result.assets[0]!.fileName ?? 'Selected image',
+        chunks: [
+          {
+            id: 'image-1',
+            source: 'image',
+            label: 'Photo OCR',
+            text: extractedText,
+          },
+        ],
+      };
+
       setMode('statement');
       setRawInput(extractedText);
-      await parseImportedInput(extractedText, 'statement');
+      await parseImportedPayload(payload);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unable to extract text from the selected image.';
@@ -251,9 +254,22 @@ export default function TransactionImportModal() {
     setIsLoadingSource(true);
     try {
       const scannedText = await scanTextWithCamera();
+      const payload: ImportCapturePayload = {
+        source: 'scan',
+        rawText: scannedText,
+        chunks: [
+          {
+            id: 'scan-1',
+            source: 'scan',
+            label: 'Live scan',
+            text: scannedText,
+          },
+        ],
+      };
+
       setMode('statement');
       setRawInput(scannedText);
-      await parseImportedInput(scannedText, 'statement');
+      await parseImportedPayload(payload);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unable to scan text from the camera.';
@@ -285,7 +301,7 @@ export default function TransactionImportModal() {
         });
       }
 
-      await refreshAppData();
+      await Promise.all([refreshActivityData(), refreshSummaryData()]);
       showToast.success(
         'Import complete',
         `${rowsToImport.length} transaction${rowsToImport.length === 1 ? '' : 's'} imported.`
@@ -336,7 +352,8 @@ export default function TransactionImportModal() {
         transaction.id === editingTransactionId ? { ...transaction, ...normalized } : transaction
       )
     );
-    setEditingValues(normalized);
+    setEditingTransactionId(null);
+    setEditingValues(null);
     showToast.success('Review updated', 'The imported transaction was corrected before import.');
   };
 
@@ -345,8 +362,17 @@ export default function TransactionImportModal() {
     setEditingValues(null);
   };
 
+  const selectAllNew = () => {
+    setSelectedIds(new Set(importableRows.map((row) => row.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
   const topPadding = Math.max(insets.top + 8, 24);
-  const bottomPadding = Math.max(insets.bottom + 18, 28);
+  const bottomPadding = Math.max(insets.bottom + 20, 32);
+  const footerHeight = 112;
 
   return (
     <View className="flex-1 bg-app-canvas">
@@ -354,36 +380,45 @@ export default function TransactionImportModal() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingTop: topPadding, paddingBottom: bottomPadding }}
+        contentContainerStyle={{
+          paddingTop: topPadding,
+          paddingBottom: bottomPadding + footerHeight,
+        }}
         keyboardShouldPersistTaps="handled">
         <View className="px-5">
-          <View className="mb-5 flex-row items-center justify-between">
-            <View className="pr-4">
+          <View className="relative mb-5 pr-14">
+            <View className="pr-2">
               <Text className="text-3xl font-semibold text-app-text-strong">Statement import</Text>
-              <Text className="mt-1 text-sm text-app-text-faint">
-                Paste text, pick a file or photo, or scan statement text live with the camera.
+              <Text className="mt-2 text-sm leading-7 text-app-text-faint">
+                Capture text, review extracted rows, then import only the transactions you trust.
               </Text>
             </View>
             <TouchableOpacity
               onPress={() => router.back()}
               accessibilityLabel="Close transaction import"
-              className="h-11 w-11 items-center justify-center rounded-full border border-app-border bg-app-surface-1">
+              className="absolute right-0 top-0 h-11 w-11 items-center justify-center rounded-full border border-app-border bg-app-surface-1">
               <Ionicons name="close" size={18} color="#F8FAFC" />
             </TouchableOpacity>
           </View>
 
-          <Card variant="glass-dark" className="mb-4">
+          <View className="mb-5 flex-row gap-2">
+            <StepPill label="1. Capture" active />
+            <StepPill label="2. Review" active={previewRows.length > 0} />
+            <StepPill label="3. Import" active={previewRows.length > 0} />
+          </View>
+
+          <Card variant="glass-dark" className="mb-5">
             <CardHeader className="pb-3">
-              <CardTitle variant="small">Source</CardTitle>
+              <CardTitle variant="small">Capture</CardTitle>
               <CardDescription>
-                CSV is parsed directly first. Statement or PDF text falls back to Apple&apos;s
-                on-device model for extraction after text capture.
+                PDFs are handled page by page first. CSV imports stay direct, and harder chunks only
+                fall back to on-device AI when needed.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <View className="flex-row gap-2">
-                <SourceChip label="CSV" selected={mode === 'csv'} onPress={() => setMode('csv')} />
-                <SourceChip
+            <CardContent className="pb-3">
+              <View className="flex-row flex-wrap gap-2">
+                <ModeChip label="CSV" selected={mode === 'csv'} onPress={() => setMode('csv')} />
+                <ModeChip
                   label="Statement / PDF text"
                   selected={mode === 'statement'}
                   onPress={() => setMode('statement')}
@@ -391,55 +426,80 @@ export default function TransactionImportModal() {
               </View>
 
               <View className="mt-4 gap-3">
-                <Button
-                  variant="secondary-muted"
-                  title={isLoadingSource ? 'Opening…' : 'Pick CSV, TXT, or PDF file'}
-                  loading={isLoadingSource}
+                <SourceActionTile
+                  icon="document-text-outline"
+                  title={isLoadingSource ? 'Opening…' : 'Pick CSV, TXT, or PDF'}
+                  subtitle="Best for bank exports and long statements"
+                  disabled={isLoadingSource}
                   onPress={handlePickDocument}
                 />
-                <Button
-                  variant="secondary-muted"
-                  title={
-                    isLoadingSource ? 'Opening…' : 'Pick statement screenshot or receipt photo'
-                  }
+                <SourceActionTile
+                  icon="image-outline"
+                  title={isLoadingSource ? 'Opening…' : 'Pick statement screenshot or receipt'}
+                  subtitle="Runs OCR on a saved photo"
                   disabled={isLoadingSource}
                   onPress={handlePickImage}
                 />
-                <Button
-                  variant="secondary-muted"
+                <SourceActionTile
+                  icon="scan-outline"
                   title={isLoadingSource ? 'Opening…' : 'Scan live with camera'}
+                  subtitle="Use live text capture for a printed page"
                   disabled={isLoadingSource}
                   onPress={handleLiveScan}
                 />
               </View>
 
-              <Input
-                className="mt-4"
-                style={{ minHeight: 220 }}
-                variant="dark"
-                size="lg"
-                multiline
-                numberOfLines={12}
-                autoCapitalize="none"
-                autoCorrect={false}
-                value={rawInput}
-                onChangeText={setRawInput}
-                placeholder={
-                  mode === 'csv'
-                    ? 'Paste your CSV contents here, including the header row.'
-                    : 'Paste copied statement text here. This works well with text copied from a PDF statement.'
-                }
-                helperText={
-                  mode === 'csv'
-                    ? 'Accepted headers include Date, Description, Amount, Debit, and Credit.'
-                    : 'Apple on-device AI will extract rows into dates, descriptions, amounts, and types.'
-                }
-              />
+              {previewRows.length ? (
+                <TouchableOpacity
+                  onPress={() => setIsInputExpanded((current) => !current)}
+                  className="mt-4 flex-row items-center justify-between rounded-2xl border border-app-border bg-app-canvas-elevated px-4 py-3">
+                  <View className="flex-1 pr-3">
+                    <Text className="text-sm font-semibold text-app-text-strong">
+                      {isInputExpanded ? 'Hide raw capture text' : 'Show raw capture text'}
+                    </Text>
+                    <Text className="mt-1 text-xs leading-5 text-app-text-faint">
+                      {lastPayload?.chunks.length
+                        ? `${lastPayload.chunks.length} chunk${lastPayload.chunks.length === 1 ? '' : 's'} ready for review`
+                        : 'Expand to inspect or edit the captured text'}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name={isInputExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color="#94A3B8"
+                  />
+                </TouchableOpacity>
+              ) : null}
+
+              {isInputExpanded ? (
+                <Input
+                  className="mt-4"
+                  style={{ minHeight: 184 }}
+                  variant="dark"
+                  size="lg"
+                  multiline
+                  numberOfLines={12}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={rawInput}
+                  onChangeText={setRawInput}
+                  placeholder={
+                    mode === 'csv'
+                      ? 'Paste your CSV contents here, including the header row.'
+                      : 'Paste copied statement text here. This works well with text copied from a PDF statement.'
+                  }
+                  helperText={
+                    mode === 'csv'
+                      ? 'Accepted headers include Date, Description, Amount, Debit, and Credit.'
+                      : 'Paste, file import, and OCR all land in the same preview pipeline.'
+                  }
+                />
+              ) : null}
 
               <Button
-                className="mt-4"
+                className="mb-1 mt-5"
                 variant="primary-solid"
-                title={isParsing ? 'Parsing…' : 'Build import preview'}
+                title={isParsing ? 'Building preview…' : 'Build import preview'}
                 loading={isParsing}
                 onPress={handleParse}
               />
@@ -447,119 +507,206 @@ export default function TransactionImportModal() {
           </Card>
 
           {parseWarnings.length ? (
-            <Card variant="inset" className="mb-4">
+            <Card variant="inset" className="mb-5">
               <CardHeader className="pb-3">
-                <CardTitle variant="small">Warnings</CardTitle>
+                <CardTitle variant="small">Parser notes</CardTitle>
+                <CardDescription>
+                  {warningCount
+                    ? `${warningCount} warning${warningCount === 1 ? '' : 's'} need attention before import.`
+                    : 'The parser recovered, but there are a few details worth reviewing.'}
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <View className="gap-2">
-                  {parseWarnings.map((warning) => (
-                    <Text key={warning} className="text-sm leading-5 text-warning-700">
-                      {warning}
-                    </Text>
-                  ))}
+                <View className="gap-3">
+                  {parseWarnings
+                    .slice(0, showWarningDetails ? parseWarnings.length : 3)
+                    .map((warning) => (
+                      <View
+                        key={`${warning.code}-${warning.chunkId ?? 'general'}-${warning.message}`}
+                        className={`rounded-2xl border px-4 py-3 ${
+                          warning.severity === 'warning'
+                            ? 'border-warning-500/40 bg-warning-500/10'
+                            : 'border-app-border bg-app-canvas-elevated'
+                        }`}>
+                        <Text
+                          className={`text-sm font-medium ${
+                            warning.severity === 'warning'
+                              ? 'text-warning-700'
+                              : 'text-app-text-strong'
+                          }`}>
+                          {warning.chunkLabel ? `${warning.chunkLabel}: ` : ''}
+                          {warning.message}
+                        </Text>
+                      </View>
+                    ))}
+
+                  {parseWarnings.length > 3 ? (
+                    <TouchableOpacity
+                      onPress={() => setShowWarningDetails((current) => !current)}
+                      className="self-start rounded-full border border-app-border px-3 py-2">
+                      <Text className="text-xs font-medium text-app-text-soft">
+                        {showWarningDetails
+                          ? 'Show fewer notes'
+                          : `Show all ${parseWarnings.length} notes`}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
               </CardContent>
             </Card>
           ) : null}
 
-          <Card variant="glass-dark">
+          <Card variant="glass-dark" className="mb-5">
             <CardHeader className="pb-3">
-              <CardTitle variant="small">Preview</CardTitle>
+              <CardTitle variant="small">Review</CardTitle>
               <CardDescription>
-                {parseMethod
-                  ? `Parsed ${previewTransactions.length} row${previewTransactions.length === 1 ? '' : 's'} with ${parseMethod}. Duplicates are excluded from import.`
-                  : 'No preview yet.'}
+                {parseMethods.length
+                  ? `${previewTransactions.length} row${previewTransactions.length === 1 ? '' : 's'} extracted via ${formatMethodList(parseMethods)}. Duplicates stay out of the import count.`
+                  : 'Build a preview to review imported rows here.'}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {!previewRows.length ? (
                 <View className="rounded-2xl border border-dashed border-app-border bg-app-canvas-elevated px-4 py-6">
                   <Text className="text-sm leading-6 text-app-text-faint">
-                    Paste a statement and build the preview to review imported rows here.
+                    Capture a statement, then review merchant, date, category, and amount here
+                    before importing into Activity.
                   </Text>
                 </View>
               ) : (
-                <View className="gap-3">
-                  {previewRows.map((row) => (
-                    <View
-                      key={row.id}
-                      className={`rounded-2xl border px-4 py-3 ${
-                        row.isDuplicate
-                          ? 'border-app-border bg-app-canvas-elevated opacity-70'
-                          : row.isSelected
-                            ? 'border-app-border-contrast bg-app-surface-2'
-                            : 'border-app-border bg-app-surface-1'
-                      }`}>
-                      <View className="flex-row items-start justify-between gap-3">
-                        <View className="flex-1">
-                          <View className="flex-row items-center gap-2">
-                            <TouchableOpacity
-                              onPress={() => !row.isDuplicate && toggleSelection(row.id)}
-                              disabled={row.isDuplicate}
-                              className={`h-6 w-6 items-center justify-center rounded-full border ${
-                                row.isSelected
-                                  ? 'border-accent-savings bg-accent-savings'
-                                  : 'border-app-border bg-app-canvas-elevated'
-                              }`}>
-                              {row.isSelected ? (
-                                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-                              ) : null}
-                            </TouchableOpacity>
-                            <Text className="text-sm font-semibold text-app-text-strong">
-                              {row.transaction.description}
-                            </Text>
-                          </View>
-                          <Text className="mt-1 text-xs text-app-text-faint">
-                            {row.transaction.date} · {row.transaction.type}
-                          </Text>
-                          <Text className="mt-1 text-xs text-app-text-faint">
-                            Category:{' '}
-                            {categoryLabel(row.transaction.categoryId, categories) ??
-                              'Uncategorized'}
-                            {row.transaction.suggestedCategoryId &&
-                            row.transaction.categoryId === row.transaction.suggestedCategoryId &&
-                            row.transaction.categoryConfidence
-                              ? ` · Suggested ${Math.round(row.transaction.categoryConfidence * 100)}%`
-                              : ''}
-                          </Text>
-                        </View>
-                        <View className="items-end">
-                          <Text className="text-sm font-semibold text-app-text-strong">
-                            {formatCurrency(Number.parseFloat(row.transaction.amount))}
-                          </Text>
-                          <Text
-                            className={`mt-1 text-xs ${
-                              row.isDuplicate ? 'text-warning-700' : 'text-app-text-faint'
+                <View className="gap-4">
+                  <View className="flex-row flex-wrap items-center gap-2">
+                    <MiniStat label="New" value={String(importableRows.length)} />
+                    <MiniStat label="Selected" value={String(selectedImportableCount)} />
+                    <MiniStat label="Duplicates" value={String(duplicateCount)} />
+                    {lastPayload?.chunks.length ? (
+                      <MiniStat label="Chunks" value={String(lastPayload.chunks.length)} />
+                    ) : null}
+                  </View>
+
+                  <View className="flex-row gap-2">
+                    <Button
+                      className="flex-1"
+                      variant="secondary-muted"
+                      size="sm"
+                      title="Select all new"
+                      onPress={selectAllNew}
+                    />
+                    <Button
+                      className="flex-1"
+                      variant="secondary-muted"
+                      size="sm"
+                      title="Clear"
+                      onPress={clearSelection}
+                    />
+                  </View>
+
+                  <View className="gap-3">
+                    {previewRows.map((row) => (
+                      <View
+                        key={row.id}
+                        className={`rounded-3xl border px-4 py-4 ${
+                          row.isDuplicate
+                            ? 'border-app-border bg-app-canvas-elevated opacity-70'
+                            : row.isSelected
+                              ? 'border-app-border-contrast bg-app-surface-2'
+                              : 'border-app-border bg-app-surface-1'
+                        }`}>
+                        <View className="flex-row items-start gap-3">
+                          <TouchableOpacity
+                            onPress={() => !row.isDuplicate && toggleSelection(row.id)}
+                            disabled={row.isDuplicate}
+                            className={`mt-0.5 h-6 w-6 items-center justify-center rounded-full border ${
+                              row.isSelected
+                                ? 'border-accent-savings bg-accent-savings'
+                                : 'border-app-border bg-app-canvas-elevated'
                             }`}>
-                            {row.isDuplicate
-                              ? 'Already imported'
-                              : row.isSelected
-                                ? 'Selected'
-                                : 'Tap to select'}
-                          </Text>
-                          {!row.isDuplicate ? (
-                            <TouchableOpacity
-                              onPress={() => openEditor(row.id)}
-                              className="mt-2 rounded-full border border-app-border bg-app-canvas-elevated px-3 py-1.5">
-                              <Text className="text-xs font-medium text-app-text-soft">Review</Text>
-                            </TouchableOpacity>
-                          ) : null}
+                            {row.isSelected ? (
+                              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                            ) : null}
+                          </TouchableOpacity>
+
+                          <View className="flex-1">
+                            <View className="flex-row items-start justify-between gap-3">
+                              <View className="flex-1">
+                                <Text className="text-base font-semibold text-app-text-strong">
+                                  {row.transaction.description}
+                                </Text>
+                                <Text className="mt-1 text-xs leading-5 text-app-text-faint">
+                                  {row.transaction.date} · {row.transaction.type} ·{' '}
+                                  {row.transaction.sourceLabel ?? 'Imported text'}
+                                </Text>
+                              </View>
+                              <Text className="text-base font-semibold text-app-text-strong">
+                                {formatCurrency(Number.parseFloat(row.transaction.amount))}
+                              </Text>
+                            </View>
+
+                            <View className="mt-3 flex-row flex-wrap gap-2">
+                              <Badge
+                                label={
+                                  categoryLabel(row.transaction.categoryId, categories) ??
+                                  'Uncategorized'
+                                }
+                              />
+                              <Badge
+                                label={
+                                  row.isDuplicate
+                                    ? 'Already logged'
+                                    : row.transaction.parseMethod === 'apple-ai'
+                                      ? 'AI assisted'
+                                      : row.transaction.parseMethod === 'csv'
+                                        ? 'CSV parsed'
+                                        : 'Direct parsed'
+                                }
+                                tone={row.isDuplicate ? 'muted' : 'default'}
+                              />
+                              {row.transaction.suggestedCategoryId &&
+                              row.transaction.categoryId === row.transaction.suggestedCategoryId &&
+                              row.transaction.categoryConfidence ? (
+                                <Badge
+                                  label={`Suggested ${Math.round(
+                                    row.transaction.categoryConfidence * 100
+                                  )}%`}
+                                  tone="success"
+                                />
+                              ) : null}
+                            </View>
+
+                            <View className="mt-3 flex-row gap-2">
+                              {!row.isDuplicate ? (
+                                <Button
+                                  className="flex-1"
+                                  variant="secondary-muted"
+                                  size="sm"
+                                  title={row.isSelected ? 'Selected' : 'Select'}
+                                  onPress={() => toggleSelection(row.id)}
+                                />
+                              ) : null}
+                              <Button
+                                className="flex-1"
+                                variant="pill"
+                                size="sm"
+                                title="Review row"
+                                onPress={() => openEditor(row.id)}
+                              />
+                            </View>
+                          </View>
                         </View>
                       </View>
-                    </View>
-                  ))}
+                    ))}
+                  </View>
                 </View>
               )}
             </CardContent>
           </Card>
 
           {editingTransaction && editingValues ? (
-            <Card variant="glass-dark" className="mt-4">
+            <Card variant="glass-dark" className="mb-6">
               <CardHeader className="pb-3">
-                <CardTitle variant="small">Review and correct</CardTitle>
+                <CardTitle variant="small">Edit selected row</CardTitle>
                 <CardDescription>
-                  Fix merchant, date, amount, or transaction type before import.
+                  Fix the merchant, date, amount, type, or category before import.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -611,7 +758,7 @@ export default function TransactionImportModal() {
                     </View>
                   </View>
                   <View className="flex-row gap-2">
-                    <SourceChip
+                    <ModeChip
                       label="Expense"
                       selected={editingValues.type === 'expense'}
                       onPress={() =>
@@ -620,7 +767,7 @@ export default function TransactionImportModal() {
                         )
                       }
                     />
-                    <SourceChip
+                    <ModeChip
                       label="Income"
                       selected={editingValues.type === 'income'}
                       onPress={() =>
@@ -680,7 +827,7 @@ export default function TransactionImportModal() {
                     <Button
                       className="flex-1"
                       variant="secondary-muted"
-                      title="Close review"
+                      title="Close"
                       onPress={closeEditor}
                     />
                     <Button
@@ -697,73 +844,78 @@ export default function TransactionImportModal() {
         </View>
       </ScrollView>
 
-      <View className="px-5" style={{ paddingBottom: bottomPadding, paddingTop: 12 }}>
-        <Button
-          className="w-full"
-          size="lg"
-          variant="primary-solid"
-          title={
-            isImporting
-              ? 'Importing…'
-              : `Import selected (${importableRows.filter((row) => row.isSelected).length})`
-          }
-          loading={isImporting}
-          disabled={!importableRows.some((row) => row.isSelected) || isParsing || isLoadingSource}
-          onPress={handleImport}
-        />
-      </View>
+      {previewRows.length ? (
+        <View
+          className="border-t border-app-border bg-app-canvas px-5 pt-4"
+          style={{ paddingBottom: bottomPadding }}>
+          <View className="mb-3 flex-row items-center justify-between">
+            <Text className="text-sm text-app-text-faint">
+              {selectedImportableCount} selected · {duplicateCount} duplicate
+              {duplicateCount === 1 ? '' : 's'} skipped
+            </Text>
+            {parseMethods.length ? (
+              <Text className="text-xs uppercase tracking-[0.12em] text-app-text-faint">
+                {formatMethodList(parseMethods)}
+              </Text>
+            ) : null}
+          </View>
+          <Button
+            className="w-full"
+            size="lg"
+            variant="primary-solid"
+            title={isImporting ? 'Importing…' : `Import selected (${selectedImportableCount})`}
+            loading={isImporting}
+            disabled={!selectedImportableCount || isParsing || isLoadingSource}
+            onPress={handleImport}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
 
-function SourceChip({
-  label,
-  selected,
-  onPress,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      className={`rounded-full border px-4 py-2 ${
-        selected
-          ? 'border-app-border-contrast bg-app-surface-2'
-          : 'border-app-border bg-app-canvas-elevated'
-      }`}>
-      <Text
-        className={
-          selected ? 'text-sm font-semibold text-app-text-strong' : 'text-sm text-app-text-faint'
-        }>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
+function buildTextPayload(rawText: string, mode: ImportMode): ImportCapturePayload {
+  const source = mode === 'csv' ? 'csv' : 'paste';
+  return {
+    source,
+    rawText,
+    chunks: [
+      {
+        id: `${source}-1`,
+        source,
+        label: mode === 'csv' ? 'CSV input' : 'Pasted statement text',
+        text: rawText,
+      },
+    ],
+  };
 }
 
-function dedupeParsedTransactions(transactions: ImportedTransactionDraft[]) {
-  const seen = new Set<string>();
-  const unique: ImportedTransactionDraft[] = [];
+function buildPdfPayload(
+  fileName: string,
+  pages: {
+    pageNumber: number;
+    text: string;
+  }[]
+): ImportCapturePayload {
+  const normalizedPages = pages
+    .map((page) => ({
+      id: `pdf-page-${page.pageNumber}`,
+      source: 'pdf' as const,
+      label: `Page ${page.pageNumber}`,
+      pageNumber: page.pageNumber,
+      text: page.text.trim(),
+    }))
+    .filter((page) => page.text.length > 0);
 
-  transactions.forEach((transaction) => {
-    const key = buildImportedDraftDedupKey(transaction);
-    if (seen.has(key)) return;
-    seen.add(key);
-    unique.push(transaction);
-  });
-
-  return unique;
+  return {
+    source: 'pdf',
+    rawText: normalizedPages.map((page) => page.text).join('\n\n'),
+    fileName,
+    chunks: normalizedPages,
+  };
 }
 
-function createPreviewId(index: number) {
-  return `preview-${Date.now()}-${index}`;
-}
-
-function normalizeEditedTransaction(
-  transaction: PreviewImportTransaction
-): PreviewImportTransaction | null {
+function normalizeEditedTransaction(transaction: ImportPreviewRow): ImportPreviewRow | null {
   const description = transaction.description.trim();
   const date = normalizeReviewDate(transaction.date);
   const amountValue = Number.parseFloat(transaction.amount.replace(/[^0-9.]/g, ''));
@@ -773,14 +925,10 @@ function normalizeEditedTransaction(
   }
 
   return {
-    id: transaction.id,
+    ...transaction,
     description,
     date,
     amount: amountValue.toFixed(2),
-    type: transaction.type,
-    categoryId: transaction.categoryId,
-    suggestedCategoryId: transaction.suggestedCategoryId,
-    categoryConfidence: transaction.categoryConfidence,
   };
 }
 
@@ -794,4 +942,131 @@ function normalizeReviewDate(value: string) {
 function categoryLabel(categoryId: number | null, categories: Category[]) {
   if (categoryId == null) return null;
   return categories.find((category) => category.id === categoryId)?.name ?? null;
+}
+
+function formatMethodList(methods: ImportParseMethod[]) {
+  return methods
+    .map((method) => {
+      switch (method) {
+        case 'apple-ai':
+          return 'Apple AI';
+        case 'rule-based':
+          return 'direct parsing';
+        default:
+          return 'CSV';
+      }
+    })
+    .join(' + ');
+}
+
+function StepPill({ label, active }: { label: string; active?: boolean }) {
+  return (
+    <View
+      className={`rounded-full border px-3 py-2 ${
+        active
+          ? 'border-app-border-contrast bg-app-surface-2'
+          : 'border-app-border bg-app-canvas-elevated'
+      }`}>
+      <Text
+        className={`text-xs font-medium uppercase tracking-[0.12em] ${
+          active ? 'text-app-text-strong' : 'text-app-text-faint'
+        }`}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function ModeChip({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      className={`min-h-[48px] rounded-full border px-4 py-2.5 ${
+        selected
+          ? 'border-app-border-contrast bg-app-surface-2'
+          : 'border-app-border bg-app-canvas-elevated'
+      }`}>
+      <Text
+        className={
+          selected
+            ? 'text-sm font-semibold leading-5 text-app-text-strong'
+            : 'text-sm leading-5 text-app-text-faint'
+        }>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+function SourceActionTile({
+  icon,
+  title,
+  subtitle,
+  disabled,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  subtitle: string;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      disabled={disabled}
+      onPress={onPress}
+      activeOpacity={0.85}
+      className={`rounded-3xl border border-app-border bg-app-surface-2 px-4 py-4 ${
+        disabled ? 'opacity-60' : ''
+      }`}>
+      <View className="flex-row items-center gap-3">
+        <View className="h-11 w-11 items-center justify-center rounded-2xl bg-app-canvas-elevated">
+          <Ionicons name={icon} size={20} color="#F8FAFC" />
+        </View>
+        <View className="flex-1">
+          <Text className="text-sm font-semibold text-app-text-strong">{title}</Text>
+          <Text className="mt-1 text-xs leading-5 text-app-text-faint">{subtitle}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function Badge({
+  label,
+  tone = 'default',
+}: {
+  label: string;
+  tone?: 'default' | 'success' | 'muted';
+}) {
+  const toneClasses =
+    tone === 'success'
+      ? 'border-success-500/40 bg-success-500/15 text-success-700'
+      : tone === 'muted'
+        ? 'border-app-border bg-app-canvas-elevated text-app-text-faint'
+        : 'border-app-border bg-app-surface-2 text-app-text-soft';
+
+  return (
+    <View className={`rounded-full border px-2.5 py-1 ${toneClasses}`}>
+      <Text className="text-[11px] font-medium">{label}</Text>
+    </View>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <View className="rounded-2xl border border-app-border bg-app-canvas-elevated px-3 py-2">
+      <Text className="text-[11px] uppercase tracking-[0.12em] text-app-text-faint">{label}</Text>
+      <Text className="mt-1 text-sm font-semibold text-app-text-strong">{value}</Text>
+    </View>
+  );
 }

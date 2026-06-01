@@ -4,8 +4,14 @@ import { createAppleProvider } from '@react-native-ai/apple';
 import { generateText, tool, type CoreMessage } from 'ai';
 import { z } from 'zod';
 
-import type { Category, Transaction } from '@/context/DataContext';
-import { formatCurrency } from '@/lib/utils';
+import type { Transaction } from '@/context/DataContext';
+import {
+  dedupeFinanceMonths,
+  resolveBudgetToolRequest,
+  type BudgetToolArguments,
+  type BudgetToolResult,
+  type FinanceAssistantContextData,
+} from '@/lib/ai/financeAssistantContext';
 
 export type AppleChatRole = 'system' | 'user' | 'assistant' | 'tool';
 
@@ -47,33 +53,10 @@ function getNativeModule(): AppleBudgetChatNativeModule | null {
   return nativeModule;
 }
 
-export interface BudgetToolArguments {
-  scope: 'summary' | 'category' | 'topCategories' | 'transactions';
-  month?: string;
-  categoryName?: string;
-  limit?: number;
-  includeTransactions?: boolean;
-  includeTrends?: boolean;
-}
-
-export interface BudgetToolResult {
-  text: string;
-  payload: Record<string, any>;
-}
-
-type CategorySnapshot = {
-  id: number;
-  name: string;
-  budget: number;
-  spent: number;
-  percentage: number | null | undefined;
-};
-
-export interface AppleBudgetChatContext {
-  summary: any;
-  categories: Category[] | null | undefined;
-  transactions: Transaction[] | null | undefined;
-}
+export type AppleBudgetChatContext = Pick<
+  FinanceAssistantContextData,
+  'summary' | 'categories' | 'transactions'
+>;
 
 export interface AppleBudgetChatRunParams {
   prompt: string;
@@ -99,12 +82,18 @@ Call the tool by responding with:
 { "scope": "summary" }
 </tool_call>
 Wait for a tool response before producing a final answer.
-Always explain insights using plain language and reference amounts with $X,XXX.XX formatting.`;
+Always explain insights using plain language and reference amounts with $X,XXX.XX formatting.
+Format dates like "May 25, 2026" or "May 2026".
+For the mobile chat UI, prefer:
+- one short takeaway line when helpful
+- 2-4 short bullet points instead of dense paragraphs
+- one sentence per bullet whenever possible.`;
 
 const BASE_SYSTEM_PROMPT = `You are Apple Budget Advisor, an on-device financial coach for the Budget app.
 Answer with concise, actionable guidance grounded in verified numbers.
 Respect the user's privacy: never reference data that is not provided via messages or the budget tool.
 Assume the current focus is the present month unless the user specifies otherwise.
+Keep answers visually compact for a mobile chat surface.
 If data is missing, acknowledge limits and suggest next steps.`;
 
 const MAX_TOOL_ITERATIONS = 3;
@@ -146,25 +135,7 @@ export function buildAppleSystemInstruction(context: AppleBudgetChatContext): st
 }
 
 function dedupeMonths(transactions: Transaction[]): string[] {
-  const set = new Set<string>();
-  transactions.forEach((tx) => {
-    const month = normalizeMonth(tx.date);
-    if (month) set.add(month);
-  });
-  return Array.from(set).sort();
-}
-
-function normalizeMonth(value: string | Date | null | undefined): string | null {
-  if (!value) return null;
-  const date = typeof value === 'string' ? new Date(value) : value;
-  if (!date || Number.isNaN(date.getTime())) return null;
-  const year = date.getUTCFullYear();
-  const month = date.getUTCMonth() + 1;
-  return `${year}-${String(month).padStart(2, '0')}`;
-}
-
-function currentMonth(): string {
-  return normalizeMonth(new Date()) ?? 'unknown';
+  return dedupeFinanceMonths(transactions);
 }
 
 function parseToolCall(content: string): {
@@ -181,413 +152,6 @@ function parseToolCall(content: string): {
   } catch {
     return null;
   }
-}
-
-function resolveBudgetToolRequest(
-  args: BudgetToolArguments,
-  context: AppleBudgetChatContext
-): BudgetToolResult {
-  const categoriesList = Array.isArray(context.categories) ? context.categories : [];
-  const transactionsList = Array.isArray(context.transactions) ? context.transactions : [];
-  const { summary } = context;
-  const targetMonth = args.month ?? selectDefaultMonth(transactionsList);
-  const selectedMonth = targetMonth ?? currentMonth();
-
-  switch (args.scope) {
-    case 'summary':
-      return buildSummaryResult(summary, categoriesList, transactionsList, selectedMonth, args);
-    case 'category':
-      return buildCategoryResult(summary, categoriesList, transactionsList, selectedMonth, args);
-    case 'topCategories':
-      return buildTopCategoriesResult(
-        summary,
-        categoriesList,
-        transactionsList,
-        selectedMonth,
-        args
-      );
-    case 'transactions':
-      return buildTransactionsResult(
-        summary,
-        categoriesList,
-        transactionsList,
-        selectedMonth,
-        args
-      );
-    default:
-      return {
-        text: 'The tool request could not be processed. Provide a valid scope such as "summary", "category", "topCategories", or "transactions".',
-        payload: { ok: false, reason: 'invalid_scope', args },
-      };
-  }
-}
-
-function selectDefaultMonth(transactions: Transaction[]): string | null {
-  if (!transactions.length) return normalizeMonth(new Date());
-  const sorted = [...transactions].sort((a, b) => (a.date > b.date ? -1 : 1));
-  for (const tx of sorted) {
-    const month = normalizeMonth(tx.date);
-    if (month) return month;
-  }
-  return normalizeMonth(new Date());
-}
-
-function buildSummaryResult(
-  summary: any,
-  categories: Category[],
-  transactions: Transaction[],
-  month: string,
-  args: BudgetToolArguments
-): BudgetToolResult {
-  const totalBudget = safeNumber(summary?.totalBudget);
-  const totalExpenses = safeNumber(summary?.totalExpenses);
-  const totalIncome = safeNumber(summary?.totalIncome ?? summary?.actualIncome);
-  const remainingBudget = safeNumber(summary?.remainingBudget ?? totalBudget - totalExpenses);
-
-  const topBreakdown: CategorySnapshot[] = Array.isArray(summary?.categoryBreakdown)
-    ? summary.categoryBreakdown.slice(0, clampLimit(args.limit)).map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        budget: safeNumber(item.budget),
-        spent: safeNumber(item.spent),
-        percentage: safeNumber(item.percentage),
-      }))
-    : buildCategorySnapshotFromTransactions(categories, transactions, month, args.limit);
-
-  const lines: string[] = [];
-  lines.push(`Budget summary for ${monthLabel(month)}:`);
-  lines.push(`• Total budget: ${formatCurrency(totalBudget)}`);
-  lines.push(`• Total expenses: ${formatCurrency(totalExpenses)}`);
-  if (Number.isFinite(totalIncome)) {
-    lines.push(`• Total income: ${formatCurrency(totalIncome)}`);
-  }
-  lines.push(`• Remaining budget: ${formatCurrency(remainingBudget)}`);
-
-  if (topBreakdown.length > 0) {
-    lines.push('Top categories by spend:');
-    topBreakdown.forEach((entry: CategorySnapshot, index: number) => {
-      const variance = entry.spent - entry.budget;
-      const varianceLabel =
-        variance === 0
-          ? '$0.00'
-          : `${variance > 0 ? '+' : ''}${formatCurrency(Math.abs(variance))}`;
-      lines.push(
-        `${index + 1}. ${entry.name}: ${formatCurrency(entry.spent)} of ${formatCurrency(entry.budget)} (${Math.round(entry.percentage ?? 0)}%), variance ${varianceLabel}`
-      );
-    });
-  }
-
-  return {
-    text: lines.join('\n'),
-    payload: {
-      scope: 'summary',
-      month,
-      totals: {
-        budget: totalBudget,
-        expenses: totalExpenses,
-        income: totalIncome,
-        remaining: remainingBudget,
-      },
-      topCategories: topBreakdown,
-    },
-  };
-}
-
-function buildCategoryResult(
-  summary: any,
-  categories: Category[],
-  transactions: Transaction[],
-  month: string,
-  args: BudgetToolArguments
-): BudgetToolResult {
-  const requestedName = args.categoryName?.trim();
-  if (!requestedName) {
-    return {
-      text: 'Provide a categoryName to inspect a specific category.',
-      payload: { ok: false, reason: 'missing_category', args },
-    };
-  }
-
-  const matched = matchCategory(categories, requestedName);
-  if (!matched) {
-    return {
-      text: `No category named "${requestedName}" was found.`,
-      payload: { ok: false, reason: 'unknown_category', args },
-    };
-  }
-
-  const breakdownEntry = Array.isArray(summary?.categoryBreakdown)
-    ? summary.categoryBreakdown.find(
-        (item: any) => normalizeText(item.name) === normalizeText(matched.name)
-      )
-    : null;
-
-  const relevantTransactions = filterTransactions(transactions, month, matched.id);
-  const spentFromTransactions = relevantTransactions.reduce(
-    (acc, tx) => acc + safeNumber(tx.amount),
-    0
-  );
-
-  const budget = safeNumber(breakdownEntry?.budget ?? matched.budget);
-  const spent = safeNumber(breakdownEntry?.spent ?? spentFromTransactions);
-  const remaining = budget - spent;
-  const percentage = budget > 0 ? (spent / budget) * 100 : 0;
-
-  const sampleTransactions = args.includeTransactions
-    ? relevantTransactions.slice(0, clampLimit(args.limit) || 5).map((tx) => ({
-        id: tx.id,
-        date: tx.date,
-        description: tx.description,
-        amount: safeNumber(tx.amount),
-      }))
-    : [];
-
-  const lines: string[] = [];
-  lines.push(
-    `Category "${matched.name}" for ${monthLabel(month)}: ${formatCurrency(spent)} of ${formatCurrency(
-      budget
-    )} spent (${Math.round(percentage)}% of budget).`
-  );
-  lines.push(`Remaining budget: ${formatCurrency(remaining)}.`);
-
-  if (args.includeTransactions && sampleTransactions.length > 0) {
-    lines.push('Recent transactions:');
-    sampleTransactions.forEach((tx) => {
-      lines.push(
-        `• ${tx.date}: ${tx.description ?? 'No description'} for ${formatCurrency(tx.amount)}`
-      );
-    });
-  }
-
-  return {
-    text: lines.join('\n'),
-    payload: {
-      scope: 'category',
-      month,
-      category: {
-        id: matched.id,
-        name: matched.name,
-        budget,
-        spent,
-        remaining,
-        percentage,
-      },
-      transactions: sampleTransactions,
-    },
-  };
-}
-
-function buildTopCategoriesResult(
-  summary: any,
-  categories: Category[],
-  transactions: Transaction[],
-  month: string,
-  args: BudgetToolArguments
-): BudgetToolResult {
-  const limit = clampLimit(args.limit);
-  const entries: CategorySnapshot[] = Array.isArray(summary?.categoryBreakdown)
-    ? summary.categoryBreakdown
-        .map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          budget: safeNumber(item.budget),
-          spent: safeNumber(item.spent),
-          percentage: safeNumber(item.percentage),
-        }))
-        .sort((a: CategorySnapshot, b: CategorySnapshot) => b.spent - a.spent)
-    : buildCategorySnapshotFromTransactions(categories, transactions, month, limit);
-
-  const top = entries.slice(0, limit || 5);
-
-  if (!top.length) {
-    return {
-      text: 'No category spend data is available yet.',
-      payload: { scope: 'topCategories', month, categories: [] },
-    };
-  }
-
-  const lines: string[] = [];
-  lines.push(`Top ${top.length} categories for ${monthLabel(month)}:`);
-  top.forEach((entry: CategorySnapshot, index: number) => {
-    lines.push(
-      `${index + 1}. ${entry.name}: ${formatCurrency(entry.spent)} of ${formatCurrency(entry.budget)} (${Math.round(entry.percentage ?? 0)}%)`
-    );
-  });
-
-  return {
-    text: lines.join('\n'),
-    payload: { scope: 'topCategories', month, categories: top },
-  };
-}
-
-function buildTransactionsResult(
-  summary: any,
-  categories: Category[],
-  transactions: Transaction[],
-  month: string,
-  args: BudgetToolArguments
-): BudgetToolResult {
-  const filtered = filterTransactions(
-    transactions,
-    month,
-    args.categoryName ? matchCategory(categories, args.categoryName)?.id : undefined
-  );
-  const limit = clampLimit(args.limit) || 5;
-  const top = filtered.slice(0, limit);
-
-  if (!top.length) {
-    return {
-      text: `No transactions found for ${args.categoryName ?? 'the selected filters'} in ${monthLabel(month)}.`,
-      payload: { scope: 'transactions', month, transactions: [] },
-    };
-  }
-
-  const lines: string[] = [];
-  lines.push(
-    `Recent ${top.length} transactions${args.categoryName ? ` for ${args.categoryName}` : ''} in ${monthLabel(month)}:`
-  );
-  top.forEach((tx) => {
-    lines.push(
-      `• ${tx.date}: ${tx.description ?? 'No description'} for ${formatCurrency(safeNumber(tx.amount))}`
-    );
-  });
-
-  return {
-    text: lines.join('\n'),
-    payload: {
-      scope: 'transactions',
-      month,
-      transactions: top.map((tx) => ({
-        id: tx.id,
-        date: tx.date,
-        description: tx.description,
-        amount: safeNumber(tx.amount),
-        categoryId: tx.categoryId,
-      })),
-    },
-  };
-}
-
-function buildCategorySnapshotFromTransactions(
-  categories: Category[],
-  transactions: Transaction[],
-  month: string,
-  limit?: number
-): CategorySnapshot[] {
-  const limitValue = clampLimit(limit) || undefined;
-  const perCategory = new Map<number, { name: string; budget: number; spent: number }>();
-  const categoryById = new Map<number, Category>();
-  categories.forEach((category) => {
-    if (typeof category?.id === 'number') {
-      categoryById.set(category.id, category);
-      perCategory.set(category.id, {
-        name: category.name,
-        budget: safeNumber((category as any)?.budget),
-        spent: 0,
-      });
-    }
-  });
-
-  const filtered = filterTransactions(transactions, month);
-  filtered.forEach((tx) => {
-    if (tx.type !== 'expense') return;
-    const categoryId = typeof tx.categoryId === 'number' ? tx.categoryId : undefined;
-    if (!categoryId) return;
-    const entry = perCategory.get(categoryId);
-    if (!entry) {
-      const fallbackCategory = categoryById.get(categoryId);
-      perCategory.set(categoryId, {
-        name: fallbackCategory?.name ?? `Category ${categoryId}`,
-        budget: safeNumber((fallbackCategory as any)?.budget),
-        spent: safeNumber(tx.amount),
-      });
-      return;
-    }
-    entry.spent += safeNumber(tx.amount);
-  });
-
-  const result = Array.from(perCategory.entries()).map(([id, entry]) => ({
-    id,
-    name: entry.name,
-    budget: entry.budget,
-    spent: entry.spent,
-    percentage: entry.budget > 0 ? (entry.spent / entry.budget) * 100 : null,
-  }));
-
-  result.sort((a, b) => b.spent - a.spent);
-  return typeof limitValue === 'number' ? result.slice(0, limitValue) : result;
-}
-
-function filterTransactions(
-  transactions: Transaction[],
-  month: string,
-  categoryId?: number
-): Transaction[] {
-  return transactions
-    .filter((tx) => {
-      if (tx.type !== 'expense') return false;
-      const txMonth = normalizeMonth(tx.date);
-      if (month && txMonth !== month) return false;
-      if (typeof categoryId === 'number') {
-        return (tx.categoryId ?? null) === categoryId;
-      }
-      return true;
-    })
-    .sort((a, b) => (a.date > b.date ? -1 : 1));
-}
-
-function matchCategory(categories: Category[], query: string): Category | null {
-  const normalized = normalizeText(query);
-  if (!normalized) return null;
-  let exact: Category | null = null;
-  let partial: Category | null = null;
-
-  categories.forEach((category) => {
-    if (!category?.name) return;
-    const name = normalizeText(category.name);
-    if (name === normalized) {
-      exact = category;
-    } else if (!partial && name.includes(normalized)) {
-      partial = category;
-    }
-  });
-
-  return exact ?? partial;
-}
-
-function normalizeText(value: string | null | undefined): string {
-  return (value ?? '').trim().toLowerCase();
-}
-
-function clampLimit(value?: number | null): number | undefined {
-  if (typeof value !== 'number') return undefined;
-  if (!Number.isFinite(value)) return undefined;
-  return Math.min(Math.max(Math.round(value), 1), 10);
-}
-
-function safeNumber(value: any): number {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-  if (typeof value === 'string') {
-    const parsed = parseFloat(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  if (typeof value === 'bigint') return Number(value);
-  if (value instanceof Number) {
-    const parsed = value.valueOf();
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  return 0;
-}
-
-function monthLabel(month: string): string {
-  const [yearStr, monthStr] = month.split('-');
-  const year = Number(yearStr);
-  const monthIndex = Number(monthStr) - 1;
-  if (!Number.isFinite(year) || !Number.isFinite(monthIndex)) return month;
-  const formatter = new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long' });
-  const date = new Date(Date.UTC(year, monthIndex, 1));
-  if (Number.isNaN(date.getTime())) return month;
-  return formatter.format(date);
 }
 
 async function generateNativeResponse(

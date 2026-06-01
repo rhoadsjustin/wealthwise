@@ -19,7 +19,8 @@ type Suggestion = {
 const RULE_PREFIX = 'rule_merchant_';
 
 let vectorStore: MemoryVectorStore | null = null;
-let indexedCategoryIds = new Set<number>();
+let indexedCategorySignatures = new Map<number, string>();
+let indexedCategoryListSignature = '';
 
 function hashKey(s: string) {
   let h = 0;
@@ -28,6 +29,10 @@ function hashKey(s: string) {
 }
 
 export function setVectorStore(store: MemoryVectorStore | null) {
+  if (vectorStore !== store) {
+    indexedCategorySignatures = new Map();
+    indexedCategoryListSignature = '';
+  }
   vectorStore = store;
 }
 
@@ -43,15 +48,23 @@ export function normalizeMerchant(desc: string) {
 
 export async function indexCategoryDocs(categories: CategoryLite[]) {
   if (!vectorStore) return;
-  // Add one small doc per category if not already indexed in this session
+
+  const nextListSignature = buildCategoryListSignature(categories);
+  if (nextListSignature === indexedCategoryListSignature) {
+    return;
+  }
+
   for (const cat of categories) {
-    if (indexedCategoryIds.has(cat.id)) continue;
+    const signature = buildCategorySignature(cat);
+    if (indexedCategorySignatures.get(cat.id) === signature) continue;
     const content = `Category: ${cat.name}. Budget monthly $${cat.budget}.`;
     try {
       await vectorStore.add(content.slice(0, 160), { type: 'category', id: String(cat.id) });
-      indexedCategoryIds.add(cat.id);
+      indexedCategorySignatures.set(cat.id, signature);
     } catch {}
   }
+
+  indexedCategoryListSignature = nextListSignature;
 }
 
 export async function recordFeedback(desc: string, categoryId: number, categoryName?: string) {
@@ -155,3 +168,14 @@ const categorizer = {
 };
 
 export default categorizer;
+
+function buildCategorySignature(category: CategoryLite) {
+  return `${category.id}|${category.name}|${category.budget}|${category.icon}|${category.color}`;
+}
+
+function buildCategoryListSignature(categories: CategoryLite[]) {
+  return categories
+    .map((category) => buildCategorySignature(category))
+    .sort()
+    .join('||');
+}

@@ -15,7 +15,7 @@ import { Button } from '@/components/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/Card';
 import { useData } from '@/context/DataContext';
 import { useToast } from '@/context/useToast';
-import { useAppData } from '@/app/_layout';
+import { useActivityData, useAppData } from '@/app/_layout';
 import {
   getAppleFinanceAccounts,
   getAppleFinanceAuthorizationStatus,
@@ -39,7 +39,8 @@ export default function AppleCardImportModal() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { createTransaction, getTransactions, isInitialized } = useData();
-  const { refreshAppData } = useAppData();
+  const { refreshActivityData } = useActivityData();
+  const { refreshSummaryData } = useAppData();
   const { showToast } = useToast();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -204,7 +205,7 @@ export default function AppleCardImportModal() {
         await createTransaction(row.draft);
       }
 
-      await refreshAppData();
+      await Promise.all([refreshActivityData(), refreshSummaryData()]);
       showToast.success(
         'Import complete',
         `${rowsToImport.length} Apple Card transaction${rowsToImport.length === 1 ? '' : 's'} added.`

@@ -7,7 +7,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { useDebts } from '@/context/DataContext';
-import { useAppData } from './_layout';
+import { useActivityData, useSummaryData } from './_layout';
 import { useToast } from '@/context/useToast';
 import { formatCurrency } from '@/lib/utils';
 
@@ -25,7 +25,8 @@ export default function DebtPaymentModal() {
   const params = useLocalSearchParams<{ debtId?: string }>();
   const debtId = params.debtId ? Number(params.debtId) : null;
 
-  const { debts, refreshAppData } = useAppData();
+  const { debts, refreshSummaryData } = useSummaryData();
+  const { refreshActivityData } = useActivityData();
   const { getDebts, recordDebtPayment } = useDebts();
   const { toast } = useToast();
 
@@ -111,7 +112,7 @@ export default function DebtPaymentModal() {
           description: 'Progress has been updated.',
           variant: 'success',
         });
-        await refreshAppData();
+        await Promise.all([refreshSummaryData(), refreshActivityData()]);
         router.back();
       } catch (error) {
         console.error('Failed to record payment', error);
@@ -122,7 +123,15 @@ export default function DebtPaymentModal() {
         });
       }
     },
-    [currentDebt?.categoryId, debtId, recordDebtPayment, refreshAppData, router, toast]
+    [
+      currentDebt?.categoryId,
+      debtId,
+      recordDebtPayment,
+      refreshActivityData,
+      refreshSummaryData,
+      router,
+      toast,
+    ]
   );
 
   const debtName = currentDebt?.name ?? 'Debt';

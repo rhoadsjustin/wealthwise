@@ -1,22 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  RefreshControl,
-  LayoutAnimation,
-  Platform,
-  UIManager,
-} from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, RefreshControl } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/AppText';
 
-import { useAppData } from './_layout';
-import type { Transaction, Category, Bill, Debt } from '@/context/DataContext';
-import { Skeleton } from '@/components/Skeleton';
+import { useActivityData, useSummaryData } from './_layout';
+import type { Transaction, Category, Bill } from '@/context/DataContext';
+import { getTransactionCategoryLabel } from '@/lib/transactionPresentation';
+import { buildMonthlyCoachSuggestions, categoryBudgetLookup } from '@/lib/monthlyCoach';
 
 const formatCurrency = (value: number) => {
   if (!Number.isFinite(value)) return '$0.00';
@@ -76,7 +67,6 @@ const filterBillsByMonth = (bills: Bill[], year: number, month: number) => {
 
 export default function MonthOverviewModal() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
 
   // Get initial month from params or use current month
@@ -95,11 +85,18 @@ export default function MonthOverviewModal() {
     setHasInitialized(true);
   }, [params.month, hasInitialized]);
 
-  const { transactions, categories, bills, debts, savingsGoals, refreshAppData, monthlyIncome } =
-    useAppData();
+  const { transactions, categories } = useActivityData();
+  const {
+    summary,
+    bills,
+    debts,
+    savingsGoals,
+    savingsAccounts,
+    monthlyIncome,
+    refreshSummaryData,
+  } = useSummaryData();
 
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(false);
 
   const safeTransactions = useMemo(
     () => (Array.isArray(transactions) ? transactions : []),
@@ -109,69 +106,48 @@ export default function MonthOverviewModal() {
   const safeCategories = useMemo(() => (Array.isArray(categories) ? categories : []), [categories]);
 
   const safeBills = useMemo(() => (Array.isArray(bills) ? bills : []), [bills]);
-  const safeDebts = useMemo(() => (Array.isArray(debts) ? debts : []), [debts]);
-  const safeSavingsGoals = useMemo(
-    () => (Array.isArray(savingsGoals) ? savingsGoals : []),
-    [savingsGoals]
+  const categoryMap = useMemo(
+    () => new Map<number, Category>(safeCategories.map((category) => [category.id, category])),
+    [safeCategories]
   );
+  const categoryBudgetMap = useMemo(() => categoryBudgetLookup(safeCategories), [safeCategories]);
 
-  // Filter data for selected month
-  const monthTransactions = useMemo(() => {
-    const filtered = filterTransactionsByMonth(safeTransactions, selectedYear, selectedMonth);
-    return filtered;
-  }, [safeTransactions, selectedYear, selectedMonth]);
+  const monthData = useMemo(() => {
+    const monthTransactions = filterTransactionsByMonth(
+      safeTransactions,
+      selectedYear,
+      selectedMonth
+    );
+    const monthBills = filterBillsByMonth(safeBills, selectedYear, selectedMonth);
+    const breakdown = new Map<
+      number | 'uncategorized',
+      {
+        id: number | null;
+        name: string;
+        icon: string;
+        color: string;
+        spent: number;
+        transactionCount: number;
+      }
+    >();
+    let actualIncomeFromTransactions = 0;
+    let expenses = 0;
+    let savingsContributions = 0;
 
-  const monthBills = useMemo(() => {
-    const filtered = filterBillsByMonth(safeBills, selectedYear, selectedMonth);
-    return filtered;
-  }, [safeBills, selectedYear, selectedMonth]);
+    for (const transaction of monthTransactions) {
+      const amount = parseFloat(transaction.amount || '0');
+      if (!Number.isFinite(amount)) continue;
 
-  // Calculate monthly totals
-  const monthlyStats = useMemo(() => {
-    // Use baseline monthly income (user's set income) instead of transaction income
-    const actualIncomeFromTransactions = monthTransactions
-      .filter((t: Transaction) => t.type === 'income')
-      .reduce((sum: number, t: Transaction) => sum + parseFloat(t.amount), 0);
-
-    const income = monthlyIncome ?? actualIncomeFromTransactions;
-
-    const expenses = monthTransactions
-      .filter((t: Transaction) => t.type === 'expense')
-      .reduce((sum: number, t: Transaction) => sum + parseFloat(t.amount), 0);
-
-    const billsTotal = monthBills.reduce((sum: number, b: Bill) => sum + parseFloat(b.amount), 0);
-
-    const savingsContributions = monthTransactions
-      .filter((t: Transaction) => t.description.toLowerCase().includes('savings'))
-      .reduce((sum: number, t: Transaction) => sum + parseFloat(t.amount), 0);
-
-    const netBalance = income - expenses;
-
-    return {
-      income,
-      expenses,
-      billsTotal,
-      savingsContributions,
-      netBalance,
-      transactionCount: monthTransactions.length,
-    };
-  }, [monthTransactions, monthBills, monthlyIncome]);
-
-  // Category breakdown for the month
-  const categoryBreakdown = useMemo(() => {
-    const breakdown = new Map();
-
-    monthTransactions
-      .filter((t: Transaction) => t.type === 'expense')
-      .forEach((transaction: Transaction) => {
-        const categoryId = transaction.categoryId;
-        const amount = parseFloat(transaction.amount);
-        const category = safeCategories.find((c) => c.id === categoryId);
-
-        const key = categoryId || 'uncategorized';
-        const existing = breakdown.get(key) || {
-          id: categoryId,
-          name: category?.name || 'Uncategorized',
+      if (transaction.type === 'income') {
+        actualIncomeFromTransactions += amount;
+      } else {
+        expenses += amount;
+        const category =
+          transaction.categoryId != null ? categoryMap.get(transaction.categoryId) : null;
+        const key = transaction.categoryId ?? 'uncategorized';
+        const existing = breakdown.get(key) ?? {
+          id: transaction.categoryId ?? null,
+          name: getTransactionCategoryLabel(transaction, category),
           icon: category?.icon || '💡',
           color: category?.color || '#6B7280',
           spent: 0,
@@ -181,10 +157,76 @@ export default function MonthOverviewModal() {
         existing.spent += amount;
         existing.transactionCount += 1;
         breakdown.set(key, existing);
-      });
+      }
 
-    return Array.from(breakdown.values()).sort((a, b) => b.spent - a.spent);
-  }, [monthTransactions, safeCategories]);
+      if (transaction.description.toLowerCase().includes('savings')) {
+        savingsContributions += amount;
+      }
+    }
+
+    const billsTotal = monthBills.reduce((sum: number, bill: Bill) => {
+      const amount = parseFloat(bill.amount || '0');
+      return sum + (Number.isFinite(amount) ? amount : 0);
+    }, 0);
+    const recurringIncome = summary?.recurringNetIncome ?? monthlyIncome ?? 0;
+    const oneOffIncome = Math.max(actualIncomeFromTransactions - recurringIncome, 0);
+    const income =
+      recurringIncome > 0 ? recurringIncome + oneOffIncome : actualIncomeFromTransactions;
+    const savingsBalance = (savingsAccounts ?? []).reduce((sum, account) => {
+      const balance = parseFloat(account.balance || '0');
+      return sum + (Number.isFinite(balance) ? balance : 0);
+    }, 0);
+    const categoryBreakdown = Array.from(breakdown.values())
+      .map((entry) => ({
+        ...entry,
+        budget: entry.id == null ? 0 : (categoryBudgetMap.get(entry.id) ?? 0),
+      }))
+      .sort((a, b) => b.spent - a.spent);
+    const coachSuggestions = buildMonthlyCoachSuggestions({
+      income,
+      oneOffIncome,
+      expenses,
+      savingsBalance,
+      categories: categoryBreakdown,
+    });
+
+    return {
+      monthTransactions,
+      monthBills,
+      monthlyStats: {
+        income,
+        recurringIncome,
+        oneOffIncome,
+        recurringGrossIncome: summary?.recurringGrossIncome ?? 0,
+        recurringTaxWithheld: summary?.recurringTaxWithheld ?? 0,
+        recurringDeductions: summary?.recurringDeductions ?? 0,
+        expenses,
+        billsTotal,
+        savingsContributions,
+        savingsBalance,
+        netBalance: income - expenses,
+        transactionCount: monthTransactions.length,
+      },
+      categoryBreakdown,
+      coachSuggestions,
+    };
+  }, [
+    categoryBudgetMap,
+    categoryMap,
+    monthlyIncome,
+    safeBills,
+    safeTransactions,
+    savingsAccounts,
+    selectedMonth,
+    selectedYear,
+    summary?.recurringDeductions,
+    summary?.recurringGrossIncome,
+    summary?.recurringNetIncome,
+    summary?.recurringTaxWithheld,
+  ]);
+
+  const { monthTransactions, monthBills, monthlyStats, categoryBreakdown, coachSuggestions } =
+    monthData;
 
   const currentMonthName = useMemo(() => {
     const date = new Date(selectedYear, selectedMonth);
@@ -213,33 +255,15 @@ export default function MonthOverviewModal() {
   const handleRefresh = React.useCallback(async () => {
     try {
       setRefreshing(true);
-      await refreshAppData();
+      await refreshSummaryData();
     } finally {
       setRefreshing(false);
     }
-  }, [refreshAppData]);
-
-  if (loading) {
-    return (
-      <View className="flex-1 bg-app-canvas">
-        <Stack.Screen
-          options={{
-            title: 'Month Overview',
-            headerShown: true,
-          }}
-        />
-        <ScrollView className="flex-1" contentContainerClassName="px-5 pt-6 pb-20 space-y-4">
-          <Skeleton className="h-32 rounded-3xl" />
-          <Skeleton className="h-48 rounded-3xl" />
-          <Skeleton className="h-64 rounded-3xl" />
-          <Skeleton className="h-40 rounded-3xl" />
-        </ScrollView>
-      </View>
-    );
-  }
+  }, [refreshSummaryData]);
 
   return (
     <View className="flex-1 bg-app-canvas">
+      <Stack.Screen options={{ headerShown: false }} />
       {/* Month Navigation */}
       <View className="mx-5 mb-6 mt-4 flex-row items-center justify-between rounded-3xl border border-app-border-strong bg-app-surface-1 px-6 py-4 shadow-sm">
         <TouchableOpacity onPress={handlePrevMonth} className="rounded-full bg-app-surface-2 p-3">
@@ -247,7 +271,9 @@ export default function MonthOverviewModal() {
         </TouchableOpacity>
 
         <View className="flex-1 items-center">
-          <AppText variant="page-title" className="text-app-text-strong">{currentMonthName}</AppText>
+          <AppText variant="page-title" className="text-app-text-strong">
+            {currentMonthName}
+          </AppText>
           <AppText variant="hint" className="text-app-text-faint">
             {monthlyStats.transactionCount} transactions
           </AppText>
@@ -265,7 +291,9 @@ export default function MonthOverviewModal() {
         <View className="space-y-6 px-5">
           {/* Monthly Summary Card */}
           <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-6 py-6 shadow-sm">
-            <AppText variant="section" className="mb-4 text-app-text-strong">Monthly Summary</AppText>
+            <AppText variant="section" className="mb-4 text-app-text-strong">
+              Monthly Summary
+            </AppText>
 
             <View className="space-y-4">
               <View className="flex-row items-center justify-between rounded-2xl bg-app-surface-2 px-4 py-3">
@@ -273,11 +301,58 @@ export default function MonthOverviewModal() {
                   <View className="mr-3 rounded-full bg-success-900 p-2">
                     <Ionicons name="trending-up" size={16} color="#22c55e" />
                   </View>
-                  <AppText variant="form-label" className="text-accent-income">Income</AppText>
+                  <AppText variant="form-label" className="text-accent-income">
+                    Income
+                  </AppText>
                 </View>
                 <AppText variant="metric-lg" className="text-accent-income">
                   {formatCompactCurrency(monthlyStats.income)}
                 </AppText>
+              </View>
+
+              <View className="rounded-2xl bg-app-surface-2 px-4 py-3">
+                <View className="mb-3 flex-row items-center justify-between">
+                  <AppText variant="form-label" className="text-app-text-soft">
+                    Paycheck breakdown
+                  </AppText>
+                  <AppText variant="metric" className="text-app-text-strong">
+                    {formatCompactCurrency(monthlyStats.recurringIncome)}
+                  </AppText>
+                </View>
+                <View className="flex-row justify-between">
+                  <View>
+                    <AppText variant="label-xs" className="text-app-text-faint">
+                      Gross
+                    </AppText>
+                    <AppText variant="metric" className="mt-1 text-app-text-strong">
+                      {formatCompactCurrency(monthlyStats.recurringGrossIncome)}
+                    </AppText>
+                  </View>
+                  <View>
+                    <AppText variant="label-xs" className="text-app-text-faint">
+                      Taxes
+                    </AppText>
+                    <AppText variant="metric" className="mt-1 text-accent-expense">
+                      {formatCompactCurrency(monthlyStats.recurringTaxWithheld)}
+                    </AppText>
+                  </View>
+                  <View>
+                    <AppText variant="label-xs" className="text-app-text-faint">
+                      Deductions
+                    </AppText>
+                    <AppText variant="metric" className="mt-1 text-accent-debt">
+                      {formatCompactCurrency(monthlyStats.recurringDeductions)}
+                    </AppText>
+                  </View>
+                  <View>
+                    <AppText variant="label-xs" className="text-app-text-faint">
+                      One-off
+                    </AppText>
+                    <AppText variant="metric" className="mt-1 text-accent-income">
+                      {formatCompactCurrency(monthlyStats.oneOffIncome)}
+                    </AppText>
+                  </View>
+                </View>
               </View>
 
               <View className="flex-row items-center justify-between rounded-2xl bg-app-surface-2 px-4 py-3">
@@ -285,7 +360,9 @@ export default function MonthOverviewModal() {
                   <View className="mr-3 rounded-full bg-error-900 p-2">
                     <Ionicons name="trending-down" size={16} color="#ef4444" />
                   </View>
-                  <AppText variant="form-label" className="text-accent-expense">Expenses</AppText>
+                  <AppText variant="form-label" className="text-accent-expense">
+                    Expenses
+                  </AppText>
                 </View>
                 <AppText variant="metric-lg" className="text-accent-expense">
                   {formatCompactCurrency(monthlyStats.expenses)}
@@ -297,15 +374,78 @@ export default function MonthOverviewModal() {
                   <View className="mr-3 rounded-full bg-info-900 p-2">
                     <Ionicons name="wallet" size={16} color="#0EA5E9" />
                   </View>
-                  <AppText variant="form-label" className="text-accent-savings">Net Balance</AppText>
+                  <AppText variant="form-label" className="text-accent-savings">
+                    Net Balance
+                  </AppText>
                 </View>
                 <AppText
                   variant="metric-lg"
-                  className={monthlyStats.netBalance >= 0 ? 'text-accent-income' : 'text-accent-expense'}>
+                  className={
+                    monthlyStats.netBalance >= 0 ? 'text-accent-income' : 'text-accent-expense'
+                  }>
                   {formatCompactCurrency(monthlyStats.netBalance)}
                 </AppText>
               </View>
+
+              <View className="flex-row items-center justify-between rounded-2xl bg-app-surface-2 px-4 py-3">
+                <View className="flex-row items-center">
+                  <View className="mr-3 rounded-full bg-info-900 p-2">
+                    <Ionicons name="shield-checkmark" size={16} color="#58B6FF" />
+                  </View>
+                  <AppText variant="form-label" className="text-accent-savings">
+                    Savings total
+                  </AppText>
+                </View>
+                <AppText variant="metric-lg" className="text-accent-savings">
+                  {formatCompactCurrency(monthlyStats.savingsBalance)}
+                </AppText>
+              </View>
             </View>
+          </View>
+
+          <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-6 shadow-sm">
+            <View className="mb-4 flex-row items-center justify-between">
+              <View>
+                <AppText variant="section" className="text-app-text-strong">
+                  Monthly Coach
+                </AppText>
+                <AppText variant="hint" className="mt-1 text-app-text-faint">
+                  Grounded in {currentMonthName} activity
+                </AppText>
+              </View>
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-accent-insight/15">
+                <Ionicons name="sparkles" size={18} color="#A78BFA" />
+              </View>
+            </View>
+
+            {coachSuggestions.length === 0 ? (
+              <View className="rounded-2xl bg-app-surface-2 px-4 py-4">
+                <AppText variant="body" className="text-app-text-soft">
+                  Add income, budgets, and transactions to unlock monthly improvement suggestions.
+                </AppText>
+              </View>
+            ) : (
+              <View className="space-y-3">
+                {coachSuggestions.map((suggestion) => {
+                  const toneClass =
+                    suggestion.tone === 'warning'
+                      ? 'text-accent-debt'
+                      : suggestion.tone === 'success'
+                        ? 'text-accent-income'
+                        : 'text-accent-insight';
+                  return (
+                    <View key={suggestion.id} className="rounded-2xl bg-app-surface-2 px-4 py-4">
+                      <AppText variant="title" className={toneClass}>
+                        {suggestion.title}
+                      </AppText>
+                      <AppText variant="body" className="mt-2 text-app-text-soft">
+                        {suggestion.detail}
+                      </AppText>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
           </View>
 
           {/* Transactions Section */}
@@ -315,32 +455,40 @@ export default function MonthOverviewModal() {
                 Transactions ({monthTransactions.length})
               </AppText>
               <TouchableOpacity
-                onPress={() => router.push('/transactions-modal')}
+                onPress={() => router.push('/activity' as any)}
                 className="rounded-full bg-app-surface-2 px-3 py-1">
-                <AppText variant="caption" className="text-primary-600">View all</AppText>
+                <AppText variant="caption" className="text-primary-600">
+                  View all
+                </AppText>
               </TouchableOpacity>
             </View>
 
             {monthTransactions.length === 0 ? (
               <View className="items-center justify-center rounded-2xl border border-dashed border-app-border-strong bg-app-surface-2 px-4 py-12">
                 <Ionicons name="calendar-outline" size={32} color="#9CA3AF" />
-                  <AppText variant="body-md" className="mt-3 text-app-text-faint">
-                    No transactions this month
-                  </AppText>
-                  <AppText variant="body" className="mt-1 text-app-text-faint">
-                    Transactions for {currentMonthName} will appear here
-                  </AppText>
+                <AppText variant="body-md" className="mt-3 text-app-text-faint">
+                  No transactions this month
+                </AppText>
+                <AppText variant="body" className="mt-1 text-app-text-faint">
+                  Transactions for {currentMonthName} will appear here
+                </AppText>
               </View>
             ) : (
               <View className="space-y-3">
                 {monthTransactions.slice(0, 5).map((transaction: Transaction) => {
-                  const categoryMeta = safeCategories.find(
-                    (cat) => cat.id === transaction.categoryId
-                  );
+                  const categoryMeta =
+                    transaction.categoryId != null ? categoryMap.get(transaction.categoryId) : null;
                   const isExpense = transaction.type === 'expense';
                   return (
-                    <View
+                    <TouchableOpacity
                       key={transaction.id}
+                      activeOpacity={0.88}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/activity',
+                          params: { highlightId: String(transaction.id) },
+                        })
+                      }
                       className="flex-row items-center justify-between rounded-2xl bg-app-surface-2 px-4 py-3">
                       <View className="flex-1 flex-row items-center">
                         <View className="mr-3 h-10 w-10 items-center justify-center rounded-xl bg-app-surface-1">
@@ -349,11 +497,15 @@ export default function MonthOverviewModal() {
                           </Text>
                         </View>
                         <View className="flex-1">
-                          <AppText variant="title" className="text-app-text-strong" numberOfLines={1}>
+                          <AppText
+                            variant="title"
+                            className="text-app-text-strong"
+                            numberOfLines={1}>
                             {transaction.description}
                           </AppText>
                           <AppText variant="hint" className="text-app-text-faint">
-                            {categoryMeta?.name ?? 'Uncategorized'} · {formatRelativeDate(transaction.date)}
+                            {getTransactionCategoryLabel(transaction, categoryMeta)} ·{' '}
+                            {formatRelativeDate(transaction.date)}
                           </AppText>
                         </View>
                       </View>
@@ -363,17 +515,17 @@ export default function MonthOverviewModal() {
                         {isExpense ? '-' : '+'}
                         {formatCurrency(parseFloat(transaction.amount))}
                       </AppText>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })}
 
                 {monthTransactions.length > 5 && (
                   <TouchableOpacity
-                    onPress={() => router.push('/transactions-modal')}
+                    onPress={() => router.push('/activity' as any)}
                     className="mt-2 items-center rounded-xl bg-app-surface-2 py-3">
-                  <AppText variant="body" className="text-sm font-medium text-primary-600">
-                    View {monthTransactions.length - 5} more transactions
-                  </AppText>
+                    <AppText variant="body" className="text-sm font-medium text-primary-600">
+                      View {monthTransactions.length - 5} more transactions
+                    </AppText>
                   </TouchableOpacity>
                 )}
               </View>
@@ -382,17 +534,19 @@ export default function MonthOverviewModal() {
 
           {/* Category Breakdown */}
           <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-6 shadow-sm">
-            <AppText variant="section" className="mb-4 text-app-text-strong">Category Breakdown</AppText>
+            <AppText variant="section" className="mb-4 text-app-text-strong">
+              Category Breakdown
+            </AppText>
 
             {categoryBreakdown.length === 0 ? (
               <View className="items-center justify-center rounded-2xl border border-dashed border-app-border-strong bg-app-surface-2 px-4 py-12">
                 <Ionicons name="pie-chart-outline" size={32} color="#9CA3AF" />
-                  <AppText variant="body-md" className="mt-3 text-app-text-faint">
-                    No expenses this month
-                  </AppText>
-                  <AppText variant="body" className="mt-1 text-app-text-faint">
-                    Expense categories will be shown here
-                  </AppText>
+                <AppText variant="body-md" className="mt-3 text-app-text-faint">
+                  No expenses this month
+                </AppText>
+                <AppText variant="body" className="mt-1 text-app-text-faint">
+                  Expense categories will be shown here
+                </AppText>
               </View>
             ) : (
               <View className="space-y-3">
@@ -412,7 +566,8 @@ export default function MonthOverviewModal() {
                           </AppText>
                           <AppText variant="hint" className="text-app-text-faint">
                             {category.transactionCount} transaction
-                            {category.transactionCount !== 1 ? 's' : ''}
+                            {category.transactionCount !== 1 ? 's' : ''} • Budget{' '}
+                            {formatCompactCurrency(category.budget)}
                           </AppText>
                         </View>
                       </View>
@@ -434,11 +589,15 @@ export default function MonthOverviewModal() {
           {/* Bills Section */}
           <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-6 shadow-sm">
             <View className="mb-4 flex-row items-center justify-between">
-              <AppText variant="section" className="text-app-text-strong">Bills ({monthBills.length})</AppText>
+              <AppText variant="section" className="text-app-text-strong">
+                Bills ({monthBills.length})
+              </AppText>
               <TouchableOpacity
                 onPress={() => router.push('/(tabs)/bills')}
                 className="rounded-full bg-app-surface-2 px-3 py-1">
-                <AppText variant="caption" className="text-primary-600">Manage</AppText>
+                <AppText variant="caption" className="text-primary-600">
+                  Manage
+                </AppText>
               </TouchableOpacity>
             </View>
 
@@ -455,7 +614,6 @@ export default function MonthOverviewModal() {
             ) : (
               <View className="space-y-3">
                 {monthBills.map((bill: Bill) => {
-                  const dueDate = new Date(selectedYear, selectedMonth, bill.dueDay || 1);
                   return (
                     <View
                       key={bill.id}
@@ -465,10 +623,15 @@ export default function MonthOverviewModal() {
                           <Ionicons name="receipt" size={16} color="#0EA5E9" />
                         </View>
                         <View className="flex-1">
-                          <AppText variant="title" className="text-app-text-strong" numberOfLines={1}>
+                          <AppText
+                            variant="title"
+                            className="text-app-text-strong"
+                            numberOfLines={1}>
                             {bill.name}
                           </AppText>
-                          <AppText variant="hint" className="text-app-text-faint">Due day {bill.dueDay}</AppText>
+                          <AppText variant="hint" className="text-app-text-faint">
+                            Due day {bill.dueDay}
+                          </AppText>
                         </View>
                       </View>
                       <AppText variant="metric" className="text-app-text-strong">
@@ -484,35 +647,45 @@ export default function MonthOverviewModal() {
           {/* Savings Goals Progress */}
           <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-6 shadow-sm">
             <View className="mb-4 flex-row items-center justify-between">
-              <AppText variant="section" className="text-app-text-strong">Savings Goals</AppText>
+              <AppText variant="section" className="text-app-text-strong">
+                Savings Goals
+              </AppText>
               <TouchableOpacity
                 onPress={() => router.push('/savings-goal-modal')}
                 className="rounded-full bg-app-surface-2 px-3 py-1">
-                <AppText variant="caption" className="text-primary-600">Manage</AppText>
+                <AppText variant="caption" className="text-primary-600">
+                  Manage
+                </AppText>
               </TouchableOpacity>
             </View>
 
-            {safeSavingsGoals.length === 0 ? (
+            {(savingsGoals ?? []).length === 0 ? (
               <View className="items-center justify-center rounded-2xl border border-dashed border-app-border-strong bg-app-surface-2 px-4 py-12">
                 <Ionicons name="trending-up-outline" size={32} color="#9CA3AF" />
-                  <AppText variant="body-md" className="mt-3 text-app-text-faint">
-                    No savings goals set
-                  </AppText>
-                  <AppText variant="body" className="mt-1 text-app-text-faint">
-                    Create savings goals to track your progress
-                  </AppText>
+                <AppText variant="body-md" className="mt-3 text-app-text-faint">
+                  No savings goals set
+                </AppText>
+                <AppText variant="body" className="mt-1 text-app-text-faint">
+                  Create savings goals to track your progress
+                </AppText>
               </View>
             ) : (
               <View className="space-y-3">
-                {safeSavingsGoals.slice(0, 3).map((goal) => {
-                  const progress = (goal.currentAmount / goal.targetAmount) * 100;
-                  const monthlyTarget = goal.monthlyContribution || 0;
+                {(savingsGoals ?? []).slice(0, 3).map((goal) => {
+                  const currentAmount = parseFloat(goal.currentAmount ?? '0');
+                  const targetAmount = parseFloat(goal.targetAmount ?? '0');
+                  const progress = targetAmount > 0 ? (currentAmount / targetAmount) * 100 : 0;
+                  const monthlyTarget = parseFloat(goal.monthlyContribution ?? '0');
 
                   return (
                     <View key={goal.id} className="rounded-2xl bg-app-surface-2 px-4 py-4">
                       <View className="mb-3 flex-row items-center justify-between">
-                        <AppText variant="title" className="text-app-text-strong">{goal.name}</AppText>
-                        <AppText variant="hint" className="text-app-text-faint">{progress.toFixed(1)}%</AppText>
+                        <AppText variant="title" className="text-app-text-strong">
+                          {goal.name}
+                        </AppText>
+                        <AppText variant="hint" className="text-app-text-faint">
+                          {progress.toFixed(1)}%
+                        </AppText>
                       </View>
 
                       <View className="mb-3 h-2 w-full rounded-full bg-app-surface-1">
@@ -524,8 +697,8 @@ export default function MonthOverviewModal() {
 
                       <View className="flex-row items-center justify-between">
                         <AppText variant="hint" className="text-app-text-faint">
-                          {formatCompactCurrency(goal.currentAmount)} of{' '}
-                          {formatCompactCurrency(goal.targetAmount)}
+                          {formatCompactCurrency(currentAmount)} of{' '}
+                          {formatCompactCurrency(targetAmount)}
                         </AppText>
                         {monthlyTarget > 0 && (
                           <AppText variant="hint" className="text-success-600">
@@ -541,27 +714,34 @@ export default function MonthOverviewModal() {
           </View>
 
           {/* Debts Section */}
-          {safeDebts.length > 0 && (
+          {(debts ?? []).length > 0 && (
             <View className="rounded-3xl border border-app-border-strong bg-app-surface-1 px-5 py-6 shadow-sm">
               <View className="mb-4 flex-row items-center justify-between">
-                <AppText variant="section" className="text-app-text-strong">Debts</AppText>
+                <AppText variant="section" className="text-app-text-strong">
+                  Debts
+                </AppText>
                 <TouchableOpacity
                   onPress={() => router.push('/(tabs)/debts')}
                   className="rounded-full bg-app-surface-2 px-3 py-1">
-                  <AppText variant="caption" className="text-primary-600">Manage</AppText>
+                  <AppText variant="caption" className="text-primary-600">
+                    Manage
+                  </AppText>
                 </TouchableOpacity>
               </View>
 
               <View className="space-y-3">
-                {safeDebts.slice(0, 3).map((debt: Debt) => {
-                  const remaining = parseFloat(debt.totalAmount) - parseFloat(debt.currentBalance);
-                  const progress =
-                    (parseFloat(debt.currentBalance) / parseFloat(debt.totalAmount)) * 100;
+                {(debts ?? []).slice(0, 3).map((debt) => {
+                  const totalAmount = parseFloat(debt.totalAmount || '0');
+                  const currentBalance = parseFloat(debt.currentBalance || '0');
+                  const remaining = totalAmount - currentBalance;
+                  const progress = totalAmount > 0 ? (currentBalance / totalAmount) * 100 : 0;
 
                   return (
                     <View key={debt.id} className="rounded-2xl bg-app-surface-2 px-4 py-4">
                       <View className="mb-2 flex-row items-center justify-between">
-                        <AppText variant="title" className="text-app-text-strong">{debt.name}</AppText>
+                        <AppText variant="title" className="text-app-text-strong">
+                          {debt.name}
+                        </AppText>
                         <AppText variant="hint" className="text-app-text-faint">
                           {progress.toFixed(1)}% paid
                         </AppText>

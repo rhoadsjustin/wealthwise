@@ -1,6 +1,8 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { useRouter } from 'expo-router';
 
 export default function TabLayout() {
+  const router = useRouter();
   return (
     <NativeTabs minimizeBehavior="onScrollDown">
       <NativeTabs.Trigger name="index">
@@ -25,6 +27,9 @@ export default function TabLayout() {
         <NativeTabs.Trigger.Icon
           sf={{ default: 'chart.line.uptrend.xyaxis', selected: 'chart.line.uptrend.xyaxis' }}
         />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="add-transaction" role="search">
+        <NativeTabs.Trigger.Icon sf={{ default: 'dollarsign.circle', selected: 'dollarsign.circle.fill' }} />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

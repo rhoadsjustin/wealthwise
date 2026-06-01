@@ -1,12 +1,14 @@
 import type { Category, DashboardSummary, Insight, Transaction } from '@/context/DataContext';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 
 type SupportedIntent =
   | 'top-spending-categories'
   | 'where-to-save'
+  | 'recent-spending-change'
   | 'missing-categories'
   | 'budget-risks'
-  | 'healthiest-category';
+  | 'healthiest-category'
+  | 'category-budget-why';
 
 export interface InsightsIntentRouterInput {
   prompt: string;
@@ -40,6 +42,7 @@ export function routeInsightsIntent(
 ): InsightsIntentResolution | null {
   const normalized = normalize(input.prompt);
   if (!normalized || !input.summary) return null;
+  const categoryBudgetWhy = buildCategoryBudgetWhyAnswer(input);
 
   if (
     includesAny(normalized, [
@@ -63,12 +66,35 @@ export function routeInsightsIntent(
       'reduce spending',
       'where can i save',
       'where should i save',
+      'save this month',
+      'cut back this month',
+      'free up cash',
       'save money',
+      'improve my budget',
+      'improve budget',
     ])
   ) {
     return {
       intent: 'where-to-save',
       response: buildWhereToSaveAnswer(input),
+    };
+  }
+
+  if (
+    includesAny(normalized, [
+      'what changed lately',
+      'what changed in my spending',
+      'what changed this month',
+      'changed lately',
+      'changed this month',
+      'recent spending',
+      'recent activity',
+      'latest charges',
+    ])
+  ) {
+    return {
+      intent: 'recent-spending-change',
+      response: buildRecentSpendingChangeAnswer(input),
     };
   }
 
@@ -88,13 +114,17 @@ export function routeInsightsIntent(
   }
 
   if (
+    !categoryBudgetWhy &&
     includesAny(normalized, [
       'budget risks',
       'at risk',
       'going over budget',
       'over budget',
+      'overspent',
+      'overspending',
       'budget pressure',
-    ])
+    ]) &&
+    !isCategoryBudgetWhyPrompt(normalized)
   ) {
     return {
       intent: 'budget-risks',
@@ -117,6 +147,13 @@ export function routeInsightsIntent(
     };
   }
 
+  if (categoryBudgetWhy) {
+    return {
+      intent: 'category-budget-why',
+      response: categoryBudgetWhy,
+    };
+  }
+
   return null;
 }
 
@@ -131,10 +168,10 @@ function buildTopSpendingAnswer({ summary, latestMonthLabel }: InsightsIntentRou
   }
 
   const monthLabel = latestMonthLabel || 'this month';
-  const lines = [`Top spending categories for ${monthLabel}:`];
+  const lines = [`Top spending in ${monthLabel}:`];
   entries.forEach((entry, index) => {
     lines.push(
-      `${index + 1}. ${entry.name}: ${formatCurrency(entry.spent)} of ${formatCurrency(entry.budget)} (${Math.round(entry.percentage)}%)`
+      `${index + 1}. ${entry.name} - ${formatCurrency(entry.spent)} of ${formatCurrency(entry.budget)} (${Math.round(entry.percentage)}%)`
     );
   });
   return lines.join('\n');
@@ -170,7 +207,7 @@ function buildWhereToSaveAnswer({
   if (overBudget.length) {
     overBudget.forEach((entry) => {
       lines.push(
-        `- ${entry.name}: over budget by ${formatCurrency(entry.variance)} after spending ${formatCurrency(entry.spent)} against ${formatCurrency(entry.budget)}.`
+        `- ${entry.name}: ${formatCurrency(entry.variance)} over after spending ${formatCurrency(entry.spent)} on a ${formatCurrency(entry.budget)} plan.`
       );
     });
   } else {
@@ -185,7 +222,7 @@ function buildWhereToSaveAnswer({
     /budget|spend|saving/i.test(`${insight.title} ${insight.description}`)
   );
   if (insightHint) {
-    lines.push(`- Watch for this signal: ${insightHint.description}`);
+    lines.push(`- Watch: ${insightHint.description}`);
   }
 
   return lines.join('\n');
@@ -216,7 +253,7 @@ function buildMissingCategoriesAnswer({
 
   if (uncategorizedExpenses > 0) {
     lines.push(
-      `You also have ${uncategorizedExpenses} uncategorized expense${uncategorizedExpenses === 1 ? '' : 's'}, which is a sign you may need one or two more targeted categories.`
+      `- ${uncategorizedExpenses} uncategorized expense${uncategorizedExpenses === 1 ? '' : 's'} still need a better home.`
     );
   }
 
@@ -249,6 +286,57 @@ function buildBudgetRiskAnswer({ summary, latestMonthLabel }: InsightsIntentRout
   return lines.join('\n');
 }
 
+function buildRecentSpendingChangeAnswer({
+  summary,
+  transactions,
+  latestMonthLabel,
+}: InsightsIntentRouterInput): string {
+  const monthLabel = latestMonthLabel || 'this month';
+  const recentExpenses = (transactions ?? [])
+    .filter((tx) => tx.type === 'expense' && Number(tx.amount || 0) > 0)
+    .sort((left, right) => right.date.localeCompare(left.date))
+    .slice(0, 4);
+
+  const pressurePoints = (summary?.categoryBreakdown ?? [])
+    .filter((entry) => entry.spent > 0 || entry.budget > 0)
+    .map((entry) => ({
+      ...entry,
+      variance: entry.spent - entry.budget,
+    }))
+    .sort((left, right) => {
+      if (left.variance !== right.variance) return right.variance - left.variance;
+      return right.spent - left.spent;
+    })
+    .slice(0, 2);
+
+  if (!recentExpenses.length && !pressurePoints.length) {
+    return 'I do not have enough recent spending data yet to describe what changed lately.';
+  }
+
+  const lines = [`What stands out lately in ${monthLabel}:`];
+
+  if (recentExpenses.length) {
+    recentExpenses.slice(0, 3).forEach((tx) => {
+      lines.push(
+        `- ${tx.description}: ${formatCurrency(Number(tx.amount || 0))} on ${formatReadableDate(tx.date)}.`
+      );
+    });
+  }
+
+  if (pressurePoints.length) {
+    lines.push(
+      `- Pressure is highest in ${pressurePoints
+        .map(
+          (entry) =>
+            `${entry.name} (${formatCurrency(entry.spent)} of ${formatCurrency(entry.budget)}${entry.variance > 0 ? `, over by ${formatCurrency(entry.variance)}` : ''})`
+        )
+        .join(' and ')}.`
+    );
+  }
+
+  return lines.join('\n');
+}
+
 function buildHealthiestCategoryAnswer({
   summary,
   latestMonthLabel,
@@ -270,13 +358,131 @@ function buildHealthiestCategoryAnswer({
   }
 
   const monthLabel = latestMonthLabel || 'this month';
-  return `${best.name} looks healthiest in ${monthLabel}: ${formatCurrency(best.spent)} spent against ${formatCurrency(best.budget)}, which is ${Math.round(best.percentage)}% of budget.`;
+  return [
+    `Healthiest category in ${monthLabel}: ${best.name}.`,
+    `- Spent ${formatCurrency(best.spent)} of ${formatCurrency(best.budget)} (${Math.round(best.percentage)}% used).`,
+  ].join('\n');
+}
+
+function buildCategoryBudgetWhyAnswer({
+  prompt,
+  summary,
+  categories,
+  transactions,
+  latestMonthLabel,
+}: InsightsIntentRouterInput): string | null {
+  const normalizedPrompt = normalize(prompt);
+  if (
+    !includesAny(normalizedPrompt, [
+      'why is',
+      'why are',
+      'why did',
+      'why am i',
+      'over budget',
+      'over my budget',
+      'went over budget',
+      'overspent',
+      'overspending',
+    ])
+  ) {
+    return null;
+  }
+
+  const categoryEntries = summary?.categoryBreakdown ?? [];
+  const matchedCategory = findBestCategoryEntryMatch(categoryEntries, normalizedPrompt);
+
+  if (!matchedCategory) {
+    return null;
+  }
+
+  const budget = matchedCategory.budget;
+  const spent = matchedCategory.spent;
+  const variance = spent - budget;
+  const monthLabel = latestMonthLabel || 'this month';
+  const linkedCategory = (categories ?? []).find((category) => category.id === matchedCategory.id);
+  const recentTransactions = (transactions ?? [])
+    .filter(
+      (tx) =>
+        tx.type === 'expense' && tx.categoryId === linkedCategory?.id && Number(tx.amount || 0) > 0
+    )
+    .sort((left, right) => right.date.localeCompare(left.date))
+    .slice(0, 3);
+
+  const lines: string[] = [];
+  if (variance > 0) {
+    lines.push(`${matchedCategory.name} is over budget in ${monthLabel}.`);
+    lines.push(
+      `- Spent ${formatCurrency(spent)} against a ${formatCurrency(budget)} budget, so it is ${formatCurrency(variance)} over plan.`
+    );
+  } else {
+    lines.push(`${matchedCategory.name} is not over budget in ${monthLabel}.`);
+    lines.push(
+      `- Spent ${formatCurrency(spent)} of ${formatCurrency(budget)} (${Math.round(matchedCategory.percentage)}% used).`
+    );
+  }
+
+  if (recentTransactions.length) {
+    recentTransactions.forEach((tx, index) => {
+      lines.push(
+        `${index === 0 ? '- Latest charge' : '- Recent charge'}: ${tx.description} for ${formatCurrency(Number(tx.amount || 0))} on ${formatReadableDate(tx.date)}.`
+      );
+    });
+  }
+
+  if (variance > 0) {
+    lines.push(
+      `- Next step: raise the budget if this category is flexible, or trim the latest charges first.`
+    );
+  }
+
+  return lines.join('\n');
 }
 
 function includesAny(value: string, terms: string[]): boolean {
   return terms.some((term) => value.includes(term));
 }
 
+function isCategoryBudgetWhyPrompt(value: string): boolean {
+  return includesAny(value, [
+    'why is',
+    'why are',
+    'why did',
+    'why am i',
+    'over my budget',
+    'went over budget',
+  ]);
+}
+
 function normalize(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+function formatReadableDate(value: string | Date): string {
+  try {
+    return formatDate(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function findBestCategoryEntryMatch<
+  T extends {
+    name: string;
+  },
+>(entries: T[], normalizedPrompt: string): T | null {
+  let match: T | null = null;
+
+  entries.forEach((entry) => {
+    const categoryName = normalize(entry.name);
+    if (!categoryName || !normalizedPrompt.includes(categoryName)) return;
+    if (!match || categoryName.length > normalize(match.name).length) {
+      match = entry;
+    }
+  });
+
+  return match;
 }

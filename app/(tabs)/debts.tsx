@@ -1,14 +1,12 @@
 import React from 'react';
 import { ScrollView, View, Text, RefreshControl, TouchableOpacity } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import HeaderProfileButton from '@/components/HeaderProfileButton';
 import { DebtCard } from '@/components/DebtCard';
 import { Skeleton } from '@/components/Skeleton';
 import { Button } from '@/components/Button';
-import { useAppData } from '../_layout';
+import { useActivityData, useSummaryData } from '../_layout';
 import type { Debt, Category } from '@/context/DataContext';
 import { formatCurrency } from '@/lib/utils';
 
@@ -20,14 +18,10 @@ const toNumber = (value: string | null | undefined) => {
 export default function DebtsTab() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { debts, categories, summaryLoading, refreshAppData } = useAppData();
+  const { debts, summaryLoading, refreshSummaryData } = useSummaryData();
+  const { categories } = useActivityData();
 
   const [refreshing, setRefreshing] = React.useState(false);
-  const [localDebts, setLocalDebts] = React.useState<Debt[]>(debts || []);
-
-  React.useEffect(() => {
-    setLocalDebts(Array.isArray(debts) ? debts : []);
-  }, [debts]);
 
   const categoryMap = React.useMemo(() => {
     const list: Category[] = Array.isArray(categories) ? categories : [];
@@ -37,11 +31,11 @@ export default function DebtsTab() {
   const handleRefresh = React.useCallback(async () => {
     try {
       setRefreshing(true);
-      await refreshAppData();
+      await refreshSummaryData();
     } finally {
       setRefreshing(false);
     }
-  }, [refreshAppData]);
+  }, [refreshSummaryData]);
 
   const handleAddDebt = React.useCallback(() => {
     router.push('/debt-modal');
@@ -62,13 +56,15 @@ export default function DebtsTab() {
   );
 
   const totals = React.useMemo(() => {
-    const outstanding = localDebts.reduce((sum, debt) => sum + toNumber(debt.currentBalance), 0);
-    const original = localDebts.reduce((sum, debt) => sum + toNumber(debt.totalAmount), 0);
+    const visibleDebts = debts ?? [];
+    const outstanding = visibleDebts.reduce((sum, debt) => sum + toNumber(debt.currentBalance), 0);
+    const original = visibleDebts.reduce((sum, debt) => sum + toNumber(debt.totalAmount), 0);
     const paidOff = Math.max(original - outstanding, 0);
     return { outstanding, original, paidOff };
-  }, [localDebts]);
+  }, [debts]);
 
-  const hasDebts = localDebts.length > 0;
+  const visibleDebts = debts ?? [];
+  const hasDebts = visibleDebts.length > 0;
 
   return (
     <View className="flex-1 bg-app-background">
@@ -122,7 +118,7 @@ export default function DebtsTab() {
 
           {hasDebts ? (
             <View className="space-y-4">
-              {localDebts.map((debt) => (
+              {visibleDebts.map((debt: Debt) => (
                 <DebtCard
                   key={debt.id}
                   debt={debt}

@@ -15,7 +15,7 @@ import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { useSavings, SavingsGoal } from '@/context/DataContext';
 import { useToast } from '@/context/useToast';
-import { useAppData } from './_layout';
+import { useSummaryData } from './_layout';
 import { Ionicons } from '@expo/vector-icons';
 
 interface SavingsGoalFormValues {
@@ -32,8 +32,8 @@ export default function SavingsGoalModal() {
   const params = useLocalSearchParams();
   const goalIdParam = typeof params.goalId === 'string' ? Number(params.goalId) : undefined;
   const { toast } = useToast();
-  const { createSavingsGoal, updateSavingsGoal, getSavingsGoals } = useSavings();
-  const { refreshAppData } = useAppData();
+  const { createSavingsGoal, updateSavingsGoal, getSavingsGoalById } = useSavings();
+  const { refreshSummaryData } = useSummaryData();
   const [initialGoal, setInitialGoal] = React.useState<SavingsGoal | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [bootstrapping, setBootstrapping] = React.useState(Boolean(goalIdParam));
@@ -64,9 +64,8 @@ export default function SavingsGoalModal() {
         return;
       }
       try {
-        const goals = await getSavingsGoals();
-        if (!mounted) return;
-        const goal = goals.find((g) => g.id === goalIdParam);
+        const goal = await getSavingsGoalById(goalIdParam);
+        if (!mounted || !goal) return;
         if (goal) {
           setInitialGoal(goal);
           setValue('name', goal.name);
@@ -86,7 +85,7 @@ export default function SavingsGoalModal() {
     return () => {
       mounted = false;
     };
-  }, [goalIdParam, getSavingsGoals, setValue]);
+  }, [getSavingsGoalById, goalIdParam, setValue]);
 
   const onSubmit = async (values: SavingsGoalFormValues) => {
     if (!values.name?.trim()) {
@@ -129,7 +128,7 @@ export default function SavingsGoalModal() {
         });
       }
 
-      await refreshAppData();
+      await refreshSummaryData();
       router.back();
     } catch (error) {
       console.error('Failed to save savings goal', error);

@@ -158,7 +158,47 @@ function normalizeHeader(value: string) {
 }
 
 function findHeaderIndex(headers: string[], candidates: string[]) {
-  return headers.findIndex((header) => candidates.includes(header));
+  let bestIndex = -1;
+  let bestScore = 0;
+
+  headers.forEach((header, index) => {
+    const score = scoreHeaderMatch(header, candidates);
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = index;
+    }
+  });
+
+  return bestIndex;
+}
+
+function scoreHeaderMatch(header: string, candidates: string[]) {
+  const headerTokens = new Set(header.split(' ').filter(Boolean));
+  let bestScore = 0;
+
+  for (const candidate of candidates) {
+    if (header === candidate) {
+      return 100;
+    }
+
+    const candidateTokens = candidate.split(' ').filter(Boolean);
+    const allTokensMatch = candidateTokens.every((token) => headerTokens.has(token));
+    if (!allTokensMatch) {
+      continue;
+    }
+
+    let score = candidateTokens.length * 10;
+    if (header.startsWith(candidate)) score += 4;
+    if (header.endsWith(candidate)) score += 2;
+    if (header.includes(candidate)) score += 2;
+
+    const extraTokenCount = headerTokens.size - candidateTokens.length;
+    score -= Math.min(extraTokenCount, 4);
+
+    bestScore = Math.max(bestScore, score);
+  }
+
+  return bestScore;
 }
 
 function cleanDescription(value: string) {

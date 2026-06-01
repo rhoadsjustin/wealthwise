@@ -20,15 +20,10 @@ import {
   type InsightsSignalItem,
 } from '@/components/insights/insights-signal-strip';
 import { InsightsStatusCard } from '@/components/insights/insights-status-card';
-import {
-  type CategoryBreakdown,
-  type Insight,
-  type InsightsMessage,
-  useData,
-} from '@/context/DataContext';
+import { type InsightsMessage, useData } from '@/context/DataContext';
 import { useAuth } from '@/context/useAuth';
 import { useVectorStore } from '@/context/RAGContext';
-import { useAppData } from '../_layout';
+import { useActivityData, useInsightsData, useSummaryData } from '../_layout';
 import {
   buildBudgetSnapshots,
   trainBudgetInsights,
@@ -38,22 +33,34 @@ import {
   type BudgetSnapshot,
 } from '@/lib/ai/appleBudgetAdvisor';
 import { buildBudgetAssistantContext } from '@/lib/ai/insightsAssistantContext';
+import { buildFinanceAssistantContext } from '@/lib/ai/financeAssistantContext';
+import { buildFinanceAssistantPromptBundle } from '@/lib/ai/financeAssistantRuntime';
 import { routeInsightsIntent } from '@/lib/ai/insightsIntentRouter';
 import { runAppleBudgetChat, type AppleChatMessage } from '@/lib/ai/appleBudgetChat';
+import { maskInsightsMessages } from '@/lib/demoMode';
 import { useRAG } from 'react-native-rag';
 
-const COMPOSER_SPACE = 124;
+const COMPOSER_SPACE = 168;
 
 function InsightsTab() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
 
   const { username: authUsername } = useAuth();
-  const { isInitialized, getInsightsThread, saveInsightsThread } = useData();
-  const { summary, insights, user, transactions, categories, summaryLoading, insightsLoading } =
-    useAppData();
-  const { vectorStore, llm, embeddingsProgress, llmProgress, embeddingsInstalled, llmInstalled } =
-    useVectorStore();
+  const { isInitialized, getInsightsThread, saveInsightsThread, isDemoMode, demoModeScale } =
+    useData();
+  const { summary, user, summaryLoading } = useSummaryData();
+  const { insights, insightsLoading } = useInsightsData();
+  const { transactions, categories } = useActivityData();
+  const {
+    vectorStore,
+    llm,
+    embeddingsProgress,
+    llmProgress,
+    embeddingsInstalled,
+    llmInstalled,
+    localAssistantStatus,
+  } = useVectorStore();
 
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState<InsightsMessage[]>([]);
@@ -77,7 +84,7 @@ function InsightsTab() {
     llm: llm as any,
     preventLoad: !vectorStore || !llm || !isFocused,
   });
-  const useAppleVisibleChat = Platform.OS === 'ios';
+  const useAppleVisibleChat = Platform.OS === 'ios' && localAssistantStatus === 'unavailable';
 
   const greetingName = useMemo(
     () => authUsername || user?.username || 'there',
@@ -118,6 +125,60 @@ function InsightsTab() {
     }),
     []
   );
+
+  const replacePlaceholderMessage = useCallback(
+    (messageId: string, content: string, source: InsightsMessage['source']) => {
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === messageId ? { ...message, content, source } : message
+        )
+      );
+    },
+    []
+  );
+
+  const buildAppleFallbackHistory = useCallback(
+    (currentMessages: InsightsMessage[]): AppleChatMessage[] =>
+      currentMessages
+        .filter(
+          (message): message is InsightsMessage & { role: 'user' | 'assistant' } =>
+            message.role === 'user' || message.role === 'assistant'
+        )
+        .map((message) => ({
+          role: message.role,
+          content: message.content,
+        })),
+    []
+  );
+
+  const runAppleFallback = useCallback(
+    async (prompt: string, currentMessages: InsightsMessage[]) =>
+      (
+        await runAppleBudgetChat({
+          prompt,
+          history: buildAppleFallbackHistory(currentMessages),
+          context: {
+            summary,
+            categories,
+            transactions,
+          },
+        })
+      ).response,
+    [buildAppleFallbackHistory, categories, summary, transactions]
+  );
+
+  const shouldFallbackToApple = useCallback((error: unknown) => {
+    if (Platform.OS !== 'ios') return false;
+    const code = (error as { code?: unknown })?.code;
+    const message = (error as { message?: unknown })?.message;
+    const normalizedMessage = typeof message === 'string' ? message.toLowerCase() : '';
+
+    return (
+      code === 167 ||
+      normalizedMessage.includes('decoding') ||
+      normalizedMessage.includes('unexpected issue occured while decoding')
+    );
+  }, []);
 
   const looksTruncated = useCallback((text: string) => {
     if (!text) return false;
@@ -211,59 +272,24 @@ function InsightsTab() {
     ]
   );
 
-  const assistantSetupPending = useAppleVisibleChat ? false : !rag.isReady || !vectorStore || !llm;
+  const assistantSetupPending = useAppleVisibleChat
+    ? false
+    : localAssistantStatus === 'initializing' || !rag.isReady || !vectorStore || !llm;
   const assistantDataLoading = summaryLoading || insightsLoading || (!dataLoaded && isLoading);
   const composerDisabled = assistantSetupPending || assistantDataLoading;
 
-  const assistantContextBlock = useMemo(() => {
-    if (!summary) return '';
+  const financeAssistantContext = useMemo(
+    () =>
+      buildFinanceAssistantContext({
+        summary,
+        transactions,
+        insights,
+        budgetDocs: budgetAssistantContext.docs,
+      }),
+    [budgetAssistantContext.docs, insights, summary, transactions]
+  );
 
-    const lines: string[] = [];
-    lines.push(
-      `Financial summary: income baseline ${currencyFormatter.format(summary.incomeBaseline || summary.totalIncome || 0)}, expenses ${currencyFormatter.format(summary.totalExpenses || 0)}, total budget ${currencyFormatter.format(summary.totalBudget || 0)}, remaining budget ${currencyFormatter.format(summary.remainingBudget || 0)}, net income after savings ${currencyFormatter.format(summary.netIncomeAfterSavings || 0)}.`
-    );
-
-    const topBreakdown = (summary.categoryBreakdown ?? []).slice(0, 4);
-    if (topBreakdown.length) {
-      lines.push(
-        `Top categories: ${topBreakdown
-          .map(
-            (entry: CategoryBreakdown) =>
-              `${entry.name} spent ${currencyFormatter.format(entry.spent)} of ${currencyFormatter.format(entry.budget)} budget (${entry.percentage}%).`
-          )
-          .join(' ')}`
-      );
-    }
-
-    const recentTransactions = (summary.recentTransactions ?? transactions ?? []).slice(0, 5);
-    if (recentTransactions.length) {
-      lines.push(
-        `Recent transactions: ${recentTransactions
-          .map(
-            (tx: { description: string; amount: string; date: string }) =>
-              `${tx.description} ${currencyFormatter.format(Number(tx.amount || 0))} on ${tx.date}.`
-          )
-          .join(' ')}`
-      );
-    }
-
-    const currentInsights = (insights ?? []).slice(0, 3);
-    if (currentInsights.length) {
-      lines.push(
-        `Current insights: ${currentInsights
-          .map((insight: Insight) => `${insight.title}: ${insight.description}`)
-          .join(' ')}`
-      );
-    }
-
-    if (budgetAssistantContext.docs.length) {
-      lines.push(
-        `Budget signals: ${budgetAssistantContext.docs.map((doc) => doc.content).join(' ')}`
-      );
-    }
-
-    return lines.join('\n\n');
-  }, [budgetAssistantContext.docs, currencyFormatter, insights, summary, transactions]);
+  const assistantContextBlock = financeAssistantContext.taggedText;
 
   const signalItems = useMemo<InsightsSignalItem[]>(() => {
     const items: InsightsSignalItem[] = [
@@ -382,19 +408,23 @@ function InsightsTab() {
       try {
         const storedMessages = await getInsightsThread();
         if (!cancelled) {
+          const hydratedMessages: InsightsMessage[] = storedMessages
+            .filter((message) => message.role !== 'system')
+            .map((message) =>
+              message.role === 'assistant' && looksMalformed(message.content)
+                ? {
+                    ...message,
+                    content:
+                      'I had a malformed draft here earlier. Ask again and I will regenerate the answer cleanly.',
+                    source: 'seed',
+                  }
+                : message
+            );
+
           setMessages(
-            storedMessages
-              .filter((message) => message.role !== 'system')
-              .map((message) =>
-                message.role === 'assistant' && looksMalformed(message.content)
-                  ? {
-                      ...message,
-                      content:
-                        'I had a malformed draft here earlier. Ask again and I will regenerate the answer cleanly.',
-                      source: 'seed',
-                    }
-                  : message
-              )
+            isDemoMode && demoModeScale
+              ? maskInsightsMessages(hydratedMessages, demoModeScale)
+              : hydratedMessages
           );
         }
       } finally {
@@ -409,7 +439,7 @@ function InsightsTab() {
     return () => {
       cancelled = true;
     };
-  }, [getInsightsThread, isInitialized, looksMalformed]);
+  }, [demoModeScale, getInsightsThread, isDemoMode, isInitialized, looksMalformed]);
 
   useEffect(() => {
     if (!threadHydrated || messages.length > 0) return;
@@ -424,7 +454,7 @@ function InsightsTab() {
   }, [createMessage, greetingName, messages.length, threadHydrated]);
 
   useEffect(() => {
-    if (!threadHydrated) return;
+    if (!threadHydrated || isDemoMode) return;
 
     if (persistTimeoutRef.current) {
       clearTimeout(persistTimeoutRef.current);
@@ -439,7 +469,7 @@ function InsightsTab() {
         clearTimeout(persistTimeoutRef.current);
       }
     };
-  }, [messages, saveInsightsThread, threadHydrated]);
+  }, [isDemoMode, messages, saveInsightsThread, threadHydrated]);
 
   useEffect(() => {
     if (!isFocused && rag.isGenerating) {
@@ -560,19 +590,19 @@ function InsightsTab() {
           return;
         }
 
+        const promptBundle = buildFinanceAssistantPromptBundle({
+          prompt,
+          summary,
+          categories,
+          transactions,
+          insights,
+          budgetDocs: budgetAssistantContext.docs,
+        });
+
         const history = [
           {
             role: 'system' as const,
-            content: `You are a helpful personal finance assistant running on-device.
-
-Use only the financial context below.
-Prefer the current month unless the user specifies a timeframe.
-Show currency as $X,XXX.XX.
-Answer in plain language with short sentences or bullets.
-Do not repeat raw source text, ids, tags, or context fragments.
-
-Financial context:
-${assistantContextBlock}`,
+            content: promptBundle.systemPrompt,
           },
           ...currentMessages.map((message) => ({
             role: message.role,
@@ -584,33 +614,20 @@ ${assistantContextBlock}`,
           },
         ];
 
+        let responseSource: InsightsMessage['source'] = useAppleVisibleChat ? 'system' : 'rag';
         const response = useAppleVisibleChat
-          ? (
-              await runAppleBudgetChat({
-                prompt: budgetAssistantContext.summary
-                  ? `${prompt}\n\nKeep this latest budget signal in mind: ${budgetAssistantContext.summary.detail}`
-                  : prompt,
-                history: currentMessages
-                  .filter(
-                    (message): message is InsightsMessage & { role: 'user' | 'assistant' } =>
-                      message.role === 'user' || message.role === 'assistant'
-                  )
-                  .map(
-                    (message): AppleChatMessage => ({
-                      role: message.role,
-                      content: message.content,
-                    })
-                  ),
-                context: {
-                  summary,
-                  categories,
-                  transactions,
-                },
+          ? await runAppleFallback(prompt, currentMessages)
+          : await rag
+              .generate(history, {
+                augmentedGeneration: false,
               })
-            ).response
-          : await rag.generate(history, {
-              augmentedGeneration: false,
-            });
+              .catch(async (error) => {
+                if (!shouldFallbackToApple(error)) {
+                  throw error;
+                }
+                responseSource = 'system';
+                return runAppleFallback(prompt, currentMessages);
+              });
 
         const finalResponse = looksMalformed(response)
           ? useAppleVisibleChat
@@ -629,11 +646,10 @@ ${assistantContextBlock}`,
                 [
                   {
                     role: 'system' as const,
-                    content: `The previous draft was malformed. Answer the user again in clean plain language using only this financial context:
+                    content: `${promptBundle.systemPrompt}
 
-${assistantContextBlock}
-
-Do not include raw context fragments, numbering artifacts, markdown headings, repeated phrases, ids, or bracketed tokens.`,
+The previous draft was malformed. Answer the user again in clean plain language.
+Do not include numbering artifacts, markdown headings, repeated phrases, ids, or bracketed tokens.`,
                   },
                   {
                     role: 'user' as const,
@@ -646,13 +662,7 @@ Do not include raw context fragments, numbering artifacts, markdown headings, re
               )
           : response;
 
-        setMessages((prev) =>
-          prev.map((message) =>
-            message.id === placeholder.id
-              ? { ...message, content: finalResponse, source: 'rag' }
-              : message
-          )
-        );
+        replacePlaceholderMessage(placeholder.id, finalResponse, responseSource);
 
         if (
           !useAppleVisibleChat &&
@@ -698,21 +708,31 @@ Do not include raw context fragments, numbering artifacts, markdown headings, re
         }
       } catch (error) {
         console.error('Error processing query:', error);
-        setMessages((prev) => [
-          ...prev,
-          createMessage(
-            'assistant',
+        const liveAssistantId = liveAssistantIdRef.current;
+        if (liveAssistantId) {
+          replacePlaceholderMessage(
+            liveAssistantId,
             'Sorry, I ran into an issue while processing that request. Please try again.',
             'seed'
-          ),
-        ]);
+          );
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            createMessage(
+              'assistant',
+              'Sorry, I ran into an issue while processing that request. Please try again.',
+              'seed'
+            ),
+          ]);
+        }
       } finally {
+        liveAssistantIdRef.current = null;
         setIsLoading(false);
       }
     },
     [
       assistantContextBlock,
-      budgetAssistantContext.summary,
+      budgetAssistantContext.docs,
       categories,
       composerDisabled,
       createMessage,
@@ -725,7 +745,10 @@ Do not include raw context fragments, numbering artifacts, markdown headings, re
       appleLatestMonth,
       query,
       rag,
+      replacePlaceholderMessage,
+      runAppleFallback,
       summary,
+      shouldFallbackToApple,
       transactions,
       useAppleVisibleChat,
     ]
@@ -764,11 +787,6 @@ Do not include raw context fragments, numbering artifacts, markdown headings, re
     () => (
       <View className="gap-5 pb-6 pt-5">
         <View className="gap-2">
-          <View className="self-start rounded-full border border-app-border-contrast bg-app-surface-1 px-3 py-1.5">
-            <View className="flex-row items-center gap-2">
-              <View className="h-2 w-2 rounded-full bg-accent-savings" />
-            </View>
-          </View>
           <View className="gap-2">
             <View>
               <InsightsHeaderText
@@ -791,7 +809,7 @@ Do not include raw context fragments, numbering artifacts, markdown headings, re
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 18 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 4 : 0}
       style={{ flex: 1 }}>
       <View className="flex-1 bg-app-canvas">
         <TopUtilityBar badge="Insights" />
@@ -814,7 +832,7 @@ Do not include raw context fragments, numbering artifacts, markdown headings, re
           }}
         />
 
-        <View style={{ paddingBottom: insets.bottom + 8 }}>
+        <View style={{ paddingBottom: insets.bottom + 6 }}>
           <InsightsComposer
             inputRef={inputRef}
             value={query}

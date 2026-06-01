@@ -28,7 +28,7 @@ export default function FAB({ onPress, label = '' }: FABProps) {
   return (
     <View
       pointerEvents="box-none"
-      style={{ position: 'absolute', right: 20, bottom: Math.max(bottom, 12) + 90, zIndex: 50 }}>
+      style={{ position: 'absolute', right: 20, bottom: Math.max(bottom, 12) + 45, zIndex: 50 }}>
       <Animated.View style={style}>
         <TouchableOpacity
           onPress={async () => {

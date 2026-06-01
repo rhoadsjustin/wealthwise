@@ -17,7 +17,7 @@ import { Button } from '@/components/Button';
 import { Label } from '@/components/Label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/Select';
 import { useBills } from '@/context/DataContext';
-import { useAppData } from './_layout';
+import { useActivityData, useSummaryData } from './_layout';
 import { useToast } from '@/context/useToast';
 
 interface BillFormData {
@@ -36,8 +36,9 @@ export default function BillModal() {
   const billId = params.billId ? Number(params.billId) : null;
   const isEditing = Number.isFinite(billId);
 
-  const { bills, categories, refreshAppData } = useAppData();
-  const { createBill, updateBill, deleteBill, getBills } = useBills();
+  const { bills, refreshSummaryData, isDemoMode } = useSummaryData();
+  const { categories } = useActivityData();
+  const { createBill, updateBill, deleteBill, getBillById } = useBills();
   const { toast } = useToast();
 
   const {
@@ -67,7 +68,9 @@ export default function BillModal() {
         return;
       }
 
-      const existingFromContext = (bills || []).find((bill: any) => bill.id === billId);
+      const existingFromContext = !isDemoMode
+        ? (bills || []).find((bill: any) => bill.id === billId)
+        : null;
       if (existingFromContext) {
         reset({
           name: existingFromContext.name,
@@ -82,9 +85,8 @@ export default function BillModal() {
       }
 
       try {
-        const latest = await getBills();
-        if (!isMounted) return;
-        const found = latest.find((bill: any) => bill.id === billId);
+        const found = await getBillById(billId);
+        if (!isMounted || !found) return;
         if (found) {
           reset({
             name: found.name,
@@ -105,7 +107,7 @@ export default function BillModal() {
     return () => {
       isMounted = false;
     };
-  }, [bills, billId, getBills, isEditing, reset]);
+  }, [bills, billId, getBillById, isDemoMode, isEditing, reset]);
 
   const onSubmit = React.useCallback(
     async (data: BillFormData) => {
@@ -171,7 +173,7 @@ export default function BillModal() {
           });
         }
 
-        await refreshAppData();
+        await refreshSummaryData();
         router.back();
       } catch (error) {
         console.error('Failed to save bill', error);
@@ -182,7 +184,7 @@ export default function BillModal() {
         });
       }
     },
-    [billId, createBill, isEditing, refreshAppData, router, toast, updateBill]
+    [billId, createBill, isEditing, refreshSummaryData, router, toast, updateBill]
   );
 
   const handleDelete = React.useCallback(() => {
@@ -199,7 +201,7 @@ export default function BillModal() {
               title: 'Bill deleted',
               description: 'The bill is no longer being tracked.',
             });
-            await refreshAppData();
+            await refreshSummaryData();
             router.back();
           } catch (error) {
             console.error('Failed to delete bill', error);
@@ -212,7 +214,7 @@ export default function BillModal() {
         },
       },
     ]);
-  }, [billId, deleteBill, refreshAppData, router, toast]);
+  }, [billId, deleteBill, refreshSummaryData, router, toast]);
 
   return (
     <View className="flex-1 bg-app-canvas">
