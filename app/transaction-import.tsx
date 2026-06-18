@@ -1,5 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { Keyboard, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Keyboard,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +39,7 @@ import { looksLikeCsv, parseCsvTransactionDrafts } from '@/lib/transactionImport
 const screenOptions = { headerShown: false } as const;
 
 type ImportMode = 'csv' | 'statement';
+type ImportStep = 'capture' | 'processing' | 'review';
 type PreviewImportTransaction = ImportedTransactionDraft & {
   id: string;
   categoryId: number | null;
@@ -47,6 +55,7 @@ export default function TransactionImportModal() {
   const { showToast } = useToast();
 
   const [mode, setMode] = useState<ImportMode>('csv');
+  const [step, setStep] = useState<ImportStep>('capture');
   const [rawInput, setRawInput] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -163,11 +172,13 @@ export default function TransactionImportModal() {
           'Try a cleaner CSV export or paste more complete statement text.'
         );
       }
+      return uniqueTransactions.length;
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unable to parse the imported statement.';
       setParseWarnings([message]);
       showToast.error('Import parse failed', message);
+      return 0;
     } finally {
       setIsParsing(false);
     }
@@ -183,7 +194,16 @@ export default function TransactionImportModal() {
     }
 
     Keyboard.dismiss();
-    await parseImportedInput(trimmedInput, mode);
+    const parsedCount = await parseImportedInput(trimmedInput, mode);
+    if (parsedCount > 0) {
+      setStep('review');
+    }
+  };
+
+  const processImportedStatement = async (input: string, sourceMode: ImportMode) => {
+    setStep('processing');
+    const parsedCount = await parseImportedInput(input, sourceMode);
+    setStep(parsedCount > 0 ? 'review' : 'capture');
   };
 
   const handlePickDocument = async () => {
@@ -209,7 +229,7 @@ export default function TransactionImportModal() {
       const nextMode: ImportMode = looksLikeCsv(extractedText) ? 'csv' : 'statement';
       setMode(nextMode);
       setRawInput(extractedText);
-      await parseImportedInput(extractedText, nextMode);
+      await processImportedStatement(extractedText, nextMode);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to open the selected file.';
       showToast.error('File import failed', message);
@@ -243,7 +263,7 @@ export default function TransactionImportModal() {
       const extractedText = await extractTextFromImage(result.assets[0]!.uri);
       setMode('statement');
       setRawInput(extractedText);
-      await parseImportedInput(extractedText, 'statement');
+      await processImportedStatement(extractedText, 'statement');
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unable to extract text from the selected image.';
@@ -259,7 +279,7 @@ export default function TransactionImportModal() {
       const scannedText = await scanTextWithCamera();
       setMode('statement');
       setRawInput(scannedText);
-      await parseImportedInput(scannedText, 'statement');
+      await processImportedStatement(scannedText, 'statement');
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unable to scan text from the camera.';
@@ -351,373 +371,439 @@ export default function TransactionImportModal() {
     setEditingValues(null);
   };
 
+  const resetCaptureState = () => {
+    setRawInput('');
+    setParseWarnings([]);
+    setParseMethod(null);
+    setPreviewTransactions([]);
+    setSelectedIds(new Set());
+    setEditingTransactionId(null);
+    setEditingValues(null);
+  };
+
   const topPadding = Math.max(insets.top + 8, 24);
   const bottomPadding = Math.max(insets.bottom + 18, 28);
+  const selectedImportCount = importableRows.filter((row) => row.isSelected).length;
 
   return (
     <View className="flex-1 bg-app-canvas">
       <Stack.Screen options={screenOptions} />
-
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingTop: topPadding, paddingBottom: bottomPadding }}
-        keyboardShouldPersistTaps="handled">
-        <View className="px-5">
-          <View className="mb-5 flex-row items-center justify-between">
-            <View className="pr-4">
-              <Text className="text-3xl font-semibold text-app-text-strong">Statement import</Text>
-              <Text className="mt-1 text-sm text-app-text-faint">
-                Paste text, pick a file or photo, or scan statement text live with the camera.
-              </Text>
+      {step === 'processing' ? (
+        <View
+          className="flex-1 items-center justify-center px-6"
+          style={{ paddingTop: topPadding, paddingBottom: bottomPadding }}>
+          <View className="items-center">
+            <View className="mb-5 h-20 w-20 items-center justify-center rounded-full bg-app-surface-2">
+              <Ionicons name="sparkles-outline" size={32} color="#59F7A5" />
             </View>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              accessibilityLabel="Close transaction import"
-              className="h-11 w-11 items-center justify-center rounded-full border border-app-border bg-app-surface-1">
-              <Ionicons name="close" size={18} color="#F8FAFC" />
-            </TouchableOpacity>
+            <ActivityIndicator size="large" color="#59F7A5" />
+            <Text className="mt-5 text-center text-2xl font-semibold text-app-text-strong">
+              Processing import
+            </Text>
+            <Text className="mt-2 text-center text-sm leading-6 text-app-text-faint">
+              Reading the statement image and preparing each transaction for review.
+            </Text>
           </View>
-
-          <Card variant="glass-dark" className="mb-4">
-            <CardHeader className="pb-3">
-              <CardTitle variant="small">Source</CardTitle>
-              <CardDescription>
-                CSV is parsed directly first. Statement or PDF text falls back to Apple&apos;s
-                on-device model for extraction after text capture.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <View className="flex-row gap-2">
-                <SourceChip label="CSV" selected={mode === 'csv'} onPress={() => setMode('csv')} />
-                <SourceChip
-                  label="Statement / PDF text"
-                  selected={mode === 'statement'}
-                  onPress={() => setMode('statement')}
-                />
-              </View>
-
-              <View className="mt-4 gap-3">
-                <Button
-                  variant="secondary-muted"
-                  title={isLoadingSource ? 'Opening…' : 'Pick CSV, TXT, or PDF file'}
-                  loading={isLoadingSource}
-                  onPress={handlePickDocument}
-                />
-                <Button
-                  variant="secondary-muted"
-                  title={
-                    isLoadingSource ? 'Opening…' : 'Pick statement screenshot or receipt photo'
-                  }
-                  disabled={isLoadingSource}
-                  onPress={handlePickImage}
-                />
-                <Button
-                  variant="secondary-muted"
-                  title={isLoadingSource ? 'Opening…' : 'Scan live with camera'}
-                  disabled={isLoadingSource}
-                  onPress={handleLiveScan}
-                />
-              </View>
-
-              <Input
-                className="mt-4"
-                style={{ minHeight: 220 }}
-                variant="dark"
-                size="lg"
-                multiline
-                numberOfLines={12}
-                autoCapitalize="none"
-                autoCorrect={false}
-                value={rawInput}
-                onChangeText={setRawInput}
-                placeholder={
-                  mode === 'csv'
-                    ? 'Paste your CSV contents here, including the header row.'
-                    : 'Paste copied statement text here. This works well with text copied from a PDF statement.'
-                }
-                helperText={
-                  mode === 'csv'
-                    ? 'Accepted headers include Date, Description, Amount, Debit, and Credit.'
-                    : 'Apple on-device AI will extract rows into dates, descriptions, amounts, and types.'
-                }
-              />
-
-              <Button
-                className="mt-4"
-                variant="primary-solid"
-                title={isParsing ? 'Parsing…' : 'Build import preview'}
-                loading={isParsing}
-                onPress={handleParse}
-              />
-            </CardContent>
-          </Card>
-
-          {parseWarnings.length ? (
-            <Card variant="inset" className="mb-4">
-              <CardHeader className="pb-3">
-                <CardTitle variant="small">Warnings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <View className="gap-2">
-                  {parseWarnings.map((warning) => (
-                    <Text key={warning} className="text-sm leading-5 text-warning-700">
-                      {warning}
-                    </Text>
-                  ))}
-                </View>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          <Card variant="glass-dark">
-            <CardHeader className="pb-3">
-              <CardTitle variant="small">Preview</CardTitle>
-              <CardDescription>
-                {parseMethod
-                  ? `Parsed ${previewTransactions.length} row${previewTransactions.length === 1 ? '' : 's'} with ${parseMethod}. Duplicates are excluded from import.`
-                  : 'No preview yet.'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!previewRows.length ? (
-                <View className="rounded-2xl border border-dashed border-app-border bg-app-canvas-elevated px-4 py-6">
-                  <Text className="text-sm leading-6 text-app-text-faint">
-                    Paste a statement and build the preview to review imported rows here.
+        </View>
+      ) : (
+        <>
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ paddingTop: topPadding, paddingBottom: bottomPadding }}
+            keyboardShouldPersistTaps="handled">
+            <View className="px-5">
+              <View className="mb-5 flex-row items-center justify-between">
+                <View className="pr-4">
+                  <Text className="text-3xl font-semibold text-app-text-strong">
+                    Statement import
+                  </Text>
+                  <Text className="mt-1 text-sm text-app-text-faint">
+                    {step === 'review'
+                      ? 'Review, edit, and confirm each imported item before saving.'
+                      : 'Paste text, pick a file/photo, or live scan. Then review each imported item.'}
                   </Text>
                 </View>
-              ) : (
-                <View className="gap-3">
-                  {previewRows.map((row) => (
-                    <View
-                      key={row.id}
-                      className={`rounded-2xl border px-4 py-3 ${
-                        row.isDuplicate
-                          ? 'border-app-border bg-app-canvas-elevated opacity-70'
-                          : row.isSelected
-                            ? 'border-app-border-contrast bg-app-surface-2'
-                            : 'border-app-border bg-app-surface-1'
-                      }`}>
-                      <View className="flex-row items-start justify-between gap-3">
-                        <View className="flex-1">
-                          <View className="flex-row items-center gap-2">
-                            <TouchableOpacity
-                              onPress={() => !row.isDuplicate && toggleSelection(row.id)}
-                              disabled={row.isDuplicate}
-                              className={`h-6 w-6 items-center justify-center rounded-full border ${
-                                row.isSelected
-                                  ? 'border-accent-savings bg-accent-savings'
-                                  : 'border-app-border bg-app-canvas-elevated'
-                              }`}>
-                              {row.isSelected ? (
-                                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-                              ) : null}
-                            </TouchableOpacity>
-                            <Text className="text-sm font-semibold text-app-text-strong">
-                              {row.transaction.description}
-                            </Text>
-                          </View>
-                          <Text className="mt-1 text-xs text-app-text-faint">
-                            {row.transaction.date} · {row.transaction.type}
-                          </Text>
-                          <Text className="mt-1 text-xs text-app-text-faint">
-                            Category:{' '}
-                            {categoryLabel(row.transaction.categoryId, categories) ??
-                              'Uncategorized'}
-                            {row.transaction.suggestedCategoryId &&
-                            row.transaction.categoryId === row.transaction.suggestedCategoryId &&
-                            row.transaction.categoryConfidence
-                              ? ` · Suggested ${Math.round(row.transaction.categoryConfidence * 100)}%`
-                              : ''}
-                          </Text>
-                        </View>
-                        <View className="items-end">
-                          <Text className="text-sm font-semibold text-app-text-strong">
-                            {formatCurrency(Number.parseFloat(row.transaction.amount))}
-                          </Text>
-                          <Text
-                            className={`mt-1 text-xs ${
-                              row.isDuplicate ? 'text-warning-700' : 'text-app-text-faint'
-                            }`}>
-                            {row.isDuplicate
-                              ? 'Already imported'
-                              : row.isSelected
-                                ? 'Selected'
-                                : 'Tap to select'}
-                          </Text>
-                          {!row.isDuplicate ? (
-                            <TouchableOpacity
-                              onPress={() => openEditor(row.id)}
-                              className="mt-2 rounded-full border border-app-border bg-app-canvas-elevated px-3 py-1.5">
-                              <Text className="text-xs font-medium text-app-text-soft">Review</Text>
-                            </TouchableOpacity>
-                          ) : null}
-                        </View>
+                <TouchableOpacity
+                  onPress={() => router.back()}
+                  accessibilityLabel="Close transaction import"
+                  className="h-11 w-11 items-center justify-center rounded-full border border-app-border bg-app-surface-1">
+                  <Ionicons name="close" size={18} color="#F8FAFC" />
+                </TouchableOpacity>
+              </View>
+
+              {step === 'capture' ? (
+                <>
+                  <Card variant="glass-dark" className="mb-4">
+                    <CardHeader className="pb-3">
+                      <CardTitle variant="small">Source</CardTitle>
+                      <CardDescription>
+                        CSV is parsed directly first. Statement or PDF text falls back to
+                        Apple&apos;s on-device model for extraction after text capture.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <View className="flex-row gap-2">
+                        <SourceChip
+                          label="CSV"
+                          selected={mode === 'csv'}
+                          onPress={() => setMode('csv')}
+                        />
+                        <SourceChip
+                          label="Statement / PDF text"
+                          selected={mode === 'statement'}
+                          onPress={() => setMode('statement')}
+                        />
                       </View>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </CardContent>
-          </Card>
 
-          {editingTransaction && editingValues ? (
-            <Card variant="glass-dark" className="mt-4">
-              <CardHeader className="pb-3">
-                <CardTitle variant="small">Review and correct</CardTitle>
-                <CardDescription>
-                  Fix merchant, date, amount, or transaction type before import.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <View className="gap-3">
-                  <Input
-                    variant="dark"
-                    label="Merchant or description"
-                    value={editingValues.description}
-                    onChangeText={(value) =>
-                      setEditingValues((current) =>
-                        current ? { ...current, description: value } : current
-                      )
-                    }
-                    placeholder="Merchant name"
-                  />
-                  <View className="flex-row gap-3">
-                    <View className="flex-1">
+                      <View className="mt-4 gap-3">
+                        <Button
+                          variant="secondary-muted"
+                          title={isLoadingSource ? 'Opening…' : 'Pick CSV, TXT, or PDF file'}
+                          loading={isLoadingSource}
+                          onPress={handlePickDocument}
+                        />
+                        <Button
+                          variant="secondary-muted"
+                          title={
+                            isLoadingSource
+                              ? 'Opening…'
+                              : 'Pick statement screenshot or receipt photo'
+                          }
+                          disabled={isLoadingSource}
+                          onPress={handlePickImage}
+                        />
+                        <Button
+                          variant="secondary-muted"
+                          title={isLoadingSource ? 'Opening…' : 'Scan live with camera'}
+                          disabled={isLoadingSource}
+                          onPress={handleLiveScan}
+                        />
+                      </View>
+
                       <Input
+                        className="mt-4"
+                        style={{ minHeight: 220 }}
                         variant="dark"
-                        label="Date"
-                        value={editingValues.date}
-                        onChangeText={(value) =>
-                          setEditingValues((current) =>
-                            current ? { ...current, date: value } : current
-                          )
-                        }
-                        placeholder="YYYY-MM-DD"
+                        size="lg"
+                        multiline
+                        numberOfLines={12}
                         autoCapitalize="none"
-                      />
-                    </View>
-                    <View className="flex-1">
-                      <Input
-                        variant="dark"
-                        label="Amount"
-                        value={editingValues.amount}
-                        onChangeText={(value) =>
-                          setEditingValues((current) =>
-                            current
-                              ? {
-                                  ...current,
-                                  amount: value.replace(/[^0-9.]/g, ''),
-                                }
-                              : current
-                          )
+                        autoCorrect={false}
+                        value={rawInput}
+                        onChangeText={setRawInput}
+                        placeholder={
+                          mode === 'csv'
+                            ? 'Paste your CSV contents here, including the header row.'
+                            : 'Paste copied statement text here. This works well with text copied from a PDF statement.'
                         }
-                        placeholder="0.00"
-                        keyboardType="decimal-pad"
+                        helperText={
+                          mode === 'csv'
+                            ? 'Accepted headers include Date, Description, Amount, Debit, and Credit.'
+                            : 'Apple on-device AI will extract rows into dates, descriptions, amounts, and types.'
+                        }
                       />
-                    </View>
-                  </View>
-                  <View className="flex-row gap-2">
-                    <SourceChip
-                      label="Expense"
-                      selected={editingValues.type === 'expense'}
-                      onPress={() =>
-                        setEditingValues((current) =>
-                          current ? { ...current, type: 'expense' } : current
-                        )
-                      }
-                    />
-                    <SourceChip
-                      label="Income"
-                      selected={editingValues.type === 'income'}
-                      onPress={() =>
-                        setEditingValues((current) =>
-                          current ? { ...current, type: 'income' } : current
-                        )
-                      }
-                    />
-                  </View>
-                  <View>
-                    <Text className="mb-2 text-sm font-medium text-app-text-soft">Category</Text>
-                    <Select
-                      value={
-                        editingValues.categoryId != null
-                          ? String(editingValues.categoryId)
-                          : 'uncategorized'
-                      }
-                      onValueChange={(value) =>
-                        setEditingValues((current) =>
-                          current
-                            ? {
-                                ...current,
-                                categoryId:
-                                  value === 'uncategorized' ? null : Number.parseInt(value, 10),
-                              }
-                            : current
-                        )
-                      }>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a category">
-                          {categoryLabel(editingValues.categoryId, categories) ?? 'Uncategorized'}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="uncategorized">
-                          <Text className="text-sm text-app-text">Uncategorized</Text>
-                        </SelectItem>
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={String(category.id)}>
-                            <Text className="text-sm text-app-text">{category.name}</Text>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {editingValues.suggestedCategoryId ? (
-                      <Text className="mt-2 text-xs text-app-text-muted">
-                        Suggested:{' '}
-                        {categoryLabel(editingValues.suggestedCategoryId, categories) ??
-                          'Uncategorized'}
-                        {editingValues.categoryConfidence
-                          ? ` (${Math.round(editingValues.categoryConfidence * 100)}%)`
-                          : ''}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <View className="flex-row gap-3">
-                    <Button
-                      className="flex-1"
-                      variant="secondary-muted"
-                      title="Close review"
-                      onPress={closeEditor}
-                    />
-                    <Button
-                      className="flex-1"
-                      variant="primary-solid"
-                      title="Save correction"
-                      onPress={saveEditingTransaction}
-                    />
-                  </View>
-                </View>
-              </CardContent>
-            </Card>
-          ) : null}
-        </View>
-      </ScrollView>
 
-      <View className="px-5" style={{ paddingBottom: bottomPadding, paddingTop: 12 }}>
-        <Button
-          className="w-full"
-          size="lg"
-          variant="primary-solid"
-          title={
-            isImporting
-              ? 'Importing…'
-              : `Import selected (${importableRows.filter((row) => row.isSelected).length})`
-          }
-          loading={isImporting}
-          disabled={!importableRows.some((row) => row.isSelected) || isParsing || isLoadingSource}
-          onPress={handleImport}
-        />
-      </View>
+                      <Button
+                        className="mt-4"
+                        variant="primary-solid"
+                        title={isParsing ? 'Parsing…' : 'Build import preview'}
+                        loading={isParsing}
+                        onPress={handleParse}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  {parseWarnings.length ? (
+                    <Card variant="inset" className="mb-4">
+                      <CardHeader className="pb-3">
+                        <CardTitle variant="small">Warnings</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <View className="gap-2">
+                          {parseWarnings.map((warning) => (
+                            <Text key={warning} className="text-sm leading-5 text-warning-700">
+                              {warning}
+                            </Text>
+                          ))}
+                        </View>
+                      </CardContent>
+                    </Card>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <Card variant="glass-dark">
+                    <CardHeader className="pb-3">
+                      <CardTitle variant="small">Review</CardTitle>
+                      <CardDescription>
+                        {parseMethod
+                          ? `Parsed ${previewTransactions.length} row${previewTransactions.length === 1 ? '' : 's'} with ${parseMethod}. Duplicates are excluded from import.`
+                          : 'No preview yet.'}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <View className="mb-4">
+                        <Button
+                          size="sm"
+                          variant="secondary-muted"
+                          title="Import another statement"
+                          onPress={() => {
+                            resetCaptureState();
+                            setStep('capture');
+                          }}
+                        />
+                      </View>
+                      {!previewRows.length ? (
+                        <View className="rounded-2xl border border-dashed border-app-border bg-app-canvas-elevated px-4 py-6">
+                          <Text className="text-sm leading-6 text-app-text-faint">
+                            Select or scan another image to create a review list.
+                          </Text>
+                        </View>
+                      ) : (
+                        <View className="gap-3">
+                          {previewRows.map((row) => (
+                            <View
+                              key={row.id}
+                              className={`rounded-2xl border px-4 py-3 ${
+                                row.isDuplicate
+                                  ? 'border-app-border bg-app-canvas-elevated opacity-70'
+                                  : row.isSelected
+                                    ? 'border-app-border-contrast bg-app-surface-2'
+                                    : 'border-app-border bg-app-surface-1'
+                              }`}>
+                              <View className="flex-row items-start justify-between gap-3">
+                                <View className="flex-1">
+                                  <View className="flex-row items-center gap-2">
+                                    <TouchableOpacity
+                                      onPress={() => !row.isDuplicate && toggleSelection(row.id)}
+                                      disabled={row.isDuplicate}
+                                      className={`h-6 w-6 items-center justify-center rounded-full border ${
+                                        row.isSelected
+                                          ? 'border-accent-savings bg-accent-savings'
+                                          : 'border-app-border bg-app-canvas-elevated'
+                                      }`}>
+                                      {row.isSelected ? (
+                                        <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                                      ) : null}
+                                    </TouchableOpacity>
+                                    <Text className="text-sm font-semibold text-app-text-strong">
+                                      {row.transaction.description}
+                                    </Text>
+                                  </View>
+                                  <Text className="mt-1 text-xs text-app-text-faint">
+                                    {row.transaction.date} · {row.transaction.type}
+                                  </Text>
+                                  <Text className="mt-1 text-xs text-app-text-faint">
+                                    Category:{' '}
+                                    {categoryLabel(row.transaction.categoryId, categories) ??
+                                      'Uncategorized'}
+                                    {row.transaction.suggestedCategoryId &&
+                                    row.transaction.categoryId ===
+                                      row.transaction.suggestedCategoryId &&
+                                    row.transaction.categoryConfidence
+                                      ? ` · Suggested ${Math.round(row.transaction.categoryConfidence * 100)}%`
+                                      : ''}
+                                  </Text>
+                                </View>
+                                <View className="items-end">
+                                  <Text className="text-sm font-semibold text-app-text-strong">
+                                    {formatCurrency(Number.parseFloat(row.transaction.amount))}
+                                  </Text>
+                                  <Text
+                                    className={`mt-1 text-xs ${
+                                      row.isDuplicate ? 'text-warning-700' : 'text-app-text-faint'
+                                    }`}>
+                                    {row.isDuplicate
+                                      ? 'Already imported'
+                                      : row.isSelected
+                                        ? 'Selected'
+                                        : 'Tap to select'}
+                                  </Text>
+                                  {!row.isDuplicate ? (
+                                    <TouchableOpacity
+                                      onPress={() => openEditor(row.id)}
+                                      className="mt-2 rounded-full border border-app-border bg-app-canvas-elevated px-3 py-1.5">
+                                      <Text className="text-xs font-medium text-app-text-soft">
+                                        Review
+                                      </Text>
+                                    </TouchableOpacity>
+                                  ) : null}
+                                </View>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {editingTransaction && editingValues ? (
+                    <Card variant="glass-dark" className="mt-4">
+                      <CardHeader className="pb-3">
+                        <CardTitle variant="small">Review and correct</CardTitle>
+                        <CardDescription>
+                          Fix merchant, date, amount, or transaction type before import.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <View className="gap-3">
+                          <Input
+                            variant="dark"
+                            label="Merchant or description"
+                            value={editingValues.description}
+                            onChangeText={(value) =>
+                              setEditingValues((current) =>
+                                current ? { ...current, description: value } : current
+                              )
+                            }
+                            placeholder="Merchant name"
+                          />
+                          <View className="flex-row gap-3">
+                            <View className="flex-1">
+                              <Input
+                                variant="dark"
+                                label="Date"
+                                value={editingValues.date}
+                                onChangeText={(value) =>
+                                  setEditingValues((current) =>
+                                    current ? { ...current, date: value } : current
+                                  )
+                                }
+                                placeholder="YYYY-MM-DD"
+                                autoCapitalize="none"
+                              />
+                            </View>
+                            <View className="flex-1">
+                              <Input
+                                variant="dark"
+                                label="Amount"
+                                value={editingValues.amount}
+                                onChangeText={(value) =>
+                                  setEditingValues((current) =>
+                                    current
+                                      ? {
+                                          ...current,
+                                          amount: value.replace(/[^0-9.]/g, ''),
+                                        }
+                                      : current
+                                  )
+                                }
+                                placeholder="0.00"
+                                keyboardType="decimal-pad"
+                              />
+                            </View>
+                          </View>
+                          <View className="flex-row gap-2">
+                            <SourceChip
+                              label="Expense"
+                              selected={editingValues.type === 'expense'}
+                              onPress={() =>
+                                setEditingValues((current) =>
+                                  current ? { ...current, type: 'expense' } : current
+                                )
+                              }
+                            />
+                            <SourceChip
+                              label="Income"
+                              selected={editingValues.type === 'income'}
+                              onPress={() =>
+                                setEditingValues((current) =>
+                                  current ? { ...current, type: 'income' } : current
+                                )
+                              }
+                            />
+                          </View>
+                          <View>
+                            <Text className="mb-2 text-sm font-medium text-app-text-soft">
+                              Category
+                            </Text>
+                            <Select
+                              value={
+                                editingValues.categoryId != null
+                                  ? String(editingValues.categoryId)
+                                  : 'uncategorized'
+                              }
+                              onValueChange={(value) =>
+                                setEditingValues((current) =>
+                                  current
+                                    ? {
+                                        ...current,
+                                        categoryId:
+                                          value === 'uncategorized'
+                                            ? null
+                                            : Number.parseInt(value, 10),
+                                      }
+                                    : current
+                                )
+                              }>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Choose a category">
+                                  {categoryLabel(editingValues.categoryId, categories) ??
+                                    'Uncategorized'}
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="uncategorized">
+                                  <Text className="text-sm text-app-text">Uncategorized</Text>
+                                </SelectItem>
+                                {categories.map((category) => (
+                                  <SelectItem key={category.id} value={String(category.id)}>
+                                    <Text className="text-sm text-app-text">{category.name}</Text>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {editingValues.suggestedCategoryId ? (
+                              <Text className="mt-2 text-xs text-app-text-muted">
+                                Suggested:{' '}
+                                {categoryLabel(editingValues.suggestedCategoryId, categories) ??
+                                  'Uncategorized'}
+                                {editingValues.categoryConfidence
+                                  ? ` (${Math.round(editingValues.categoryConfidence * 100)}%)`
+                                  : ''}
+                              </Text>
+                            ) : null}
+                          </View>
+                          <View className="flex-row gap-3">
+                            <Button
+                              className="flex-1"
+                              variant="secondary-muted"
+                              title="Close review"
+                              onPress={closeEditor}
+                            />
+                            <Button
+                              className="flex-1"
+                              variant="primary-solid"
+                              title="Save correction"
+                              onPress={saveEditingTransaction}
+                            />
+                          </View>
+                        </View>
+                      </CardContent>
+                    </Card>
+                  ) : null}
+                </>
+              )}
+            </View>
+          </ScrollView>
+
+          {step === 'review' ? (
+            <View className="px-5" style={{ paddingBottom: bottomPadding, paddingTop: 12 }}>
+              <Button
+                className="w-full"
+                size="lg"
+                variant="primary-solid"
+                title={isImporting ? 'Importing…' : `Import selected (${selectedImportCount})`}
+                loading={isImporting}
+                disabled={
+                  !importableRows.some((row) => row.isSelected) || isParsing || isLoadingSource
+                }
+                onPress={handleImport}
+              />
+            </View>
+          ) : null}
+        </>
+      )}
     </View>
   );
 }
