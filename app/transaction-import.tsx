@@ -371,6 +371,16 @@ export default function TransactionImportModal() {
     setEditingValues(null);
   };
 
+  const resetCaptureState = () => {
+    setRawInput('');
+    setParseWarnings([]);
+    setParseMethod(null);
+    setPreviewTransactions([]);
+    setSelectedIds(new Set());
+    setEditingTransactionId(null);
+    setEditingValues(null);
+  };
+
   const topPadding = Math.max(insets.top + 8, 24);
   const bottomPadding = Math.max(insets.bottom + 18, 28);
   const selectedImportCount = importableRows.filter((row) => row.isSelected).length;
@@ -410,7 +420,7 @@ export default function TransactionImportModal() {
                   <Text className="mt-1 text-sm text-app-text-faint">
                     {step === 'review'
                       ? 'Review, edit, and confirm each imported item before saving.'
-                      : 'Select or live scan an image, then review what we found.'}
+                      : 'Paste text, pick a file/photo, or live scan. Then review each imported item.'}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -537,7 +547,10 @@ export default function TransactionImportModal() {
                           size="sm"
                           variant="secondary-muted"
                           title="Import another statement"
-                          onPress={() => setStep('capture')}
+                          onPress={() => {
+                            resetCaptureState();
+                            setStep('capture');
+                          }}
                         />
                       </View>
                       {!previewRows.length ? (
@@ -603,15 +616,15 @@ export default function TransactionImportModal() {
                                     {row.isDuplicate
                                       ? 'Already imported'
                                       : row.isSelected
-                                        ? 'Confirmed'
-                                        : 'Tap to confirm'}
+                                        ? 'Selected'
+                                        : 'Tap to select'}
                                   </Text>
                                   {!row.isDuplicate ? (
                                     <TouchableOpacity
                                       onPress={() => openEditor(row.id)}
                                       className="mt-2 rounded-full border border-app-border bg-app-canvas-elevated px-3 py-1.5">
                                       <Text className="text-xs font-medium text-app-text-soft">
-                                        Edit item
+                                        Review
                                       </Text>
                                     </TouchableOpacity>
                                   ) : null}
@@ -780,7 +793,7 @@ export default function TransactionImportModal() {
                 className="w-full"
                 size="lg"
                 variant="primary-solid"
-                title={isImporting ? 'Importing…' : `Import confirmed (${selectedImportCount})`}
+                title={isImporting ? 'Importing…' : `Import selected (${selectedImportCount})`}
                 loading={isImporting}
                 disabled={
                   !importableRows.some((row) => row.isSelected) || isParsing || isLoadingSource
